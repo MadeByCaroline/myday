@@ -9,14 +9,27 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
 
+  const frontendUrl = configService.get<string>('FRONTEND_URL') || 'http://127.0.0.1:5173';
+  const allowedOrigins = new Set([frontendUrl]);
+  try {
+    const parsed = new URL(frontendUrl);
+    if (parsed.hostname === 'localhost') {
+      parsed.hostname = '127.0.0.1';
+    } else if (parsed.hostname === '127.0.0.1') {
+      parsed.hostname = 'localhost';
+    }
+    allowedOrigins.add(parsed.toString().replace(/\/$/, ''));
+  } catch {
+    // frontendUrl is not a valid URL; allow only the configured value
+  }
   app.enableCors({
-    origin: configService.get<string>('FRONTEND_URL') || 'http://localhost:5173',
+    origin: Array.from(allowedOrigins),
     credentials: true,
   });
 
   const port = Number(configService.get<string>('PORT') || '3000');
-  await app.listen(port);
-  console.log(`Backend running on http://localhost:${port}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Backend running on http://127.0.0.1:${port}`);
 }
 
 void bootstrap();
