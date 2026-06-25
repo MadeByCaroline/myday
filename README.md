@@ -12,7 +12,7 @@ MyDay is a personal productivity SaaS MVP that connects to your Google account, 
 | Backend    | NestJS · TypeScript                                                    |
 | Database   | SQLite (dev) / PostgreSQL (prod) via Prisma ORM                        |
 | Auth       | Google OAuth 2.0 via `passport-google-oauth20` · JWT                   |
-| AI         | OpenAI `gpt-4o-mini`                                                   |
+| AI         | Google Gemini `gemini-2.5-flash`                                       |
 | Mail/Cal   | Google Gmail API · Google Calendar API (via `googleapis`)              |
 
 ---
@@ -20,7 +20,7 @@ MyDay is a personal productivity SaaS MVP that connects to your Google account, 
 ## 🔒 Privacy by Design
 
 - Raw email content and calendar events are **never persisted** in the database.  
-- They are fetched in-memory per request, sent to OpenAI, and discarded.  
+- They are fetched in-memory per request, sent to Google Gemini, and discarded.  
 - Only `User`, `OAuthToken`, and accepted `Task` records are stored.
 
 ---
@@ -33,7 +33,7 @@ MyDay is a personal productivity SaaS MVP that connects to your Google account, 
 - A Google Cloud project with **OAuth 2.0 credentials** and the following APIs enabled:
   - Gmail API
   - Google Calendar API
-- An OpenAI API key
+- A Google Gemini API key
 
 ---
 
@@ -60,7 +60,7 @@ JWT_SECRET="change-me-in-production"
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 GOOGLE_CALLBACK_URL="http://localhost:3000/auth/google/callback"
-OPENAI_API_KEY="your-openai-api-key"
+GEMINI_API_KEY="your-gemini-api-key"
 FRONTEND_URL="http://localhost:5173"
 PORT=3000
 ```
@@ -101,7 +101,7 @@ myday/
 │   ├── prisma/
 │   │   └── schema.prisma     # User, OAuthToken, Task models
 │   ├── src/
-│   │   ├── ai/               # AiService — OpenAI integration
+│   │   ├── ai/               # AiService — Google Gemini integration
 │   │   ├── auth/             # Google OAuth + JWT strategies & controller
 │   │   ├── calendar/         # CalendarService — Google Calendar API
 │   │   ├── mail/             # MailService — Gmail API
