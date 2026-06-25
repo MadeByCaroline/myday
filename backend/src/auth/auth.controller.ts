@@ -19,7 +19,7 @@ interface AuthenticatedRequest {
   };
 }
 
-interface GoogleCallbackRequest {
+interface OAuthCallbackRequest {
   user: {
     email: string;
     name: string;
@@ -76,7 +76,7 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(
-    @Req() req: GoogleCallbackRequest,
+    @Req() req: OAuthCallbackRequest,
     @Res() res: Response,
   ) {
     const frontendUrl =
@@ -107,7 +107,7 @@ export class AuthController {
   @Get('microsoft/callback')
   @UseGuards(AuthGuard('microsoft'))
   async microsoftAuthCallback(
-    @Req() req: GoogleCallbackRequest,
+    @Req() req: OAuthCallbackRequest,
     @Res() res: Response,
   ) {
     const frontendUrl =
