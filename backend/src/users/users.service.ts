@@ -84,7 +84,9 @@ export class UsersService {
     });
 
     if (existingToken && existingToken.userId !== userId) {
-      throw new ConflictException('This Google account is already linked to another user.');
+      throw new ConflictException(
+        'This Google account is already linked to another user.',
+      );
     }
 
     return this.prisma.oAuthToken.upsert({
@@ -127,9 +129,9 @@ export class UsersService {
     });
   }
 
-  async getOAuthTokens(userId: string, provider: string) {
+  async getOAuthTokens(userId: string, provider?: string) {
     return this.prisma.oAuthToken.findMany({
-      where: { userId, provider },
+      where: provider ? { userId, provider } : { userId },
       orderBy: { updatedAt: 'desc' },
     });
   }
