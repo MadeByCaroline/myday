@@ -8,6 +8,8 @@ import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './google-auth.guard';
 import { GoogleStrategy } from './google.strategy';
 import { JwtStrategy } from './jwt.strategy';
+import { MicrosoftAuthGuard } from './microsoft-auth.guard';
+import { MicrosoftStrategy } from './microsoft.strategy';
 
 @Module({
   imports: [
@@ -22,7 +24,7 @@ import { JwtStrategy } from './jwt.strategy';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, GoogleStrategy, JwtStrategy, GoogleAuthGuard],
+  providers: [AuthService, GoogleStrategy, MicrosoftStrategy, JwtStrategy, GoogleAuthGuard, MicrosoftAuthGuard],
   controllers: [AuthController],
   exports: [AuthService, JwtModule],
 })

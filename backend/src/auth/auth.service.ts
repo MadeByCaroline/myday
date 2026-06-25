@@ -80,4 +80,52 @@ export class AuthService {
       return null;
     }
   }
+
+  async validateMicrosoftUser(
+    microsoftUser: {
+      email: string;
+      name: string;
+      accessToken: string;
+      refreshToken?: string;
+    },
+    userIdToLink: string,
+  ) {
+    await this.usersService.linkOAuthToken(userIdToLink, {
+      provider: 'MICROSOFT',
+      email: microsoftUser.email,
+      accessToken: microsoftUser.accessToken,
+      refreshToken: microsoftUser.refreshToken,
+    });
+    const linkedUser = await this.usersService.findById(userIdToLink);
+    if (!linkedUser) {
+      throw new Error('User not found after Microsoft account link');
+    }
+    return linkedUser;
+  }
+
+  createMicrosoftLinkState(userId: string) {
+    return this.jwtService.sign(
+      { action: 'link-microsoft-account', sub: userId },
+      { expiresIn: '10m' },
+    );
+  }
+
+  async getUserIdFromMicrosoftLinkState(state?: string) {
+    if (!state) {
+      return null;
+    }
+
+    try {
+      const payload = await this.jwtService.verifyAsync<{
+        action?: string;
+        sub?: string;
+      }>(state);
+      if (payload.action !== 'link-microsoft-account' || !payload.sub) {
+        return null;
+      }
+      return payload.sub;
+    } catch {
+      return null;
+    }
+  }
 }

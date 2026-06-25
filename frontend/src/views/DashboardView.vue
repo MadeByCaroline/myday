@@ -74,14 +74,26 @@
             <p class="text-xs text-gray-500 mt-1">
               {{ connectedAccounts.length > 0 ? connectedAccounts.join(', ') : 'No linked Google accounts yet.' }}
             </p>
+            <p v-if="connectedOutlookAccounts.length > 0" class="text-xs text-gray-500 mt-0.5">
+              Outlook: {{ connectedOutlookAccounts.join(', ') }}
+            </p>
           </div>
-          <button
-            @click="linkAnotherGoogleAccount"
-            :disabled="!authStore.token"
-            class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            Link another Google Account
-          </button>
+          <div class="flex gap-2">
+            <button
+              @click="linkAnotherGoogleAccount"
+              :disabled="!authStore.token"
+              class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              Link another Google Account
+            </button>
+            <button
+              @click="linkOutlookAccount"
+              :disabled="!authStore.token"
+              class="text-sm bg-white border border-blue-300 text-blue-700 px-3 py-2 rounded-lg font-medium hover:bg-blue-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              Connect Outlook
+            </button>
+          </div>
         </div>
       </section>
 
@@ -163,6 +175,7 @@ const currentDate = computed(() =>
   now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
 )
 const connectedAccounts = computed(() => authStore.user?.connectedGoogleAccounts || [])
+const connectedOutlookAccounts = computed(() => authStore.user?.connectedOutlookAccounts || [])
 
 async function generateSummary() {
   await summaryStore.generateSummary()
@@ -185,6 +198,20 @@ async function linkAnotherGoogleAccount() {
     window.location.href = data.url
   } catch {
     linkErrorMessage.value = 'Could not start Google account linking. Please refresh the page and try again.'
+  }
+}
+
+async function linkOutlookAccount() {
+  if (!authStore.token) return
+
+  try {
+    const { data } = await axios.get(
+      `${import.meta.env.VITE_API_URL}/auth/microsoft/link`,
+      { headers: { Authorization: 'Bearer ' + authStore.token } },
+    )
+    window.location.href = data.url
+  } catch {
+    linkErrorMessage.value = 'Could not start Outlook account linking. Please refresh the page and try again.'
   }
 }
 

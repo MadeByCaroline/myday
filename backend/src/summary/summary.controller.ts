@@ -5,6 +5,7 @@ import type { CalendarEvent } from '../calendar/calendar.service';
 import { CalendarService } from '../calendar/calendar.service';
 import type { EmailSummary } from '../mail/mail.service';
 import { MailService } from '../mail/mail.service';
+import { MicrosoftService } from '../integrations/microsoft.service';
 import { UsersService } from '../users/users.service';
 
 interface SummaryRequest {
@@ -23,22 +24,23 @@ export class SummaryController {
     private calendarService: CalendarService,
     private aiService: AiService,
     private usersService: UsersService,
+    private microsoftService: MicrosoftService,
   ) {}
 
   @Post('generate')
   async generateSummary(@Req() req: SummaryRequest) {
-    const oauthTokens = await this.usersService.getOAuthTokens(
-      req.user.id,
-      'google',
-    );
-    if (oauthTokens.length === 0) {
+    const allTokens = await this.usersService.getAllOAuthTokens(req.user.id);
+    if (allTokens.length === 0) {
       return {
         error: 'No OAuth token found. Please reconnect your Google account.',
       };
     }
 
-    const accountData = await Promise.allSettled(
-      oauthTokens.map(async (oauthToken) => {
+    const googleTokens = allTokens.filter((t) => t.provider === 'google');
+    const microsoftTokens = allTokens.filter((t) => t.provider === 'MICROSOFT');
+
+    const googleResults = await Promise.allSettled(
+      googleTokens.map(async (oauthToken) => {
         const [emails, events] = await Promise.all([
           this.mailService.getRecentEmails(
             oauthToken.accessToken,
@@ -53,7 +55,18 @@ export class SummaryController {
       }),
     );
 
-    const successfulData = accountData
+    const microsoftResults = await Promise.allSettled(
+      microsoftTokens.map(async (oauthToken) => {
+        const emails = await this.microsoftService.getUnreadEmails(
+          oauthToken.accessToken,
+        );
+        return { emails, events: [] as CalendarEvent[] };
+      }),
+    );
+
+    const allResults = [...googleResults, ...microsoftResults];
+
+    const successfulData = allResults
       .filter(
         (
           result,
@@ -64,13 +77,13 @@ export class SummaryController {
       )
       .map((result) => result.value);
 
-    accountData
+    allResults
       .filter(
         (result): result is PromiseRejectedResult => result.status === 'rejected',
       )
       .forEach((result) => {
         this.logger.warn(
-          `Skipping a Google account due to fetch failure: ${String(result.reason)}`,
+          `Skipping an account due to fetch failure: ${String(result.reason)}`,
         );
       });
 

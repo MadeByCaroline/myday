@@ -11,6 +11,7 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './google-auth.guard';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { MicrosoftAuthGuard } from './microsoft-auth.guard';
 
 interface AuthenticatedRequest {
   protocol: string;
@@ -29,6 +30,16 @@ interface GoogleCallbackRequest {
     email: string;
     name: string;
     picture?: string;
+    accessToken: string;
+    refreshToken?: string;
+    state?: string;
+  };
+}
+
+interface MicrosoftCallbackRequest {
+  user: {
+    email: string;
+    name: string;
     accessToken: string;
     refreshToken?: string;
     state?: string;
@@ -90,6 +101,48 @@ export class AuthController {
     }
   }
 
+  @Get('microsoft')
+  @UseGuards(MicrosoftAuthGuard)
+  microsoftAuth() {
+    return undefined;
+  }
+
+  @Get('microsoft/link')
+  @UseGuards(JwtAuthGuard)
+  async linkMicrosoftAuth(@Req() req: AuthenticatedRequest) {
+    const state = this.authService.createMicrosoftLinkState(req.user.id);
+    const host = req.get('host');
+    const protocol = req.protocol;
+    return {
+      url: `${protocol}://${host}/auth/microsoft?state=${encodeURIComponent(state)}`,
+    };
+  }
+
+  @Get('microsoft/callback')
+  @UseGuards(AuthGuard('microsoft'))
+  async microsoftAuthCallback(
+    @Req() req: MicrosoftCallbackRequest,
+    @Res() res: Response,
+  ) {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+    const linkedUserId = await this.authService.getUserIdFromMicrosoftLinkState(
+      req.user.state,
+    );
+
+    try {
+      if (!linkedUserId) {
+        res.redirect(`${frontendUrl}/dashboard?linkError=1`);
+        return;
+      }
+
+      await this.authService.validateMicrosoftUser(req.user, linkedUserId);
+      res.redirect(`${frontendUrl}/dashboard?refreshProfile=1`);
+    } catch {
+      res.redirect(`${frontendUrl}/dashboard?linkError=1`);
+    }
+  }
+
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
   getProfile(@Req() req: AuthenticatedRequest) {
@@ -97,7 +150,10 @@ export class AuthController {
     const connectedGoogleAccounts = req.user.oauthTokens
       .filter((token) => token.provider === 'google')
       .map((token) => token.email);
+    const connectedOutlookAccounts = req.user.oauthTokens
+      .filter((token) => token.provider === 'MICROSOFT')
+      .map((token) => token.email);
 
-    return { id, email, name, picture, connectedGoogleAccounts };
+    return { id, email, name, picture, connectedGoogleAccounts, connectedOutlookAccounts };
   }
 }

@@ -133,4 +133,11 @@ export class UsersService {
       orderBy: { updatedAt: 'desc' },
     });
   }
+
+  async getAllOAuthTokens(userId: string) {
+    return this.prisma.oAuthToken.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
 }
