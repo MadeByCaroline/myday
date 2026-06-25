@@ -44,6 +44,32 @@ export class AuthService {
     });
   }
 
+  async validateMicrosoftUser(
+    microsoftUser: {
+      email: string;
+      name: string;
+      accessToken: string;
+      refreshToken?: string;
+      expiresAt?: Date;
+      scope?: string;
+    },
+    userIdToLink: string,
+  ) {
+    await this.usersService.linkOAuthToken(userIdToLink, {
+      provider: 'MICROSOFT',
+      email: microsoftUser.email,
+      accessToken: microsoftUser.accessToken,
+      refreshToken: microsoftUser.refreshToken,
+      expiresAt: microsoftUser.expiresAt,
+      scope: microsoftUser.scope,
+    });
+    const linkedUser = await this.usersService.findById(userIdToLink);
+    if (!linkedUser) {
+      throw new Error('User not found after Microsoft account link');
+    }
+    return linkedUser;
+  }
+
   async generateJwt(user: { id: string; email: string }) {
     const payload = { sub: user.id, email: user.email };
     return {
@@ -55,14 +81,25 @@ export class AuthService {
     };
   }
 
-  createGoogleLinkState(userId: string) {
+  createOAuthLinkState(userId: string, provider: 'google' | 'MICROSOFT') {
     return this.jwtService.sign(
-      { action: 'link-google-account', sub: userId },
+      { action: 'link-oauth-account', provider, sub: userId },
       { expiresIn: '10m' },
     );
   }
 
-  async getUserIdFromGoogleLinkState(state?: string) {
+  createGoogleLinkState(userId: string) {
+    return this.createOAuthLinkState(userId, 'google');
+  }
+
+  createMicrosoftLinkState(userId: string) {
+    return this.createOAuthLinkState(userId, 'MICROSOFT');
+  }
+
+  async getUserIdFromOAuthLinkState(
+    state: string | undefined,
+    provider: 'google' | 'MICROSOFT',
+  ) {
     if (!state) {
       return null;
     }
@@ -70,14 +107,27 @@ export class AuthService {
     try {
       const payload = await this.jwtService.verifyAsync<{
         action?: string;
+        provider?: string;
         sub?: string;
       }>(state);
-      if (payload.action !== 'link-google-account' || !payload.sub) {
+      if (
+        payload.action !== 'link-oauth-account' ||
+        payload.provider !== provider ||
+        !payload.sub
+      ) {
         return null;
       }
       return payload.sub;
     } catch {
       return null;
     }
+  }
+
+  async getUserIdFromGoogleLinkState(state?: string) {
+    return this.getUserIdFromOAuthLinkState(state, 'google');
+  }
+
+  async getUserIdFromMicrosoftLinkState(state?: string) {
+    return this.getUserIdFromOAuthLinkState(state, 'MICROSOFT');
   }
 }

@@ -1,54 +1,55 @@
 import { SummaryController } from './summary.controller';
 
 describe('SummaryController', () => {
-  it('aggregates emails and events from all connected Google accounts', async () => {
+  it('aggregates emails and events from connected Google and Outlook accounts', async () => {
     const mailService = {
-      getRecentEmails: jest
-        .fn()
-        .mockResolvedValueOnce([{ subject: 'A' }])
-        .mockResolvedValueOnce([{ subject: 'B' }]),
+      getRecentEmails: jest.fn().mockResolvedValueOnce([{ subject: 'A' }]),
     };
     const calendarService = {
-      getTodayEvents: jest
-        .fn()
-        .mockResolvedValueOnce([{ id: '1' }])
-        .mockResolvedValueOnce([{ id: '2' }]),
+      getTodayEvents: jest.fn().mockResolvedValueOnce([{ id: '1' }]),
+    };
+    const microsoftService = {
+      getUnreadEmails: jest.fn().mockResolvedValueOnce([{ subject: 'B' }]),
     };
     const aiService = {
       analyzeProductivityData: jest.fn().mockResolvedValue({ summary: 'ok' }),
     };
     const usersService = {
       getOAuthTokens: jest.fn().mockResolvedValue([
-        { accessToken: 'token-1', refreshToken: 'refresh-1' },
-        { accessToken: 'token-2', refreshToken: 'refresh-2' },
+        {
+          provider: 'google',
+          accessToken: 'token-1',
+          refreshToken: 'refresh-1',
+        },
+        { provider: 'MICROSOFT', accessToken: 'token-2' },
       ]),
     };
 
     const controller = new SummaryController(
       mailService as any,
       calendarService as any,
+      microsoftService as any,
       aiService as any,
       usersService as any,
     );
 
     await controller.generateSummary({ user: { id: 'user-1' } });
 
-    expect(usersService.getOAuthTokens).toHaveBeenCalledWith(
-      'user-1',
-      'google',
-    );
-    expect(mailService.getRecentEmails).toHaveBeenCalledTimes(2);
-    expect(calendarService.getTodayEvents).toHaveBeenCalledTimes(2);
+    expect(usersService.getOAuthTokens).toHaveBeenCalledWith('user-1');
+    expect(mailService.getRecentEmails).toHaveBeenCalledTimes(1);
+    expect(calendarService.getTodayEvents).toHaveBeenCalledTimes(1);
+    expect(microsoftService.getUnreadEmails).toHaveBeenCalledWith('token-2');
     expect(aiService.analyzeProductivityData).toHaveBeenCalledWith(
       [{ subject: 'A' }, { subject: 'B' }],
-      [{ id: '1' }, { id: '2' }],
+      [{ id: '1' }],
     );
   });
 
-  it('returns a clear error when no Google accounts are connected', async () => {
+  it('returns a clear error when no OAuth accounts are connected', async () => {
     const controller = new SummaryController(
       { getRecentEmails: jest.fn() } as any,
       { getTodayEvents: jest.fn() } as any,
+      { getUnreadEmails: jest.fn() } as any,
       { analyzeProductivityData: jest.fn() } as any,
       { getOAuthTokens: jest.fn().mockResolvedValue([]) } as any,
     );
@@ -56,7 +57,8 @@ describe('SummaryController', () => {
     await expect(
       controller.generateSummary({ user: { id: 'user-1' } }),
     ).resolves.toEqual({
-      error: 'No OAuth token found. Please reconnect your Google account.',
+      error:
+        'No OAuth token found. Please connect a Google or Outlook account.',
     });
   });
 });

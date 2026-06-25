@@ -72,16 +72,28 @@
           <div>
             <h3 class="text-sm font-semibold text-gray-900">Connected Accounts</h3>
             <p class="text-xs text-gray-500 mt-1">
-              {{ connectedAccounts.length > 0 ? connectedAccounts.join(', ') : 'No linked Google accounts yet.' }}
+              Google: {{ connectedGoogleAccounts.length > 0 ? connectedGoogleAccounts.join(', ') : 'none' }}
+            </p>
+            <p class="text-xs text-gray-500 mt-1">
+              Outlook: {{ connectedOutlookAccounts.length > 0 ? connectedOutlookAccounts.join(', ') : 'none' }}
             </p>
           </div>
-          <button
-            @click="linkAnotherGoogleAccount"
-            :disabled="!authStore.token"
-            class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            Link another Google Account
-          </button>
+          <div class="flex flex-wrap gap-2">
+            <button
+              @click="linkAnotherGoogleAccount"
+              :disabled="!authStore.token"
+              class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              Link another Google Account
+            </button>
+            <button
+              @click="connectOutlookAccount"
+              :disabled="!authStore.token"
+              class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              Connect Outlook
+            </button>
+          </div>
         </div>
       </section>
 
@@ -162,7 +174,8 @@ const firstName = computed(() => {
 const currentDate = computed(() =>
   now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
 )
-const connectedAccounts = computed(() => authStore.user?.connectedGoogleAccounts || [])
+const connectedGoogleAccounts = computed(() => authStore.user?.connectedGoogleAccounts || [])
+const connectedOutlookAccounts = computed(() => authStore.user?.connectedOutlookAccounts || [])
 
 async function generateSummary() {
   await summaryStore.generateSummary()
@@ -188,10 +201,24 @@ async function linkAnotherGoogleAccount() {
   }
 }
 
+async function connectOutlookAccount() {
+  if (!authStore.token) return
+
+  try {
+    const { data } = await axios.get(
+      `${import.meta.env.VITE_API_URL}/auth/microsoft/link`,
+      { headers: { Authorization: 'Bearer ' + authStore.token } },
+    )
+    window.location.href = data.url
+  } catch {
+    linkErrorMessage.value = 'Could not start Outlook account linking. Please refresh the page and try again.'
+  }
+}
+
 onMounted(async () => {
   const hasLinkError = new URLSearchParams(window.location.search).get('linkError') === '1'
   if (hasLinkError) {
-    linkErrorMessage.value = 'Google account linking failed. Please verify account permissions and try again.'
+    linkErrorMessage.value = 'Account linking failed. Please verify account permissions and try again.'
   }
 
   const refreshProfile = new URLSearchParams(window.location.search).get('refreshProfile') === '1'

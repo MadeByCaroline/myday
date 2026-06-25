@@ -3,6 +3,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AiService } from '../ai/ai.service';
 import type { CalendarEvent } from '../calendar/calendar.service';
 import { CalendarService } from '../calendar/calendar.service';
+import { MicrosoftService } from '../integrations/microsoft.service';
 import type { EmailSummary } from '../mail/mail.service';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
@@ -21,35 +22,50 @@ export class SummaryController {
   constructor(
     private mailService: MailService,
     private calendarService: CalendarService,
+    private microsoftService: MicrosoftService,
     private aiService: AiService,
     private usersService: UsersService,
   ) {}
 
   @Post('generate')
   async generateSummary(@Req() req: SummaryRequest) {
-    const oauthTokens = await this.usersService.getOAuthTokens(
-      req.user.id,
-      'google',
-    );
+    const oauthTokens = await this.usersService.getOAuthTokens(req.user.id);
     if (oauthTokens.length === 0) {
       return {
-        error: 'No OAuth token found. Please reconnect your Google account.',
+        error:
+          'No OAuth token found. Please connect a Google or Outlook account.',
       };
     }
 
     const accountData = await Promise.allSettled(
       oauthTokens.map(async (oauthToken) => {
-        const [emails, events] = await Promise.all([
-          this.mailService.getRecentEmails(
+        const provider = oauthToken.provider.toUpperCase();
+
+        if (provider === 'GOOGLE') {
+          const [emails, events] = await Promise.all([
+            this.mailService.getRecentEmails(
+              oauthToken.accessToken,
+              oauthToken.refreshToken || undefined,
+            ),
+            this.calendarService.getTodayEvents(
+              oauthToken.accessToken,
+              oauthToken.refreshToken || undefined,
+            ),
+          ]);
+          return { emails, events };
+        }
+
+        if (provider === 'MICROSOFT') {
+          const emails = await this.microsoftService.getUnreadEmails(
             oauthToken.accessToken,
-            oauthToken.refreshToken || undefined,
-          ),
-          this.calendarService.getTodayEvents(
-            oauthToken.accessToken,
-            oauthToken.refreshToken || undefined,
-          ),
-        ]);
-        return { emails, events };
+          );
+          return { emails, events: [] };
+        }
+
+        this.logger.warn(
+          `Skipping unsupported OAuth provider: ${oauthToken.provider}`,
+        );
+        return { emails: [], events: [] };
       }),
     );
 
@@ -66,11 +82,12 @@ export class SummaryController {
 
     accountData
       .filter(
-        (result): result is PromiseRejectedResult => result.status === 'rejected',
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
       )
       .forEach((result) => {
         this.logger.warn(
-          `Skipping a Google account due to fetch failure: ${String(result.reason)}`,
+          `Skipping an OAuth account due to fetch failure: ${String(result.reason)}`,
         );
       });
 
