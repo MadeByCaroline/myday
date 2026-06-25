@@ -97,7 +97,7 @@ describe('SummaryController', () => {
     await expect(
       controller.generateSummary({ user: { id: 'user-1' } }),
     ).resolves.toEqual({
-      error: 'No OAuth token found. Please reconnect your Google account.',
+      error: 'No OAuth accounts connected. Please connect a Google or Microsoft account.',
     });
   });
 });

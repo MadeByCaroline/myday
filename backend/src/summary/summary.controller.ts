@@ -32,7 +32,7 @@ export class SummaryController {
     const allTokens = await this.usersService.getAllOAuthTokens(req.user.id);
     if (allTokens.length === 0) {
       return {
-        error: 'No OAuth token found. Please reconnect your Google account.',
+        error: 'No OAuth accounts connected. Please connect a Google or Microsoft account.',
       };
     }
 

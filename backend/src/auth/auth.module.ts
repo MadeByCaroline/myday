@@ -24,7 +24,14 @@ import { MicrosoftStrategy } from './microsoft.strategy';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, GoogleStrategy, MicrosoftStrategy, JwtStrategy, GoogleAuthGuard, MicrosoftAuthGuard],
+  providers: [
+    AuthService,
+    GoogleStrategy,
+    MicrosoftStrategy,
+    JwtStrategy,
+    GoogleAuthGuard,
+    MicrosoftAuthGuard,
+  ],
   controllers: [AuthController],
   exports: [AuthService, JwtModule],
 })
