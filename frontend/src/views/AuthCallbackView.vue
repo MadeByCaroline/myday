@@ -1,0 +1,50 @@
+<template>
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+      <div v-if="error" class="text-red-500">
+        <i class="pi pi-times-circle text-4xl mb-4 block"></i>
+        <p>Authentication failed: {{ error }}</p>
+        <RouterLink to="/login" class="mt-4 text-indigo-600 hover:underline block">Back to login</RouterLink>
+      </div>
+      <div v-else>
+        <i class="pi pi-spin pi-spinner text-4xl text-indigo-600 mb-4 block"></i>
+        <p class="text-gray-600">Signing you in...</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useRouter, RouterLink } from 'vue-router'
+import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
+const error = ref<string | null>(null)
+
+onMounted(async () => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const token = urlParams.get('token')
+
+  if (!token) {
+    error.value = 'No token received'
+    return
+  }
+
+  authStore.setToken(token)
+
+  try {
+    const { data } = await axios.get(
+      `${import.meta.env.VITE_API_URL}/auth/profile`,
+      { headers: { Authorization: 'Bearer ' + token } },
+    )
+    authStore.setUser(data)
+    router.push('/dashboard')
+  } catch {
+    error.value = 'Failed to fetch profile'
+    authStore.logout()
+  }
+})
+</script>
