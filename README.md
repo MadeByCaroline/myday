@@ -44,6 +44,8 @@ MyDay is a personal productivity SaaS MVP that connects to your Google account, 
 cd backend
 npm install
 npx prisma migrate dev --name init   # creates SQLite dev.db
+# after pulling multi-account support updates:
+npx prisma migrate dev --name multi_account_google_linking
 
 # Frontend
 cd ../frontend
@@ -138,6 +140,7 @@ myday/
 | Method | Path                    | Auth     | Description                                    |
 |--------|-------------------------|----------|------------------------------------------------|
 | GET    | `/auth/google`          | —        | Redirect to Google OAuth consent screen        |
+| GET    | `/auth/google/link`     | JWT      | Link an additional Google account to user      |
 | GET    | `/auth/google/callback` | —        | OAuth callback — issues JWT, redirects to UI   |
 | GET    | `/auth/profile`         | JWT      | Returns authenticated user profile             |
 | POST   | `/summary/generate`     | JWT      | Fetches mail + calendar, runs AI analysis      |

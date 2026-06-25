@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -10,6 +10,7 @@ export class UsersService {
     name?: string;
     picture?: string;
     provider: string;
+    oauthEmail: string;
     accessToken: string;
     refreshToken?: string;
     expiresAt?: Date;
@@ -29,6 +30,7 @@ export class UsersService {
           oauthTokens: {
             create: {
               provider: data.provider,
+              email: data.oauthEmail,
               accessToken: data.accessToken,
               refreshToken: data.refreshToken,
               expiresAt: data.expiresAt,
@@ -40,8 +42,59 @@ export class UsersService {
       });
     }
 
-    await this.prisma.oAuthToken.upsert({
-      where: { userId_provider: { userId: user.id, provider: data.provider } },
+    await this.linkOAuthToken(user.id, {
+      provider: data.provider,
+      email: data.oauthEmail,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      expiresAt: data.expiresAt,
+      scope: data.scope,
+    });
+
+    return this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      include: { oauthTokens: true },
+    });
+  }
+
+  async linkOAuthToken(
+    userId: string,
+    data: {
+      provider: string;
+      email: string;
+      accessToken: string;
+      refreshToken?: string;
+      expiresAt?: Date;
+      scope?: string;
+    },
+  ) {
+    await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    const existingToken = await this.prisma.oAuthToken.findUnique({
+      where: {
+        provider_email: {
+          provider: data.provider,
+          email: data.email,
+        },
+      },
+      select: { userId: true },
+    });
+
+    if (existingToken && existingToken.userId !== userId) {
+      throw new ConflictException('This Google account is already linked to another user.');
+    }
+
+    return this.prisma.oAuthToken.upsert({
+      where: {
+        userId_provider_email: {
+          userId,
+          provider: data.provider,
+          email: data.email,
+        },
+      },
       update: {
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
@@ -49,18 +102,14 @@ export class UsersService {
         scope: data.scope,
       },
       create: {
-        userId: user.id,
+        userId,
         provider: data.provider,
+        email: data.email,
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
         expiresAt: data.expiresAt,
         scope: data.scope,
       },
-    });
-
-    return this.prisma.user.findUniqueOrThrow({
-      where: { id: user.id },
-      include: { oauthTokens: true },
     });
   }
 
@@ -72,8 +121,16 @@ export class UsersService {
   }
 
   async getOAuthToken(userId: string, provider: string) {
-    return this.prisma.oAuthToken.findUnique({
-      where: { userId_provider: { userId, provider } },
+    return this.prisma.oAuthToken.findFirst({
+      where: { userId, provider },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async getOAuthTokens(userId: string, provider: string) {
+    return this.prisma.oAuthToken.findMany({
+      where: { userId, provider },
+      orderBy: { updatedAt: 'desc' },
     });
   }
 }

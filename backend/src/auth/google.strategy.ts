@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, VerifyCallback } from 'passport-google-oauth20';
+import type { Request } from 'express';
+import { Profile, Strategy, VerifyCallback } from 'passport-google-oauth20';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
@@ -18,22 +19,38 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       ],
       accessType: 'offline',
       prompt: 'consent',
+      passReqToCallback: true,
     } as any);
   }
 
-  async validate(
+  validate(
+    req: Request,
     accessToken: string,
     refreshToken: string,
-    profile: any,
+    profile: Profile,
     done: VerifyCallback,
-  ): Promise<void> {
-    const { emails, displayName, photos } = profile;
+  ): void {
+    const email = profile.emails?.[0]?.value ?? '';
+    if (!email) {
+      done(
+        new Error(
+          'Google account email was not provided. Please ensure your Google account has a verified email address and try again.',
+        ),
+        false,
+      );
+      return;
+    }
+
+    const picture = profile.photos?.[0]?.value;
+    const state =
+      typeof req.query.state === 'string' ? req.query.state : undefined;
     done(null, {
-      email: emails[0].value,
-      name: displayName,
-      picture: photos[0]?.value,
+      email,
+      name: profile.displayName,
+      picture,
       accessToken,
       refreshToken,
+      state,
     });
   }
 }
