@@ -26,7 +26,15 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   const urlParams = new URLSearchParams(window.location.search)
+  const oauthError = urlParams.get('error')
   const token = urlParams.get('token')
+
+  if (oauthError) {
+    error.value = oauthError === 'oauth_login_failed'
+      ? 'Google authentication failed. Please retry sign-in and confirm Google permissions.'
+      : 'Google authentication failed'
+    return
+  }
 
   if (!token) {
     error.value = 'No token received'

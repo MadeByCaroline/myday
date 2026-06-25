@@ -22,6 +22,7 @@ model OAuthToken {
   id           String   @id @default(cuid())
   userId       String
   provider     String
+  email        String   @default("")
   accessToken  String
   refreshToken String?
   expiresAt    DateTime?
@@ -30,7 +31,8 @@ model OAuthToken {
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, provider])
+  @@unique([userId, provider, email])
+  @@unique([provider, email])
 }
 
 model Task {

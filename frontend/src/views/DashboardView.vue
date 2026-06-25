@@ -67,6 +67,29 @@
         </button>
       </header>
 
+      <section class="bg-white border-b border-gray-200 px-8 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900">Connected Accounts</h3>
+            <p class="text-xs text-gray-500 mt-1">
+              {{ connectedAccounts.length > 0 ? connectedAccounts.join(', ') : 'No linked Google accounts yet.' }}
+            </p>
+          </div>
+          <button
+            @click="linkAnotherGoogleAccount"
+            :disabled="!authStore.token"
+            class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            Link another Google Account
+          </button>
+        </div>
+      </section>
+
+      <section v-if="linkErrorMessage" class="bg-red-50 border-b border-red-200 px-8 py-3 text-sm text-red-700">
+        <i class="pi pi-exclamation-circle mr-2"></i>
+        {{ linkErrorMessage }}
+      </section>
+
       <!-- Content area -->
       <div class="flex-1 overflow-auto p-8">
         <div v-if="!summaryStore.generated && !summaryStore.loading" class="text-center py-16">
@@ -106,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
@@ -120,6 +143,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const summaryStore = useSummaryStore()
 const tasksStore = useTasksStore()
+const linkErrorMessage = ref<string | null>(null)
 
 const now = new Date()
 const hour = now.getHours()
@@ -138,6 +162,7 @@ const firstName = computed(() => {
 const currentDate = computed(() =>
   now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
 )
+const connectedAccounts = computed(() => authStore.user?.connectedGoogleAccounts || [])
 
 async function generateSummary() {
   await summaryStore.generateSummary()
@@ -149,14 +174,38 @@ function handleLogout() {
   router.push('/login')
 }
 
+async function linkAnotherGoogleAccount() {
+  if (!authStore.token) return
+
+  try {
+    const { data } = await axios.get(
+      `${import.meta.env.VITE_API_URL}/auth/google/link`,
+      { headers: { Authorization: 'Bearer ' + authStore.token } },
+    )
+    window.location.href = data.url
+  } catch {
+    linkErrorMessage.value = 'Could not start Google account linking. Please refresh the page and try again.'
+  }
+}
+
 onMounted(async () => {
-  if (authStore.isAuthenticated && !authStore.user) {
+  const hasLinkError = new URLSearchParams(window.location.search).get('linkError') === '1'
+  if (hasLinkError) {
+    linkErrorMessage.value = 'Google account linking failed. Please verify account permissions and try again.'
+  }
+
+  const refreshProfile = new URLSearchParams(window.location.search).get('refreshProfile') === '1'
+
+  if (authStore.isAuthenticated && (!authStore.user || refreshProfile)) {
     try {
       const { data } = await axios.get(
         `${import.meta.env.VITE_API_URL}/auth/profile`,
         { headers: { Authorization: 'Bearer ' + authStore.token } },
       )
       authStore.setUser(data)
+      if (refreshProfile) {
+        window.history.replaceState({}, '', '/dashboard')
+      }
     } catch {
       authStore.logout()
       router.push('/login')

@@ -6,6 +6,7 @@ interface User {
   email: string
   name: string
   picture?: string
+  connectedGoogleAccounts?: string[]
 }
 
 export const useAuthStore = defineStore('auth', () => {
