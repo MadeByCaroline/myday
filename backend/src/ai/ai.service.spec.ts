@@ -356,7 +356,7 @@ describe('AiService', () => {
         scheduleOverview:
           "Votre calendrier est dégagé aujourd'hui, vous pouvez donc créer des plages de concentration.",
         recommendedFocus:
-          'Donnez la priorité à votre tâche TODO prioritaire d\'abord, puis traitez vos suivis e-mail par lot.',
+          "Donnez la priorité à votre tâche TODO prioritaire d'abord, puis traitez vos suivis e-mail par lot.",
       });
     });
   });
