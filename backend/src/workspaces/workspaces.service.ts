@@ -209,20 +209,20 @@ export class WorkspacesService {
     fallback: string,
     partial: boolean,
   ): Partial<Pick<NormalizedWorkspaceData, 'color' | 'icon'>> {
-    const normalizedField: Partial<Pick<NormalizedWorkspaceData, 'color' | 'icon'>> =
-      {};
+    const normalizedField: Partial<Pick<NormalizedWorkspaceData, 'color' | 'icon'>> = {};
     const resolvedValue = value || (!partial ? fallback : undefined);
 
     if (!resolvedValue) {
       return normalizedField;
     }
 
-    if (field === 'color') {
-      normalizedField.color = resolvedValue;
-      return normalizedField;
+    switch (field) {
+      case 'color':
+        normalizedField.color = resolvedValue;
+        return normalizedField;
+      case 'icon':
+        normalizedField.icon = resolvedValue;
+        return normalizedField;
     }
-
-    normalizedField.icon = resolvedValue;
-    return normalizedField;
   }
 }
