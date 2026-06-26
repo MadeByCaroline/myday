@@ -13,6 +13,7 @@ describe('TasksService', () => {
     const workspacesService = {
       resolveWorkspaceId: jest.fn().mockResolvedValue('ws-1'),
       listWorkspaces: jest.fn().mockResolvedValue([{ id: 'ws-1' }]),
+      ensureDefaultWorkspace: jest.fn().mockResolvedValue({ id: 'ws-1' }),
     };
 
     return {
@@ -58,7 +59,7 @@ describe('TasksService', () => {
 
     const result = await service.getUserTasks('user-1');
 
-    expect(workspacesService.listWorkspaces).toHaveBeenCalledWith('user-1');
+    expect(workspacesService.ensureDefaultWorkspace).toHaveBeenCalledWith('user-1');
     expect(prisma.task.findMany).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
       include: { workspace: true },

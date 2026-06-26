@@ -43,7 +43,7 @@ export class TasksService {
   }
 
   async getOpenTasks(userId: string, workspaceId?: string) {
-    await this.workspacesService.listWorkspaces(userId);
+    await this.workspacesService.ensureDefaultWorkspace(userId);
 
     return this.prisma.task.findMany({
       where: {
@@ -61,7 +61,7 @@ export class TasksService {
   }
 
   async getUserTasks(userId: string, workspaceId?: string) {
-    await this.workspacesService.listWorkspaces(userId);
+    await this.workspacesService.ensureDefaultWorkspace(userId);
 
     return this.prisma.task.findMany({
       where: {

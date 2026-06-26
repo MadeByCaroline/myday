@@ -80,7 +80,9 @@ export class WorkspacesService {
 
     const fallbackWorkspace = workspaces.find((entry) => entry.id !== workspaceId);
     if (!fallbackWorkspace) {
-      throw new Error('Workspace deletion fallback invariant violated.');
+      throw new Error(
+        'Unable to find fallback workspace for deletion. This indicates a data inconsistency.',
+      );
     }
 
     await this.prisma.$transaction([

@@ -324,6 +324,8 @@ import { useUiStore } from '../stores/ui.store'
 import type { SavedTask } from '../stores/tasks'
 
 type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'SCHEDULED'
+const UNASSIGNED_WORKSPACE_ID = 'workspace-unassigned'
+const UNASSIGNED_WORKSPACE_BACKGROUND = 'rgba(148, 163, 184, 0.1)'
 
 const tasksStore = useTasksStore()
 const timerStore = useTimerStore()
@@ -346,7 +348,7 @@ const doneTasks = computed<SavedTask[]>(() => visibleTasks.value.filter((task) =
 
 function workspaceMeta(task: SavedTask): Workspace {
   return task.workspace || {
-    id: task.workspaceId || 'unassigned',
+    id: task.workspaceId || UNASSIGNED_WORKSPACE_ID,
     name: 'Sans espace',
     color: '#94A3B8',
     icon: 'pi pi-question-circle',
@@ -380,7 +382,7 @@ function workspaceBackgroundColor(color: string) {
     return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`
   }
 
-  return color
+  return UNASSIGNED_WORKSPACE_BACKGROUND
 }
 
 function parseWorkspaceColor(color: string) {
