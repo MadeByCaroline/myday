@@ -5,6 +5,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+interface NormalizedWorkspaceData {
+  name?: string;
+  color?: string;
+  icon?: string;
+}
+
 const DEFAULT_WORKSPACE = {
   name: 'Personnel',
   color: '#6366F1',
@@ -167,7 +173,7 @@ export class WorkspacesService {
   private normalizeWorkspaceInput(
     data: { name?: string; color?: string; icon?: string },
     partial = false,
-  ) {
+  ): NormalizedWorkspaceData {
     const normalizedName = data.name?.trim();
     const normalizedColor = data.color?.trim();
     const normalizedIcon = data.icon?.trim();
@@ -202,15 +208,15 @@ export class WorkspacesService {
     value: string | undefined,
     fallback: string,
     partial: boolean,
-  ) {
-    if (value) {
-      return { [field]: value };
+  ): Partial<Pick<NormalizedWorkspaceData, 'color' | 'icon'>> {
+    const normalizedField: Partial<Pick<NormalizedWorkspaceData, 'color' | 'icon'>> = {};
+    const resolvedValue = value || (!partial ? fallback : undefined);
+
+    if (!resolvedValue) {
+      return normalizedField;
     }
 
-    if (partial) {
-      return {};
-    }
-
-    return { [field]: fallback };
+    normalizedField[field] = resolvedValue;
+    return normalizedField;
   }
 }
