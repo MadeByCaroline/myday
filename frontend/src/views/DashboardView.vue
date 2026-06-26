@@ -216,6 +216,7 @@ async function optimizeDay() {
       })
     }
   } catch (caughtError: unknown) {
+    console.error('[AI Scheduling Error]:', caughtError)
     const detail =
       axios.isAxiosError(caughtError) && typeof caughtError.response?.data?.message === 'string'
         ? caughtError.response.data.message

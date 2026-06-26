@@ -123,17 +123,29 @@ export const useTasksStore = defineStore('tasks', () => {
     loading.value = true
 
     try {
+      const currentTasks = savedTasks.value || []
+      const payload = currentTasks.length > 0 ? { tasks: currentTasks } : {}
+
       const { data } = await axios.post(
         `${import.meta.env.VITE_API_URL}/schedule/optimize`,
-        {},
+        payload,
         { headers: getAuthHeaders() },
       )
 
-      const blocks = Array.isArray(data) ? (data as TimeBlock[]) : []
+      const blocks = Array.isArray(data)
+        ? data.filter(
+            (block): block is TimeBlock =>
+              !!block &&
+              typeof block.taskId === 'string' &&
+              typeof block.title === 'string' &&
+              typeof block.suggestedStartTime === 'string' &&
+              typeof block.suggestedEndTime === 'string',
+          )
+        : []
 
       if (blocks.length > 0) {
         const scheduledIds = new Set(blocks.map((b) => b.taskId))
-        savedTasks.value = savedTasks.value.map((task) =>
+        savedTasks.value = (savedTasks.value || []).map((task) =>
           scheduledIds.has(task.id) ? { ...task, status: 'SCHEDULED' } : task,
         )
       }
