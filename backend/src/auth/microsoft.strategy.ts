@@ -45,6 +45,8 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     super(options);
   }
 
+  // NestJS Passport strategies return the user payload from validate().
+  // eslint-disable-next-line @typescript-eslint/require-await
   async validate(
     req: Request,
     accessToken: string,
@@ -67,7 +69,7 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     const state =
       typeof req.query.state === 'string' ? req.query.state : undefined;
     const expiresInSeconds = Number(params.expires_in);
-    return await Promise.resolve({
+    return {
       email,
       name: profile.displayName || email,
       accessToken,
@@ -77,6 +79,6 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
         : undefined,
       scope: params.scope,
       state,
-    });
+    };
   }
 }
