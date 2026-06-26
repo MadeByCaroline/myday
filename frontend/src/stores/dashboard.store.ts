@@ -35,40 +35,18 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function fetchDashboardData() {
-    if (summary.value) {
+    if (generated.value) {
       return
     }
 
-    const tasksStore = useTasksStore()
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const { data } = await axios.post(
-        `${import.meta.env.VITE_API_URL}/summary/generate`,
-        {},
-        {
-          headers: getAuthHeaders(),
-        },
-      )
-
-      summary.value = data.summary || ''
-      events.value = data.events || []
-      emails.value = data.email_summaries || []
-      tasksStore.setSuggestedTasks(data.suggested_tasks || [])
-      generated.value = true
-    } catch (caughtError: unknown) {
-      if (axios.isAxiosError(caughtError)) {
-        error.value = caughtError.response?.data?.message || 'Failed to generate summary'
-      } else {
-        error.value = 'Failed to generate summary'
-      }
-    } finally {
-      isLoading.value = false
-    }
+    await _loadData()
   }
 
   async function generateSummary() {
+    await _loadData()
+  }
+
+  async function _loadData() {
     const tasksStore = useTasksStore()
     isLoading.value = true
     error.value = null
