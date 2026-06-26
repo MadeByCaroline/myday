@@ -216,15 +216,7 @@ export class WorkspacesService {
       return normalizedField;
     }
 
-    switch (field) {
-      case 'color':
-        normalizedField.color = resolvedValue;
-        return normalizedField;
-      case 'icon':
-        normalizedField.icon = resolvedValue;
-        return normalizedField;
-      default:
-        return normalizedField;
-    }
+    normalizedField[field] = resolvedValue;
+    return normalizedField;
   }
 }
