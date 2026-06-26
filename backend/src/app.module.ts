@@ -11,6 +11,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { TimeTrackingModule } from './time-tracking/time-tracking.module';
 import { SummaryModule } from './summary/summary.module';
 import { EmailsModule } from './emails/emails.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { EmailsModule } from './emails/emails.module';
     TimeTrackingModule,
     SummaryModule,
     EmailsModule,
+    ChatModule,
   ],
 })
 export class AppModule {}
