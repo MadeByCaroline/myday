@@ -52,7 +52,18 @@ export interface WorkspaceChatHistoryMessage {
 export interface WorkspaceChatToolset {
   getCalendar: (dateRange: WorkspaceDateRange) => Promise<unknown>;
   getTasks: (status?: string) => Promise<unknown>;
-  getTimeEntries: (dateRange?: WorkspaceDateRange, projectId?: string) => Promise<unknown>;
+  getTimeEntries: (
+    dateRange?: WorkspaceDateRange,
+    projectId?: string,
+  ) => Promise<unknown>;
+}
+
+type AiProvider = 'local' | 'gemini';
+
+interface ResolveAIRequestOptions {
+  isJson?: boolean;
+  history?: WorkspaceChatHistoryMessage[];
+  tools?: WorkspaceChatToolset;
 }
 
 @Injectable()
@@ -67,20 +78,8 @@ export class AiService {
   }
 
   async generateContent(prompt: string): Promise<string> {
-    if (this.configService.get<string>('USE_LOCAL_AI') === 'true') {
-      return await this.generateContentLocal(prompt);
-    }
-
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    try {
-      const result = await model.generateContent(prompt);
-      return result.response.text().trim();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unknown Gemini API error';
-      this.logger.error('Gemini generateContent error', message);
-      throw error;
-    }
+    const content = await this.resolveAIRequest(prompt);
+    return content.trim();
   }
 
   async generateContentLocal(prompt: string): Promise<string> {
@@ -88,10 +87,16 @@ export class AiService {
       const response = await fetch('http://localhost:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gemma4', prompt: prompt, stream: false }),
+        body: JSON.stringify({
+          model: 'gemma4',
+          prompt: prompt,
+          stream: false,
+        }),
       });
       if (!response.ok) {
-        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Ollama API error: ${response.status} ${response.statusText}`,
+        );
       }
       const data = (await response.json()) as { response?: string };
       if (typeof data.response !== 'string') {
@@ -111,13 +116,6 @@ export class AiService {
     emails: EmailSummary[],
     events: CalendarEvent[],
   ): Promise<AiAnalysisResult> {
-    const model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    });
-
     const systemPrompt = `Tu es un assistant de productivité personnel. Analyse les emails et les événements de l'agenda de l'utilisateur. 
     Rédige TOUT ton contenu (résumé, titres, descriptions) en FRANÇAIS.
     Retourne UNIQUEMENT un objet JSON avec EXACTEMENT cette structure, rien d'autre :
@@ -154,12 +152,10 @@ ${events.length > 0 ? JSON.stringify(events, null, 2) : 'No calendar events toda
 Please analyze and return the JSON response.`;
 
     try {
-      const result = await model.generateContent([
-        { text: systemPrompt },
-        { text: userContent },
-      ]);
-
-      const content = result.response.text() || '{}';
+      const content = await this.resolveAIRequest(
+        `${systemPrompt}\n\n${userContent}`,
+        { isJson: true },
+      );
       const parsedResult = JSON.parse(content) as AiAnalysisResult;
 
       if (!parsedResult.events || parsedResult.events.length === 0) {
@@ -194,7 +190,11 @@ Please analyze and return the JSON response.`;
     }
   }
 
-  async generateDraftReply(params: {
+  async generateDraftReply({
+    email,
+    action,
+    events,
+  }: {
     email: {
       from: string;
       subject: string;
@@ -204,39 +204,33 @@ Please analyze and return the JSON response.`;
     action: string;
     events: CalendarEvent[];
   }): Promise<string> {
-    const model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-    });
-
     const systemPrompt = `Tu es un assistant email. Rédige uniquement le corps d'une réponse email professionnelle et polie en FRANÇAIS.
 Ne produis ni objet, ni signature fictive, ni markdown, ni explication.
 Tiens compte de l'action demandée et des disponibilités du calendrier pour proposer une réponse cohérente et concise.`;
 
     const userContent = `Email d'origine :
-De : ${params.email.from}
-Sujet : ${params.email.subject}
-Extrait : ${params.email.snippet}
+De : ${email.from}
+Sujet : ${email.subject}
+Extrait : ${email.snippet}
 Contenu :
-${params.email.body}
+${email.body}
 
 Action choisie :
-${params.action}
+${action}
 
 Contexte calendrier :
-${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun événement pertinent trouvé.'}`;
+${events.length > 0 ? JSON.stringify(events, null, 2) : 'Aucun événement pertinent trouvé.'}`;
 
     try {
-      const result = await model.generateContent([
-        { text: systemPrompt },
-        { text: userContent },
-      ]);
-      const content = result.response.text().trim();
-      return content || this.buildFallbackDraftReply(params.action);
+      const content = await this.resolveAIRequest(
+        `${systemPrompt}\n\n${userContent}`,
+      );
+      return content || this.buildFallbackDraftReply(action);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown Gemini API error';
-      this.logger.error('Gemini draft generation error', message);
-      return this.buildFallbackDraftReply(params.action);
+      this.logger.error('AI draft generation error', message);
+      return this.buildFallbackDraftReply(action);
     }
   }
 
@@ -245,6 +239,161 @@ ${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun év
     history?: WorkspaceChatHistoryMessage[];
     tools: WorkspaceChatToolset;
   }): Promise<string> {
+    try {
+      const workspacePrompt = [
+        ...(params.history || []).map(
+          (message) =>
+            `${message.role === 'assistant' ? 'Assistant' : 'Utilisateur'}: ${message.content}`,
+        ),
+        `Utilisateur: ${params.prompt}`,
+      ].join('\n');
+      const text = await this.resolveAIRequest(workspacePrompt, {
+        history: params.history,
+        tools: params.tools,
+      });
+      return text || 'I was unable to formulate a response at this time.';
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown AI provider error';
+      this.logger.error('AI workspace chat error', message);
+      return "I'm experiencing a temporary issue responding to your question.";
+    }
+  }
+
+  async generateTimeBlocking(
+    tasks: Array<{ id: string; title: string; description?: string | null }>,
+    calendarEvents: CalendarEvent[],
+  ): Promise<TimeBlock[]> {
+    const systemPrompt = `Tu es un assistant exécutif expert en gestion du temps. 
+Analyse les tâches ouvertes et les événements du calendrier pour aujourd'hui.
+Trouve les créneaux libres dans la journée (heures de travail : 9h00-18h00, pause déjeuner : 12h30-13h30).
+Attribue chaque tâche à un créneau disponible, en estimant 30 minutes par tâche sauf indication contraire.
+Ne chevauche pas les événements existants.
+Rédige les titres en FRANÇAIS.
+Retourne UNIQUEMENT un tableau JSON avec EXACTEMENT cette structure, rien d'autre :
+[
+  {
+    "taskId": "id exact de la tâche",
+    "suggestedStartTime": "HH:MM",
+    "suggestedEndTime": "HH:MM",
+    "title": "titre de la tâche"
+  }
+]`;
+
+    const userContent = `Tâches ouvertes à planifier :
+${JSON.stringify(tasks, null, 2)}
+
+Événements déjà présents dans le calendrier d'aujourd'hui :
+${calendarEvents.length > 0 ? JSON.stringify(calendarEvents, null, 2) : "Aucun événement pour aujourd'hui."}
+
+Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
+
+    try {
+      const content = await this.resolveAIRequest(
+        `${systemPrompt}\n\n${userContent}`,
+        { isJson: true },
+      );
+      const parsed = JSON.parse(content) as unknown;
+
+      if (!Array.isArray(parsed)) {
+        return this.buildFallbackTimeBlocks(tasks);
+      }
+
+      return (parsed as unknown[]).filter((item): item is TimeBlock => {
+        const o = item as Record<string, unknown>;
+        return (
+          typeof o === 'object' &&
+          o !== null &&
+          typeof o.taskId === 'string' &&
+          typeof o.suggestedStartTime === 'string' &&
+          typeof o.suggestedEndTime === 'string' &&
+          typeof o.title === 'string'
+        );
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown AI provider error';
+      this.logger.error('AI time-blocking error', message);
+      return this.buildFallbackTimeBlocks(tasks);
+    }
+  }
+
+  private async resolveAIRequest(
+    prompt: string,
+    options: ResolveAIRequestOptions = {},
+  ): Promise<string> {
+    const preferredProvider: AiProvider =
+      this.configService.get<string>('USE_LOCAL_AI') === 'true'
+        ? 'local'
+        : 'gemini';
+    const providers: AiProvider[] =
+      preferredProvider === 'local' ? ['local', 'gemini'] : ['gemini', 'local'];
+    let lastError: unknown;
+
+    for (const provider of providers) {
+      try {
+        return await this.generateByProvider(provider, prompt, options);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(`${provider} AI request failed`, message);
+        lastError = error;
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('No AI provider responded successfully.');
+  }
+
+  private async generateByProvider(
+    provider: AiProvider,
+    prompt: string,
+    options: ResolveAIRequestOptions,
+  ): Promise<string> {
+    if (provider === 'local') {
+      return this.generateContentLocal(this.buildLocalPrompt(prompt, options));
+    }
+
+    if (options.tools) {
+      return this.generateWorkspaceQuestionWithGemini(prompt, options);
+    }
+
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      ...(options.isJson
+        ? {
+            generationConfig: {
+              responseMimeType: 'application/json',
+            },
+          }
+        : {}),
+    });
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  }
+
+  private buildLocalPrompt(
+    prompt: string,
+    options: ResolveAIRequestOptions,
+  ): string {
+    if (!options.isJson) {
+      return prompt;
+    }
+
+    return `${prompt}
+
+IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or explanations.`;
+  }
+
+  private async generateWorkspaceQuestionWithGemini(
+    prompt: string,
+    options: ResolveAIRequestOptions,
+  ): Promise<string> {
+    const tools = options.tools;
+    if (!tools) {
+      throw new Error('Workspace tools are required for Gemini chat requests.');
+    }
+
     const model = this.genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
       tools: [
@@ -252,7 +401,8 @@ ${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun év
           functionDeclarations: [
             {
               name: 'getCalendar',
-              description: "Get calendar events in a date range using ISO dates { start, end }.",
+              description:
+                'Get calendar events in a date range using ISO dates { start, end }.',
               parameters: {
                 type: SchemaType.OBJECT,
                 properties: {
@@ -270,7 +420,8 @@ ${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun év
             },
             {
               name: 'getTasks',
-              description: 'Get user tasks, optionally filtered by status (TODO, IN_PROGRESS, DONE).',
+              description:
+                'Get user tasks, optionally filtered by status (TODO, IN_PROGRESS, DONE).',
               parameters: {
                 type: SchemaType.OBJECT,
                 properties: {
@@ -303,152 +454,75 @@ ${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun év
     });
 
     const chat = model.startChat({
-      history: (params.history || []).map((message) => ({
+      history: (options.history || []).map((message) => ({
         role: message.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: message.content }],
       })),
     });
 
-    try {
-      let result = await chat.sendMessage(params.prompt);
-      let remainingTurns = 5;
+    let result = await chat.sendMessage(prompt);
+    let remainingTurns = 5;
 
-      while (remainingTurns > 0) {
-        const functionCalls = result.response.functionCalls?.() || [];
-        if (functionCalls.length === 0) {
-          break;
-        }
+    while (remainingTurns > 0) {
+      const functionCalls = result.response.functionCalls?.() || [];
+      if (functionCalls.length === 0) {
+        break;
+      }
 
-        const responses = await Promise.all(
-          functionCalls.map(async (call) => {
-            const args = call.args as {
-              dateRange?: WorkspaceDateRange;
-              status?: string;
-              projectId?: string;
-            };
+      const responses = await Promise.all(
+        functionCalls.map(async (call) => {
+          const args = call.args as {
+            dateRange?: WorkspaceDateRange;
+            status?: string;
+            projectId?: string;
+          };
 
-            if (call.name === 'getCalendar' && args.dateRange) {
-              return {
-                functionResponse: {
-                  name: call.name,
-                  response: await params.tools.getCalendar(args.dateRange),
-                },
-              };
-            }
-
-            if (call.name === 'getTasks') {
-              return {
-                functionResponse: {
-                  name: call.name,
-                  response: await params.tools.getTasks(args.status),
-                },
-              };
-            }
-
-            if (call.name === 'getTimeEntries') {
-              return {
-                functionResponse: {
-                  name: call.name,
-                  response: await params.tools.getTimeEntries(
-                    args.dateRange,
-                    args.projectId,
-                  ),
-                },
-              };
-            }
-
+          if (call.name === 'getCalendar' && args.dateRange) {
             return {
               functionResponse: {
                 name: call.name,
-                response: {
-                  error: `Unsupported tool call: ${call.name}`,
-                },
+                response: await tools.getCalendar(args.dateRange),
               },
             };
-          }),
-        );
+          }
 
-        result = await chat.sendMessage(responses as any);
-        remainingTurns -= 1;
-      }
+          if (call.name === 'getTasks') {
+            return {
+              functionResponse: {
+                name: call.name,
+                response: await tools.getTasks(args.status),
+              },
+            };
+          }
 
-      const text = result.response.text().trim();
-      return text || 'I was unable to formulate a response at this time.';
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unknown Gemini tool-calling error';
-      this.logger.error('Gemini workspace chat error', message);
-      return "I'm experiencing a temporary issue responding to your question.";
-    }
-  }
+          if (call.name === 'getTimeEntries') {
+            return {
+              functionResponse: {
+                name: call.name,
+                response: await tools.getTimeEntries(
+                  args.dateRange,
+                  args.projectId,
+                ),
+              },
+            };
+          }
 
-  async generateTimeBlocking(
-    tasks: Array<{ id: string; title: string; description?: string | null }>,
-    calendarEvents: CalendarEvent[],
-  ): Promise<TimeBlock[]> {
-    const model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    });
-
-    const systemPrompt = `Tu es un assistant exécutif expert en gestion du temps. 
-Analyse les tâches ouvertes et les événements du calendrier pour aujourd'hui.
-Trouve les créneaux libres dans la journée (heures de travail : 9h00-18h00, pause déjeuner : 12h30-13h30).
-Attribue chaque tâche à un créneau disponible, en estimant 30 minutes par tâche sauf indication contraire.
-Ne chevauche pas les événements existants.
-Rédige les titres en FRANÇAIS.
-Retourne UNIQUEMENT un tableau JSON avec EXACTEMENT cette structure, rien d'autre :
-[
-  {
-    "taskId": "id exact de la tâche",
-    "suggestedStartTime": "HH:MM",
-    "suggestedEndTime": "HH:MM",
-    "title": "titre de la tâche"
-  }
-]`;
-
-    const userContent = `Tâches ouvertes à planifier :
-${JSON.stringify(tasks, null, 2)}
-
-Événements déjà présents dans le calendrier d'aujourd'hui :
-${calendarEvents.length > 0 ? JSON.stringify(calendarEvents, null, 2) : "Aucun événement pour aujourd'hui."}
-
-Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
-
-    try {
-      const result = await model.generateContent([
-        { text: systemPrompt },
-        { text: userContent },
-      ]);
-
-      const content = result.response.text() || '[]';
-      const parsed = JSON.parse(content) as unknown;
-
-      if (!Array.isArray(parsed)) {
-        return this.buildFallbackTimeBlocks(tasks);
-      }
-
-      return (parsed as unknown[]).filter(
-        (item): item is TimeBlock => {
-          const o = item as Record<string, unknown>;
-          return (
-            typeof o === 'object' &&
-            o !== null &&
-            typeof o.taskId === 'string' &&
-            typeof o.suggestedStartTime === 'string' &&
-            typeof o.suggestedEndTime === 'string' &&
-            typeof o.title === 'string'
-          );
-        },
+          return {
+            functionResponse: {
+              name: call.name,
+              response: {
+                error: `Unsupported tool call: ${call.name}`,
+              },
+            },
+          };
+        }),
       );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unknown Gemini API error';
-      this.logger.error('Gemini time-blocking error', message);
-      return this.buildFallbackTimeBlocks(tasks);
+
+      result = await chat.sendMessage(responses as any);
+      remainingTurns -= 1;
     }
+
+    return result.response.text().trim();
   }
 
   private buildFallbackTimeBlocks(
@@ -460,7 +534,12 @@ Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
       const end = `${String(hour).padStart(2, '0')}:30`;
       hour += 1;
       if (hour === 12) hour = 13;
-      return { taskId: task.id, suggestedStartTime: start, suggestedEndTime: end, title: task.title };
+      return {
+        taskId: task.id,
+        suggestedStartTime: start,
+        suggestedEndTime: end,
+        title: task.title,
+      };
     });
   }
 
@@ -549,9 +628,7 @@ Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
     const seenActions = new Set<string>();
     const normalizedActions = parsedActions
       .map((action) => action.trim())
-      .filter(
-        (action) => action.length > 0 && !seenActions.has(action),
-      )
+      .filter((action) => action.length > 0 && !seenActions.has(action))
       .map((action) => {
         seenActions.add(action);
         return action;
