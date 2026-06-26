@@ -421,13 +421,7 @@ Return ONLY a JSON array with EXACTLY this structure and nothing else. Do not ad
   }
 ]`;
 
-    const userContent = `Open tasks to schedule:
-${JSON.stringify(tasks, null, 2)}
-
-Calendar events already scheduled today:
-${calendarEvents.length > 0 ? JSON.stringify(calendarEvents, null, 2) : 'No events for today.'}
-
-Unified tasks and events with workspace metadata:
+    const userContent = `Unified tasks and events with workspace metadata:
 ${JSON.stringify(unifiedAgenda, null, 2)}
 
 Schedule the tasks into the free time slots and return the JSON array.`;
