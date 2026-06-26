@@ -52,9 +52,10 @@ describe('AuthController', () => {
       },
     });
 
-    expect(result).toMatchObject({
+    expect(result).toEqual({
       id: 'user-2',
       email: 'user@example.com',
+      name: 'User',
       role: 'USER',
       connectedGoogleAccounts: [],
       connectedOutlookAccounts: [],

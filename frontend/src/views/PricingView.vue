@@ -118,7 +118,7 @@
       </section>
 
       <section v-else class="rounded-3xl border border-emerald-100 bg-emerald-50 p-6 text-emerald-800 shadow-sm sm:p-8">
-        <h2 class="text-xl font-bold">Admin access active</h2>
+        <h2 class="text-xl font-bold">Accès administrateur actif</h2>
         <p class="mt-2 text-sm">
           Votre compte administrateur a un accès complet à toutes les fonctionnalités premium.
         </p>

@@ -69,7 +69,7 @@ router.beforeEach((to) => {
     to.meta.requiresSubscription &&
     authStore.user &&
     !authStore.isAdmin &&
-    authStore.user.hasActiveSubscription === false
+    !authStore.user.hasActiveSubscription
   ) {
     return { name: 'pricing' }
   }
