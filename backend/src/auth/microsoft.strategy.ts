@@ -71,7 +71,10 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     const refreshToken = strings[1] || '';
 
     if (!profile) {
-      console.error('Microsoft Args received:', args);
+      console.error(
+        'Microsoft Args received (types):',
+        args.map((a) => (a === null ? 'null' : typeof a)),
+      );
       throw new Error('Microsoft profile object not found in arguments.');
     }
 
@@ -83,7 +86,7 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       profile.userPrincipalName;
 
     if (!email) {
-      console.error('Microsoft Profile received:', profile);
+      console.error('Microsoft Profile received (provider):', profile.provider);
       throw new Error('Microsoft account email was not provided.');
     }
 
