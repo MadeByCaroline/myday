@@ -1,4 +1,12 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
@@ -88,7 +96,7 @@ export class AuthController {
     try {
       if (linkedUserId) {
         await this.authService.validateGoogleUser(req.user, linkedUserId);
-        res.redirect(`${frontendUrl}/dashboard?refreshProfile=1`);
+        res.redirect(`${frontendUrl}/integrations?refreshProfile=1`);
         return;
       }
 
@@ -97,7 +105,7 @@ export class AuthController {
       res.redirect(`${frontendUrl}/auth/callback?token=${access_token}`);
     } catch {
       if (linkedUserId) {
-        res.redirect(`${frontendUrl}/dashboard?linkError=1`);
+        res.redirect(`${frontendUrl}/integrations?linkError=1`);
         return;
       }
       res.redirect(`${frontendUrl}/auth/callback?error=oauth_login_failed`);
@@ -117,15 +125,15 @@ export class AuthController {
     );
 
     if (!linkedUserId) {
-      res.redirect(`${frontendUrl}/dashboard?linkError=1`);
+      res.redirect(`${frontendUrl}/integrations?linkError=1`);
       return;
     }
 
     try {
       await this.authService.validateMicrosoftUser(req.user, linkedUserId);
-      res.redirect(`${frontendUrl}/dashboard?refreshProfile=1`);
+      res.redirect(`${frontendUrl}/integrations?refreshProfile=1`);
     } catch {
-      res.redirect(`${frontendUrl}/dashboard?linkError=1`);
+      res.redirect(`${frontendUrl}/integrations?linkError=1`);
     }
   }
 
@@ -148,5 +156,25 @@ export class AuthController {
       connectedGoogleAccounts,
       connectedOutlookAccounts,
     };
+  }
+
+  @Get('connections')
+  @UseGuards(JwtAuthGuard)
+  async getConnections(@Req() req: AuthenticatedRequest) {
+    return this.authService.getConnections(req.user.id);
+  }
+
+  @Delete('connections/:provider')
+  @UseGuards(JwtAuthGuard)
+  async disconnectConnection(
+    @Req() req: AuthenticatedRequest,
+    @Param('provider') provider: string,
+  ) {
+    const result = await this.authService.disconnectConnection(
+      req.user.id,
+      provider,
+    );
+
+    return { deleted: result.count };
   }
 }

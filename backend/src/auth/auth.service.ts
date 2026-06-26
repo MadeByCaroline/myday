@@ -130,4 +130,34 @@ export class AuthService {
   async getUserIdFromMicrosoftLinkState(state?: string) {
     return this.getUserIdFromOAuthLinkState(state, 'MICROSOFT');
   }
+
+  async getConnections(userId: string) {
+    const oauthTokens = await this.usersService.getOAuthTokens(userId);
+
+    return oauthTokens.map((token) => ({
+      provider: token.provider.toUpperCase(),
+      email: token.email,
+    }));
+  }
+
+  async disconnectConnection(userId: string, provider: string) {
+    const normalizedProvider = provider.trim().toUpperCase();
+
+    return this.usersService.deleteOAuthTokens(
+      userId,
+      this.getProviderVariants(normalizedProvider),
+    );
+  }
+
+  private getProviderVariants(provider: string) {
+    if (provider === 'GOOGLE') {
+      return ['google', 'GOOGLE'];
+    }
+
+    if (provider === 'MICROSOFT') {
+      return ['MICROSOFT', 'microsoft'];
+    }
+
+    return [provider, provider.toLowerCase()];
+  }
 }
