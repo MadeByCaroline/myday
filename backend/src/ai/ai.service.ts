@@ -63,6 +63,14 @@ export interface TimeBlock {
   title: string;
 }
 
+export interface TimeBlockingTaskInput {
+  id: string;
+  title: string;
+  description?: string | null;
+  workspaceId?: string | null;
+  workspaceName?: string | null;
+}
+
 export interface WorkspaceDateRange {
   start: string;
   end: string;
@@ -370,32 +378,53 @@ Génère maintenant la réponse JSON.`;
   }
 
   async generateTimeBlocking(
-    tasks: Array<{ id: string; title: string; description?: string | null }>,
+    tasks: TimeBlockingTaskInput[],
     calendarEvents: CalendarEvent[],
   ): Promise<TimeBlock[]> {
-const systemPrompt = `Tu es un assistant exécutif expert en gestion du temps.
-Analyse les tâches ouvertes et les événements du calendrier pour aujourd'hui.
-Trouve les créneaux libres dans la journée (heures de travail : 9h00-18h00, pause déjeuner : 12h30-13h30).
-Attribue chaque tâche à un créneau disponible, en estimant 30 minutes par tâche sauf indication contraire.
-Ne chevauche pas les événements existants.
-Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
-Retourne UNIQUEMENT un tableau JSON avec EXACTEMENT cette structure, rien d'autre. N'ajoute aucune explication, aucun commentaire et aucun texte hors du JSON :
+    const unifiedAgenda = [
+      ...tasks.map((task) => ({
+        kind: 'task' as const,
+        id: task.id,
+        title: task.title,
+        description: task.description ?? null,
+        workspaceId: task.workspaceId ?? null,
+        workspaceName: task.workspaceName ?? null,
+      })),
+      ...calendarEvents.map((event) => ({
+        kind: 'event' as const,
+        id: event.id,
+        title: event.title,
+        start: event.start,
+        end: event.end,
+        provider: event.provider ?? null,
+        location: event.location ?? null,
+        workspaceId: event.workspaceId ?? null,
+        workspaceName: event.workspaceName ?? null,
+      })),
+    ];
+
+    const systemPrompt = `You are an executive life coach. You must schedule the user's day across multiple workspaces.
+Strict Rule: Never overlap tasks from different workspaces.
+Respect hard-coded personal events (e.g., Family, Health) as absolute priority over flexible Work tasks.
+Leave a 15-minute buffer between context switches (e.g., switching from Work to Family).
+Analyze today's open tasks and calendar events.
+Find free slots in the day (working hours: 9:00-18:00, lunch break: 12:30-13:30).
+Assign each task to an available slot, estimating 30 minutes per task unless the task clearly implies a different duration.
+Do not overlap existing calendar events.
+Return ONLY a JSON array with EXACTLY this structure and nothing else. Do not add explanations, comments, or any text outside the JSON:
 [
   {
-    "taskId": "id exact de la tâche",
+    "taskId": "exact task id",
     "suggestedStartTime": "HH:MM",
     "suggestedEndTime": "HH:MM",
-    "title": "titre de la tâche"
+    "title": "task title"
   }
 ]`;
 
-    const userContent = `Tâches ouvertes à planifier :
-${JSON.stringify(tasks, null, 2)}
+    const userContent = `Unified tasks and events with workspace metadata:
+${JSON.stringify(unifiedAgenda, null, 2)}
 
-Événements déjà présents dans le calendrier d'aujourd'hui :
-${calendarEvents.length > 0 ? JSON.stringify(calendarEvents, null, 2) : "Aucun événement pour aujourd'hui."}
-
-Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
+Schedule the tasks into the free time slots and return the JSON array.`;
 
     try {
       const content = await this.resolveAIRequest(

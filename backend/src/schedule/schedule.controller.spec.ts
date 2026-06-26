@@ -1,9 +1,8 @@
 import { ScheduleController } from './schedule.controller';
 import type { AiService } from '../ai/ai.service';
+import type { CalendarService } from '../calendar/calendar.service';
 import type { TasksService } from '../tasks/tasks.service';
-import type { UsersService } from '../users/users.service';
-import type { GoogleService } from '../integrations/google.service';
-import type { MicrosoftService } from '../integrations/microsoft.service';
+import type { ScheduleService } from './schedule.service';
 
 describe('ScheduleController', () => {
   const mockUser = { id: 'user-1' };
@@ -18,20 +17,13 @@ describe('ScheduleController', () => {
   ];
 
   function makeController(overrides: {
-    usersService?: Partial<UsersService>;
-    googleService?: Partial<GoogleService>;
-    microsoftService?: Partial<MicrosoftService>;
+    calendarService?: Partial<CalendarService>;
     tasksService?: Partial<TasksService>;
     aiService?: Partial<AiService>;
+    scheduleService?: Partial<ScheduleService>;
   }) {
-    const usersService = overrides.usersService ?? {
-      getOAuthTokens: jest.fn().mockResolvedValue([]),
-    };
-    const googleService = overrides.googleService ?? {
-      getTodayEvents: jest.fn().mockResolvedValue([]),
-    };
-    const microsoftService = overrides.microsoftService ?? {
-      getTodayEvents: jest.fn().mockResolvedValue([]),
+    const calendarService = overrides.calendarService ?? {
+      getTodayWorkspaceEvents: jest.fn().mockResolvedValue([]),
     };
     const tasksService = overrides.tasksService ?? {
       getOpenTasksAcrossWorkspaces: jest.fn().mockResolvedValue([]),
@@ -40,24 +32,28 @@ describe('ScheduleController', () => {
     const aiService = overrides.aiService ?? {
       generateTimeBlocking: jest.fn().mockResolvedValue(timeBlocks),
     };
+    const scheduleService = overrides.scheduleService ?? {
+      validateTimeBlocks: jest.fn().mockReturnValue(timeBlocks),
+    };
 
     return new ScheduleController(
       aiService as AiService,
+      calendarService as CalendarService,
+      scheduleService as ScheduleService,
       tasksService as TasksService,
-      usersService as UsersService,
-      googleService as GoogleService,
-      microsoftService as MicrosoftService,
     );
   }
 
-  it('fetches Google and Microsoft events plus open tasks across all workspaces', async () => {
-    const googleEvents = [
+  it('fetches unified workspace events and passes workspace metadata to the AI planner', async () => {
+    const calendarEvents = [
       {
         id: 'g-1',
         title: 'Standup',
         start: '2026-06-26T09:00:00.000Z',
         end: '2026-06-26T09:15:00.000Z',
         provider: 'GOOGLE' as const,
+        workspaceId: 'work',
+        workspaceName: 'Work',
       },
     ];
     const openTasks = [
@@ -69,6 +65,7 @@ describe('ScheduleController', () => {
         userId: 'user-1',
         source: 'MANUAL',
         workspaceId: 'work',
+        workspace: { id: 'work', name: 'Work' },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -80,51 +77,73 @@ describe('ScheduleController', () => {
         userId: 'user-1',
         source: 'MANUAL',
         workspaceId: 'life',
+        workspace: { id: 'life', name: 'Family' },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     ];
 
-    const usersService = {
-      getOAuthTokens: jest.fn().mockResolvedValue([
-        { provider: 'google', accessToken: 'g-token', refreshToken: 'g-refresh' },
-      ]),
+    const calendarService = {
+      getTodayWorkspaceEvents: jest.fn().mockResolvedValue(calendarEvents),
     };
-    const googleService = { getTodayEvents: jest.fn().mockResolvedValue(googleEvents) };
-    const microsoftService = { getTodayEvents: jest.fn().mockResolvedValue([]) };
     const tasksService = {
       getOpenTasksAcrossWorkspaces: jest.fn().mockResolvedValue(openTasks),
       updateTask: jest.fn().mockResolvedValue({ count: 1 }),
     };
     const aiService = { generateTimeBlocking: jest.fn().mockResolvedValue(timeBlocks) };
+    const scheduleService = {
+      validateTimeBlocks: jest.fn().mockReturnValue(timeBlocks),
+    };
 
     const controller = makeController({
-      usersService,
-      googleService,
-      microsoftService,
+      calendarService,
       tasksService,
       aiService,
+      scheduleService,
     });
     const result = await controller.optimizeDay({ user: mockUser });
 
-    expect(usersService.getOAuthTokens).toHaveBeenCalledWith('user-1');
-    expect(googleService.getTodayEvents).toHaveBeenCalledWith(
-      'g-token',
-      'g-refresh',
-    );
+    expect(calendarService.getTodayWorkspaceEvents).toHaveBeenCalledWith('user-1');
     expect(tasksService.getOpenTasksAcrossWorkspaces).toHaveBeenCalledWith(
       'user-1',
     );
     expect(aiService.generateTimeBlocking).toHaveBeenCalledWith(
       [
-        { id: 'task-1', title: 'Write report', description: 'Q2 report' },
+        {
+          id: 'task-1',
+          title: 'Write report',
+          description: 'Q2 report',
+          workspaceId: 'work',
+          workspaceName: 'Work',
+        },
         {
           id: 'task-2',
           title: 'Pick up groceries',
           description: 'After work',
+          workspaceId: 'life',
+          workspaceName: 'Family',
         },
       ],
-      expect.any(Array),
+      calendarEvents,
+    );
+    expect(scheduleService.validateTimeBlocks).toHaveBeenCalledWith(
+      timeBlocks,
+      [
+        {
+          id: 'task-1',
+          title: 'Write report',
+          description: 'Q2 report',
+          workspaceId: 'work',
+          workspaceName: 'Work',
+        },
+        {
+          id: 'task-2',
+          title: 'Pick up groceries',
+          description: 'After work',
+          workspaceId: 'life',
+          workspaceName: 'Family',
+        },
+      ],
     );
     expect(tasksService.updateTask).toHaveBeenCalledWith('task-1', 'user-1', {
       status: 'SCHEDULED',
@@ -132,7 +151,7 @@ describe('ScheduleController', () => {
     expect(result).toEqual(timeBlocks);
   });
 
-  it('does not call updateTask when AI returns empty time blocks', async () => {
+  it('does not call updateTask when the validated time blocks are empty', async () => {
     const tasksService = {
       getOpenTasksAcrossWorkspaces: jest.fn().mockResolvedValue([
         {
@@ -142,56 +161,23 @@ describe('ScheduleController', () => {
           status: 'TODO',
           userId: 'user-1',
           source: 'MANUAL',
+          workspaceId: 'work',
+          workspace: { id: 'work', name: 'Work' },
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       ]),
       updateTask: jest.fn(),
     };
-    const aiService = { generateTimeBlocking: jest.fn().mockResolvedValue([]) };
+    const aiService = { generateTimeBlocking: jest.fn().mockResolvedValue(timeBlocks) };
+    const scheduleService = {
+      validateTimeBlocks: jest.fn().mockReturnValue([]),
+    };
 
-    const controller = makeController({ tasksService, aiService });
+    const controller = makeController({ tasksService, aiService, scheduleService });
     const result = await controller.optimizeDay({ user: mockUser });
 
     expect(tasksService.updateTask).not.toHaveBeenCalled();
     expect(result).toEqual([]);
-  });
-
-  it('uses Microsoft provider when token provider is MICROSOFT', async () => {
-    const microsoftEvents = [
-      {
-        id: 'm-1',
-        title: 'Review',
-        start: '2026-06-26T10:00:00.000Z',
-        end: '2026-06-26T10:30:00.000Z',
-        provider: 'MICROSOFT' as const,
-      },
-    ];
-    const usersService = {
-      getOAuthTokens: jest.fn().mockResolvedValue([
-        { provider: 'MICROSOFT', accessToken: 'ms-token' },
-      ]),
-    };
-    const googleService = { getTodayEvents: jest.fn() };
-    const microsoftService = {
-      getTodayEvents: jest.fn().mockResolvedValue(microsoftEvents),
-    };
-    const tasksService = {
-      getOpenTasksAcrossWorkspaces: jest.fn().mockResolvedValue([]),
-      updateTask: jest.fn(),
-    };
-    const aiService = { generateTimeBlocking: jest.fn().mockResolvedValue([]) };
-
-    const controller = makeController({
-      usersService,
-      googleService,
-      microsoftService,
-      tasksService,
-      aiService,
-    });
-    await controller.optimizeDay({ user: mockUser });
-
-    expect(microsoftService.getTodayEvents).toHaveBeenCalledWith('ms-token');
-    expect(googleService.getTodayEvents).not.toHaveBeenCalled();
   });
 });
