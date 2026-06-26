@@ -12,6 +12,7 @@ import { TimeTrackingModule } from './time-tracking/time-tracking.module';
 import { SummaryModule } from './summary/summary.module';
 import { EmailsModule } from './emails/emails.module';
 import { ChatModule } from './chat/chat.module';
+import { ScheduleOptimizeModule } from './schedule/schedule.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ChatModule } from './chat/chat.module';
     SummaryModule,
     EmailsModule,
     ChatModule,
+    ScheduleOptimizeModule,
   ],
 })
 export class AppModule {}

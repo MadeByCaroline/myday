@@ -19,6 +19,13 @@ export interface SavedTask {
   createdAt: string
 }
 
+export interface TimeBlock {
+  taskId: string
+  suggestedStartTime: string
+  suggestedEndTime: string
+  title: string
+}
+
 export const useTasksStore = defineStore('tasks', () => {
   const suggestedTasks = ref<SuggestedTask[]>([])
   const savedTasks = ref<SavedTask[]>([])
@@ -112,6 +119,31 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  async function optimizeDay(): Promise<TimeBlock[]> {
+    loading.value = true
+
+    try {
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_API_URL}/schedule/optimize`,
+        {},
+        { headers: getAuthHeaders() },
+      )
+
+      const blocks = Array.isArray(data) ? (data as TimeBlock[]) : []
+
+      if (blocks.length > 0) {
+        const scheduledIds = new Set(blocks.map((b) => b.taskId))
+        savedTasks.value = savedTasks.value.map((task) =>
+          scheduledIds.has(task.id) ? { ...task, status: 'SCHEDULED' } : task,
+        )
+      }
+
+      return blocks
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function deleteTask(id: string) {
     await axios.delete(`${import.meta.env.VITE_API_URL}/tasks/${id}`, {
       headers: getAuthHeaders(),
@@ -131,5 +163,6 @@ export const useTasksStore = defineStore('tasks', () => {
     fetchSavedTasks,
     updateTaskStatus,
     deleteTask,
+    optimizeDay,
   }
 })

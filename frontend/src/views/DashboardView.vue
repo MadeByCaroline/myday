@@ -6,15 +6,26 @@
           <h2 class="text-2xl font-bold text-gray-900">Good {{ greeting }}, {{ firstName }}!</h2>
           <p class="text-sm text-gray-500">{{ currentDate }}</p>
         </div>
-        <button
-          @click="generateSummary"
-          :disabled="dashboardStore.isLoading"
-          class="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-        >
-          <i class="pi pi-spin pi-spinner" v-if="dashboardStore.isLoading"></i>
-          <i class="pi pi-sparkles" v-else></i>
-          {{ dashboardStore.isLoading ? 'Generating...' : 'Generate My Summary' }}
-        </button>
+        <div class="flex items-center gap-3">
+          <button
+            @click="optimizeDay"
+            :disabled="tasksStore.loading || dashboardStore.isLoading"
+            class="flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            <i class="pi pi-spin pi-spinner" v-if="tasksStore.loading && isOptimizing"></i>
+            <i class="pi pi-calendar-plus" v-else></i>
+            {{ tasksStore.loading && isOptimizing ? 'Optimisation...' : '✨ Optimiser ma journée' }}
+          </button>
+          <button
+            @click="generateSummary"
+            :disabled="dashboardStore.isLoading"
+            class="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            <i class="pi pi-spin pi-spinner" v-if="dashboardStore.isLoading"></i>
+            <i class="pi pi-sparkles" v-else></i>
+            {{ dashboardStore.isLoading ? 'Generating...' : 'Generate My Summary' }}
+          </button>
+        </div>
       </header>
 
       <!-- Content area -->
@@ -101,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useToast } from 'primevue/usetoast'
@@ -121,6 +132,7 @@ const tasksStore = useTasksStore()
 
 const now = new Date()
 const hour = now.getHours()
+const isOptimizing = ref(false)
 
 const greeting = computed(() => {
   if (hour < 12) return 'morning'
@@ -181,6 +193,42 @@ async function createDraft(emailId: string, action: string) {
       detail,
       life: 4000,
     })
+  }
+}
+
+async function optimizeDay() {
+  isOptimizing.value = true
+  try {
+    const blocks = await tasksStore.optimizeDay()
+    if (blocks.length === 0) {
+      toast.add({
+        severity: 'info',
+        summary: 'Optimisation',
+        detail: 'Aucune tâche ouverte à planifier.',
+        life: 3000,
+      })
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: '✨ Journée optimisée !',
+        detail: `${blocks.length} tâche(s) planifiée(s) dans votre agenda.`,
+        life: 4000,
+      })
+    }
+  } catch (caughtError: unknown) {
+    const detail =
+      axios.isAxiosError(caughtError) && typeof caughtError.response?.data?.message === 'string'
+        ? caughtError.response.data.message
+        : 'Impossible d\'optimiser la journée.'
+
+    toast.add({
+      severity: 'error',
+      summary: 'Erreur',
+      detail,
+      life: 4000,
+    })
+  } finally {
+    isOptimizing.value = false
   }
 }
 

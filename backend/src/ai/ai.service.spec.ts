@@ -188,4 +188,74 @@ describe('AiService', () => {
       ],
     });
   });
+
+  describe('generateTimeBlocking', () => {
+    const tasks = [
+      { id: 'task-1', title: 'Write report', description: 'Q2 report' },
+      { id: 'task-2', title: 'Review PR', description: null },
+    ];
+    const calendarEvents = [
+      {
+        id: 'evt-1',
+        title: 'Standup',
+        start: '2026-06-26T09:00:00.000Z',
+        end: '2026-06-26T09:15:00.000Z',
+      },
+    ];
+
+    it('returns parsed time blocks from Gemini', async () => {
+      const aiBlocks = [
+        { taskId: 'task-1', suggestedStartTime: '09:30', suggestedEndTime: '10:00', title: 'Write report' },
+        { taskId: 'task-2', suggestedStartTime: '10:00', suggestedEndTime: '10:30', title: 'Review PR' },
+      ];
+      mockGenerateContent.mockResolvedValue({
+        response: { text: () => JSON.stringify(aiBlocks) },
+      });
+
+      const service = new AiService(configService);
+      const result = await service.generateTimeBlocking(tasks, calendarEvents);
+
+      expect(result).toEqual(aiBlocks);
+    });
+
+    it('filters out malformed entries from the AI response', async () => {
+      const aiResponse = [
+        { taskId: 'task-1', suggestedStartTime: '09:30', suggestedEndTime: '10:00', title: 'Write report' },
+        { taskId: 'task-2' },
+      ];
+      mockGenerateContent.mockResolvedValue({
+        response: { text: () => JSON.stringify(aiResponse) },
+      });
+
+      const service = new AiService(configService);
+      const result = await service.generateTimeBlocking(tasks, calendarEvents);
+
+      expect(result).toEqual([aiResponse[0]]);
+    });
+
+    it('returns fallback time blocks when Gemini returns a non-array', async () => {
+      mockGenerateContent.mockResolvedValue({
+        response: { text: () => JSON.stringify({ error: 'bad response' }) },
+      });
+
+      const service = new AiService(configService);
+      const result = await service.generateTimeBlocking(tasks, calendarEvents);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].taskId).toBe('task-1');
+      expect(result[0].suggestedStartTime).toBe('09:00');
+      expect(result[1].taskId).toBe('task-2');
+    });
+
+    it('returns fallback time blocks when Gemini throws', async () => {
+      mockGenerateContent.mockRejectedValue(new Error('API error'));
+
+      const service = new AiService(configService);
+      const result = await service.generateTimeBlocking(tasks, calendarEvents);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].taskId).toBe('task-1');
+      expect(result[1].taskId).toBe('task-2');
+    });
+  });
 });
