@@ -9,6 +9,7 @@ import {
 } from 'passport-microsoft';
 
 interface MicrosoftProfile extends PassportProfile {
+  userPrincipalName?: string;
   _json?: {
     mail?: string;
     userPrincipalName?: string;
@@ -54,16 +55,16 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     params: MicrosoftTokenParams,
     profile: MicrosoftProfile,
   ): Promise<OAuthCallbackUser> {
+    console.log('Microsoft Profile:', profile._json);
+
     const email =
-      profile.emails?.[0]?.value ??
-      profile._json?.mail ??
-      profile._json?.userPrincipalName ??
-      '';
+      profile.emails?.[0]?.value ||
+      profile._json?.mail ||
+      profile._json?.userPrincipalName ||
+      profile.userPrincipalName;
 
     if (!email) {
-      throw new Error(
-        'Microsoft account email was not provided. Please ensure your Microsoft account has a valid email address and try again.',
-      );
+      throw new Error('Microsoft account email was not provided.');
     }
 
     const state =
