@@ -9,6 +9,11 @@ describe('MicrosoftStrategy', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('returns the Microsoft OAuth payload for NestJS Passport', async () => {
@@ -59,8 +64,48 @@ describe('MicrosoftStrategy', () => {
           displayName: 'Test User',
         },
       ),
-    ).rejects.toThrow(
-      'Microsoft account email was not provided. Please ensure your Microsoft account has a valid email address and try again.',
-    );
+    ).rejects.toThrow('Microsoft account email was not provided.');
+  });
+
+  it('uses _json.userPrincipalName when emails and mail are missing', async () => {
+    const strategy = new MicrosoftStrategy(configService);
+
+    await expect(
+      strategy.validate(
+        {
+          query: {},
+        } as Request,
+        'access-token',
+        'refresh-token',
+        {},
+        {
+          displayName: 'Test User',
+          _json: { userPrincipalName: 'upn-json@example.com' },
+        },
+      ),
+    ).resolves.toMatchObject({
+      email: 'upn-json@example.com',
+    });
+  });
+
+  it('uses profile.userPrincipalName as final fallback', async () => {
+    const strategy = new MicrosoftStrategy(configService);
+
+    await expect(
+      strategy.validate(
+        {
+          query: {},
+        } as Request,
+        'access-token',
+        'refresh-token',
+        {},
+        {
+          displayName: 'Test User',
+          userPrincipalName: 'upn-profile@example.com',
+        },
+      ),
+    ).resolves.toMatchObject({
+      email: 'upn-profile@example.com',
+    });
   });
 });
