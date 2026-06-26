@@ -18,6 +18,8 @@
           <button
             type="submit"
             class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            :disabled="giveawaySubmitted"
+            :class="giveawaySubmitted ? 'cursor-not-allowed bg-indigo-300 hover:bg-indigo-300' : ''"
           >
             Tenter ma chance
           </button>
@@ -61,7 +63,9 @@
           :class="!isAnnual ? 'border-indigo-300 ring-2 ring-indigo-100' : 'border-gray-200'"
         >
           <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600">Forfait Mensuel</p>
-          <p class="mt-4 text-4xl font-bold text-gray-900">29€ <span class="text-lg font-medium text-gray-500">/ mois</span></p>
+          <p class="mt-4 text-4xl font-bold text-gray-900">
+            {{ MONTHLY_PRICE }}€ <span class="text-lg font-medium text-gray-500">/ mois</span>
+          </p>
           <p class="mt-3 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700">
             Essai gratuit de 7 jours
           </p>
@@ -74,8 +78,8 @@
             Démarrer mon essai gratuit (CB requise)
           </button>
           <p class="mt-3 text-xs leading-relaxed text-gray-600">
-            Aucun débit aujourd'hui. Vous serez prélevé de 29€/mois après 7 jours sauf annulation préalable depuis
-            votre profil.
+            Aucun débit aujourd'hui. Vous serez prélevé de {{ MONTHLY_PRICE }}€/mois après 7 jours sauf annulation
+            préalable depuis votre profil.
           </p>
         </article>
 
@@ -88,13 +92,13 @@
           </span>
           <p class="text-sm font-semibold uppercase tracking-wide text-indigo-600">Forfait Annuel</p>
           <div class="mt-4 flex items-end gap-3">
-            <span class="text-lg text-gray-400 line-through">348€</span>
+            <span class="text-lg text-gray-400 line-through">{{ ANNUAL_REGULAR_PRICE }}€</span>
             <p class="text-4xl font-bold text-gray-900">
               {{ annualDisplayedPrice }}
             </p>
           </div>
-          <p v-if="isAnnual" class="mt-1 text-sm text-gray-500">Facturé 243€ / an</p>
-          <p v-else class="mt-1 text-sm text-gray-500">243€ / an</p>
+          <p v-if="isAnnual" class="mt-1 text-sm text-gray-500">Facturé {{ ANNUAL_PRICE }}€ / an</p>
+          <p v-else class="mt-1 text-sm text-gray-500">{{ ANNUAL_PRICE }}€ / an</p>
           <p class="mt-3 inline-flex rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
             Le choix des pros - Économisez 105€
           </p>
@@ -107,8 +111,8 @@
             S'abonner à l'année
           </button>
           <p class="mt-3 text-xs leading-relaxed text-gray-600">
-            Prélèvement unique de 243€ aujourd'hui. Renouvellement automatique chaque année. Annulation possible à
-            tout moment.
+            Prélèvement unique de {{ ANNUAL_PRICE }}€ aujourd'hui. Renouvellement automatique chaque année. Annulation
+            possible à tout moment.
           </p>
         </article>
       </section>
@@ -121,14 +125,30 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const MONTHLY_PRICE = 29
+const ANNUAL_PRICE = 243
+const ANNUAL_REGULAR_PRICE = 348
+const WHITELIST_STORAGE_KEY = 'myday_pricing_whitelist_email'
+
 const isAnnual = ref(false)
 const email = ref('')
 const giveawaySubmitted = ref(false)
 
-const annualDisplayedPrice = computed(() => (isAnnual.value ? '20,25€ / mois' : '243€ / an'))
+const annualDisplayedPrice = computed(() => (isAnnual.value ? '20,25€ / mois' : `${ANNUAL_PRICE}€ / an`))
 
 function submitWhitelist() {
+  if (giveawaySubmitted.value) {
+    return
+  }
+
+  const normalizedEmail = email.value.trim().toLowerCase()
+  if (!normalizedEmail) {
+    return
+  }
+
+  window.localStorage.setItem(WHITELIST_STORAGE_KEY, normalizedEmail)
   giveawaySubmitted.value = true
+  email.value = ''
 }
 
 function startSubscription(plan: 'monthly' | 'annual') {
