@@ -10,6 +10,27 @@
         </div>
       </div>
 
+      <div class="p-4 border-b">
+        <p class="theme-text-secondary text-xs font-semibold uppercase tracking-wide">Espace actif</p>
+        <div class="theme-panel-muted mt-3 rounded-2xl border p-3">
+          <div class="flex items-center gap-3">
+            <span class="h-3 w-3 rounded-full" :style="{ backgroundColor: currentWorkspaceOption.color }"></span>
+            <i :class="[currentWorkspaceOption.icon, 'text-sm']"></i>
+            <span class="theme-title text-sm font-medium truncate">{{ currentWorkspaceOption.name }}</span>
+          </div>
+          <select
+            v-model="selectedWorkspaceId"
+            :disabled="workspaceStore.loading"
+            class="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <option :value="ALL_WORKSPACES_ID">Toutes les vues</option>
+            <option v-for="workspace in workspaceStore.workspaces" :key="workspace.id" :value="workspace.id">
+              {{ workspace.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+
       <nav class="p-4 flex-1">
         <RouterLink :to="{ name: 'dashboard' }" :class="navLinkClass">
           <i class="pi pi-home"></i>
@@ -98,6 +119,7 @@ import DeepWorkOverlay from '../components/DeepWorkOverlay.vue'
 import MorningBriefingModal from '../components/MorningBriefingModal.vue'
 import { useAuthStore } from '../stores/auth'
 import { useTimerStore } from '../stores/timer.store'
+import { ALL_WORKSPACES_ID, useWorkspaceStore } from '../stores/workspace.store'
 import { useUiStore } from '../stores/ui.store'
 
 const navLinkClass =
@@ -106,6 +128,7 @@ const navLinkClass =
 const authStore = useAuthStore()
 const router = useRouter()
 const timerStore = useTimerStore()
+const workspaceStore = useWorkspaceStore()
 const uiStore = useUiStore()
 const timerErrorMessage = ref<string | null>(null)
 const LAST_BRIEFING_DATE_KEY = 'lastBriefingDate'
@@ -115,6 +138,29 @@ const morningBriefing = ref({
   emailSummary: 'Aucune donnée de briefing disponible.',
   scheduleOverview: 'Aucune donnée de briefing disponible.',
   recommendedFocus: 'Commencez par votre tâche prioritaire.',
+})
+
+const selectedWorkspaceId = computed({
+  get: () => workspaceStore.activeWorkspaceId,
+  set: (value: string) => workspaceStore.setActiveWorkspaceId(value),
+})
+
+const currentWorkspaceOption = computed(() => {
+  if (workspaceStore.activeWorkspaceId === ALL_WORKSPACES_ID) {
+    return {
+      id: ALL_WORKSPACES_ID,
+      name: 'Toutes les vues',
+      color: '#6366F1',
+      icon: 'pi pi-objects-column',
+    }
+  }
+
+  return workspaceStore.activeWorkspace || {
+    id: ALL_WORKSPACES_ID,
+    name: 'Toutes les vues',
+    color: '#6366F1',
+    icon: 'pi pi-objects-column',
+  }
 })
 
 const formattedElapsedTime = computed(() => {
@@ -143,6 +189,7 @@ async function handleStopTimer() {
 function handleLogout() {
   uiStore.resetDeepWork()
   timerStore.reset()
+  workspaceStore.reset()
   authStore.logout()
   router.push('/login')
 }
@@ -186,11 +233,15 @@ async function maybeShowMorningBriefing() {
 
 onMounted(async () => {
   if (!authStore.token) {
+    workspaceStore.reset()
     timerStore.reset()
     return
   }
 
-  await timerStore.fetchCurrentTimer()
+  await Promise.all([
+    timerStore.fetchCurrentTimer(),
+    workspaceStore.fetchWorkspaces(),
+  ])
   await maybeShowMorningBriefing()
 })
 </script>

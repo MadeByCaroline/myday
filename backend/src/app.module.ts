@@ -17,6 +17,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { FocusModule } from './focus/focus.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SettingsModule } from './settings/settings.module';
+import { WorkspacesModule } from './workspaces/workspaces.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { SettingsModule } from './settings/settings.module';
     FocusModule,
     AnalyticsModule,
     SettingsModule,
+    WorkspacesModule,
   ],
 })
 export class AppModule {}

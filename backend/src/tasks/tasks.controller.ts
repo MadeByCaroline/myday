@@ -15,7 +15,7 @@ import { TasksService } from './tasks.service';
 @Controller('tasks')
 @UseGuards(JwtAuthGuard)
 export class TasksController {
-  constructor(private tasksService: TasksService) {}
+  constructor(private readonly tasksService: TasksService) {}
 
   @Get()
   async getTasks(@Req() req: any) {
@@ -25,7 +25,13 @@ export class TasksController {
   @Post()
   async createTask(
     @Req() req: any,
-    @Body() body: { title: string; description?: string; source?: string },
+    @Body()
+    body: {
+      title: string;
+      description?: string;
+      source?: string;
+      workspaceId?: string | null;
+    },
   ) {
     return this.tasksService.createTask(req.user.id, body);
   }
