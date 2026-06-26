@@ -51,7 +51,7 @@
       </div>
     </aside>
 
-    <main class="flex-1 min-w-0 overflow-hidden">
+    <main class="flex-1 min-w-0">
       <RouterView />
     </main>
   </div>
