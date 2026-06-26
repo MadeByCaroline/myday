@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import type { EmailSummary } from '../mail/mail.service';
 
 interface MicrosoftMessageResponse {
@@ -20,6 +20,7 @@ export class MicrosoftService {
   private readonly logger = new Logger(MicrosoftService.name);
 
   async getUnreadEmails(accessToken: string): Promise<EmailSummary[]> {
+    this.logger.log('Fetching Microsoft emails...');
     try {
       const response = await axios.get<MicrosoftMessageResponse>(
         'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages',
@@ -34,6 +35,10 @@ export class MicrosoftService {
         },
       );
 
+      this.logger.log(
+        `Microsoft returned ${response.data.value?.length || 0} emails.`,
+      );
+
       return (response.data.value || []).map((message) => ({
         from: message.from?.emailAddress?.address || '',
         subject: message.subject || '(no subject)',
@@ -41,11 +46,12 @@ export class MicrosoftService {
         receivedAt: message.receivedDateTime || '',
       }));
     } catch (error) {
-      const message =
-        error instanceof Error
+      const detail = isAxiosError(error)
+        ? (error.response?.data ?? error.message)
+        : error instanceof Error
           ? error.message
           : 'Unknown Microsoft Graph API error';
-      this.logger.error('Failed to fetch Outlook emails', message);
+      this.logger.error('Microsoft Graph Error:', detail);
       return [];
     }
   }

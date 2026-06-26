@@ -37,6 +37,11 @@ export class SummaryController {
       };
     }
 
+    this.logger.log(
+      'Connected providers for user: ' +
+        oauthTokens.map((t) => t.provider).join(', '),
+    );
+
     const accountData = await Promise.allSettled(
       oauthTokens.map(async (oauthToken) => {
         const provider = oauthToken.provider.toUpperCase();
@@ -52,20 +57,20 @@ export class SummaryController {
               oauthToken.refreshToken || undefined,
             ),
           ]);
-          return { emails, events };
+          return { provider, emails, events };
         }
 
         if (provider === 'MICROSOFT') {
           const emails = await this.microsoftService.getUnreadEmails(
             oauthToken.accessToken,
           );
-          return { emails, events: [] };
+          return { provider, emails, events: [] };
         }
 
         this.logger.warn(
           `Skipping unsupported OAuth provider: ${oauthToken.provider}`,
         );
-        return { emails: [], events: [] };
+        return { provider, emails: [], events: [] };
       }),
     );
 
@@ -74,6 +79,7 @@ export class SummaryController {
         (
           result,
         ): result is PromiseFulfilledResult<{
+          provider: string;
           emails: EmailSummary[];
           events: CalendarEvent[];
         }> => result.status === 'fulfilled',
@@ -90,6 +96,17 @@ export class SummaryController {
           `Skipping an OAuth account due to fetch failure: ${String(result.reason)}`,
         );
       });
+
+    const googleEmails = successfulData
+      .filter((d) => d.provider === 'GOOGLE')
+      .flatMap((d) => d.emails);
+    const microsoftEmails = successfulData
+      .filter((d) => d.provider === 'MICROSOFT')
+      .flatMap((d) => d.emails);
+
+    this.logger.log(
+      `Aggregated Data -> Google Emails: ${googleEmails.length} | Microsoft Emails: ${microsoftEmails.length}`,
+    );
 
     const emails = successfulData.flatMap((data) => data.emails);
     const events = successfulData.flatMap((data) => data.events);
