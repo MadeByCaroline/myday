@@ -15,6 +15,7 @@ import { ChatModule } from './chat/chat.module';
 import { ScheduleOptimizeModule } from './schedule/schedule.module';
 import { PaymentsModule } from './payments/payments.module';
 import { FocusModule } from './focus/focus.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { FocusModule } from './focus/focus.module';
     ScheduleOptimizeModule,
     PaymentsModule,
     FocusModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}

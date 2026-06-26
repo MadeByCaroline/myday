@@ -55,6 +55,11 @@ const router = createRouter({
           name: 'integrations',
           component: () => import('../views/IntegrationsView.vue'),
         },
+        {
+          path: 'analytics',
+          name: 'analytics',
+          component: () => import('../views/AnalyticsView.vue'),
+        },
       ],
     },
   ],

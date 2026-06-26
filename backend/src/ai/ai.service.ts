@@ -403,6 +403,106 @@ Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
     }
   }
 
+  async generateTimeAudit(statsData: {
+    totalDuration: number;
+    taskStats: Array<{
+      taskTitle: string;
+      taskStatus: string;
+      totalDuration: number;
+    }>;
+  }): Promise<{ analysis: string; recommendations: string[] }> {
+    const MAX_RECOMMENDATIONS = 2;
+    const totalHours = (statsData.totalDuration / 3600).toFixed(1);
+    const taskBreakdown = statsData.taskStats
+      .map((stat) => {
+        const hours = (stat.totalDuration / 3600).toFixed(1);
+        const pct =
+          statsData.totalDuration > 0
+            ? Math.round((stat.totalDuration / statsData.totalDuration) * 100)
+            : 0;
+        return `- "${stat.taskTitle}" (status: ${stat.taskStatus}): ${hours}h (${pct}%)`;
+      })
+      .join('\n');
+
+    const systemPrompt = `You are a productivity coach and time management expert. 
+Analyze the user's weekly time tracking data and provide a clear, actionable performance report.
+Write your response in English.
+Return ONLY a valid JSON object with EXACTLY this structure, nothing else:
+{
+  "analysis": "A 2-3 paragraph analysis of how the user spent their time this week, highlighting what went well and areas of concern",
+  "recommendations": [
+    "First actionable recommendation to improve productivity next week",
+    "Second actionable recommendation to improve productivity next week"
+  ]
+}`;
+
+    const userContent = `Here is my time tracking data for the last 7 days:
+Total tracked time: ${totalHours} hours
+
+Time breakdown by task:
+${taskBreakdown || 'No tasks tracked this week.'}
+
+Please analyze my time distribution and provide ${MAX_RECOMMENDATIONS} actionable recommendations to improve my productivity next week.`;
+
+    try {
+      const content = await this.resolveAIRequest(
+        `${systemPrompt}\n\n${userContent}`,
+        { isJson: true },
+      );
+      const parsed = JSON.parse(content) as {
+        analysis?: unknown;
+        recommendations?: unknown;
+      };
+
+      const analysis =
+        typeof parsed.analysis === 'string' && parsed.analysis.trim().length > 0
+          ? parsed.analysis.trim()
+          : this.buildFallbackTimeAuditAnalysis(statsData);
+
+      const recommendations = Array.isArray(parsed.recommendations)
+        ? parsed.recommendations.filter(
+            (r): r is string => typeof r === 'string' && r.trim().length > 0,
+          )
+        : [];
+
+      return {
+        analysis,
+        recommendations:
+          recommendations.length > 0
+            ? recommendations.slice(0, MAX_RECOMMENDATIONS)
+            : this.buildFallbackRecommendations(),
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown AI provider error';
+      this.logger.error('AI time audit error', message);
+      return {
+        analysis: this.buildFallbackTimeAuditAnalysis(statsData),
+        recommendations: this.buildFallbackRecommendations(),
+      };
+    }
+  }
+
+  private buildFallbackTimeAuditAnalysis(statsData: {
+    totalDuration: number;
+    taskStats: Array<{ taskTitle: string; totalDuration: number }>;
+  }): string {
+    const totalHours = (statsData.totalDuration / 3600).toFixed(1);
+    if (statsData.taskStats.length === 0) {
+      return 'No time entries were recorded this week. Start tracking your tasks to get AI-powered insights on your productivity.';
+    }
+    const topTask = statsData.taskStats[0];
+    const topHours = (topTask.totalDuration / 3600).toFixed(1);
+    return `This week you tracked a total of ${totalHours} hours across ${statsData.taskStats.length} task(s). Your most time-consuming task was "${topTask.taskTitle}" with ${topHours} hours logged. Review your time allocation to ensure your efforts align with your priorities.`;
+  }
+
+  private buildFallbackRecommendations(): string[] {
+    return [
+      'Start tracking all your work sessions consistently to get more accurate insights.',
+      'Review your task priorities each Monday to ensure your time allocation matches your goals.',
+    ];
+  }
+
   private async resolveAIRequest(
     prompt: string,
     options: ResolveAIRequestOptions = {},
