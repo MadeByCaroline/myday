@@ -5,7 +5,10 @@ import { PrismaService } from '../prisma/prisma.service';
 export class TasksService {
   constructor(private prisma: PrismaService) {}
 
-  async createTask(userId: string, data: { title: string; description?: string; source?: string }) {
+  async createTask(
+    userId: string,
+    data: { title: string; description?: string; source?: string },
+  ) {
     return this.prisma.task.create({
       data: {
         userId,
@@ -30,7 +33,11 @@ export class TasksService {
     });
   }
 
-  async updateTask(taskId: string, userId: string, data: { status?: string; title?: string }) {
+  async updateTask(
+    taskId: string,
+    userId: string,
+    data: { status?: string; title?: string },
+  ) {
     return this.prisma.task.updateMany({
       where: { id: taskId, userId },
       data,

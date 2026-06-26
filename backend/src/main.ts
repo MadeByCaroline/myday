@@ -9,7 +9,8 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
 
-  const frontendUrl = configService.get<string>('FRONTEND_URL') || 'http://127.0.0.1:5173';
+  const frontendUrl =
+    configService.get<string>('FRONTEND_URL') || 'http://127.0.0.1:5173';
   const allowedOrigins = new Set([frontendUrl]);
   try {
     const parsed = new URL(frontendUrl);

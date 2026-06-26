@@ -18,7 +18,10 @@ export class CalendarService {
 
   constructor(private configService: ConfigService) {}
 
-  async getTodayEvents(accessToken: string, refreshToken?: string): Promise<CalendarEvent[]> {
+  async getTodayEvents(
+    accessToken: string,
+    refreshToken?: string,
+  ): Promise<CalendarEvent[]> {
     try {
       const oauth2Client = new google.auth.OAuth2(
         this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
@@ -33,8 +36,22 @@ export class CalendarService {
 
       const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
       const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      const startOfDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0,
+        0,
+        0,
+      );
+      const endOfDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+      );
 
       const response = await calendar.events.list({
         calendarId: 'primary',
@@ -52,10 +69,13 @@ export class CalendarService {
         end: event.end?.dateTime || event.end?.date || '',
         location: event.location || undefined,
         description: event.description || undefined,
-        attendees: (event.attendees || []).map((attendee) => attendee.email).filter(Boolean) as string[],
+        attendees: (event.attendees || [])
+          .map((attendee) => attendee.email)
+          .filter(Boolean) as string[],
       }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Calendar API error';
+      const message =
+        error instanceof Error ? error.message : 'Unknown Calendar API error';
       this.logger.error('Failed to fetch calendar events', message);
       return [];
     }

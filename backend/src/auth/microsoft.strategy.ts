@@ -45,14 +45,13 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     super(options);
   }
 
-  validate(
+  async validate(
     req: Request,
     accessToken: string,
     refreshToken: string,
     params: MicrosoftTokenParams,
     profile: MicrosoftProfile,
-    done: (error: Error | null, user?: OAuthCallbackUser | false) => void,
-  ): void {
+  ): Promise<OAuthCallbackUser> {
     const email =
       profile.emails?.[0]?.value ??
       profile._json?.mail ??
@@ -60,19 +59,15 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       '';
 
     if (!email) {
-      done(
-        new Error(
-          'Microsoft account email was not provided. Please ensure your Microsoft account has a valid email address and try again.',
-        ),
-        false,
+      throw new Error(
+        'Microsoft account email was not provided. Please ensure your Microsoft account has a valid email address and try again.',
       );
-      return;
     }
 
     const state =
       typeof req.query.state === 'string' ? req.query.state : undefined;
     const expiresInSeconds = Number(params.expires_in);
-    done(null, {
+    return await Promise.resolve({
       email,
       name: profile.displayName || email,
       accessToken,
