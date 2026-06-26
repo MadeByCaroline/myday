@@ -223,6 +223,8 @@ export class WorkspacesService {
       case 'icon':
         normalizedField.icon = resolvedValue;
         return normalizedField;
+      default:
+        return normalizedField;
     }
   }
 }
