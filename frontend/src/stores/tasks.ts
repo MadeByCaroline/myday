@@ -14,7 +14,6 @@ export interface SavedTask {
   id: string
   title: string
   description?: string
-  isCompleted: boolean
   status: string
   source: string
   createdAt: string
@@ -95,21 +94,21 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  async function toggleTask(id: string) {
+  async function updateTaskStatus(id: string, status: string) {
     const task = savedTasks.value.find((t) => t.id === id)
     if (!task) return
 
-    const newValue = !task.isCompleted
-    task.isCompleted = newValue
+    const oldStatus = task.status
+    task.status = status
 
     try {
       await axios.patch(
         `${import.meta.env.VITE_API_URL}/tasks/${id}`,
-        { isCompleted: newValue },
+        { status },
         { headers: getAuthHeaders() },
       )
     } catch {
-      task.isCompleted = !newValue
+      task.status = oldStatus
     }
   }
 
@@ -130,7 +129,7 @@ export const useTasksStore = defineStore('tasks', () => {
     acceptTask,
     createManualTask,
     fetchSavedTasks,
-    toggleTask,
+    updateTaskStatus,
     deleteTask,
   }
 })

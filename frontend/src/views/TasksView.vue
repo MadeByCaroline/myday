@@ -60,28 +60,7 @@
         <p class="text-sm text-gray-500 mt-1">Manage your tasks</p>
       </header>
 
-      <div class="flex-1 overflow-y-auto p-8">
-        <!-- Add task form -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">Add a new task</h3>
-          <form @submit.prevent="handleAddTask" class="flex gap-3">
-            <input
-              v-model="newTaskTitle"
-              type="text"
-              placeholder="What do you need to do?"
-              class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
-            />
-            <button
-              type="submit"
-              :disabled="!newTaskTitle.trim() || tasksStore.loading"
-              class="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              <i class="pi pi-plus"></i>
-              Add Task
-            </button>
-          </form>
-        </div>
-
+      <div class="flex-1 overflow-x-auto p-6">
         <!-- Error message -->
         <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-4">
           {{ errorMessage }}
@@ -92,59 +71,141 @@
           <i class="pi pi-spin pi-spinner text-indigo-600 text-2xl"></i>
         </div>
 
-        <!-- Empty state -->
-        <div
-          v-else-if="!tasksStore.loading && tasksStore.savedTasks.length === 0"
-          class="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center"
-        >
-          <i class="pi pi-check-square text-4xl text-gray-300 mb-4 block"></i>
-          <p class="text-gray-500 font-medium">No tasks yet</p>
-          <p class="text-gray-400 text-sm mt-1">Add a task above to get started</p>
-        </div>
-
-        <!-- Task list -->
-        <div v-else class="bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-100">
-          <div
-            v-for="task in tasksStore.savedTasks"
-            :key="task.id"
-            class="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
-          >
-            <!-- Completion checkbox -->
-            <input
-              type="checkbox"
-              :checked="task.isCompleted"
-              @change="tasksStore.toggleTask(task.id)"
-              class="w-4 h-4 text-indigo-600 border-gray-300 rounded cursor-pointer accent-indigo-600"
-            />
-
-            <!-- Task details -->
-            <div class="flex-1 min-w-0">
-              <p
-                class="text-sm font-medium text-gray-900 truncate"
-                :class="{ 'line-through text-gray-400': task.isCompleted }"
-              >
-                {{ task.title }}
-              </p>
-              <p v-if="task.description" class="text-xs text-gray-500 mt-0.5 truncate">
-                {{ task.description }}
-              </p>
+        <!-- Kanban board -->
+        <div v-else class="flex gap-5 min-w-max h-full">
+          <!-- Column: À faire (TODO) -->
+          <div class="w-80 flex flex-col bg-gray-100 rounded-2xl p-4">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="w-3 h-3 rounded-full bg-gray-400 inline-block"></span>
+              <h3 class="text-sm font-semibold text-gray-700 flex-1">À faire</h3>
+              <span class="text-xs bg-gray-200 text-gray-600 font-semibold px-2 py-0.5 rounded-full">{{ todoTasks.length }}</span>
             </div>
 
-            <!-- Source badge -->
-            <span class="hidden sm:inline-flex text-xs px-2 py-0.5 rounded-full font-medium"
-              :class="task.source === 'MANUAL' ? 'bg-gray-100 text-gray-500' : 'bg-indigo-50 text-indigo-600'"
-            >
-              {{ task.source === 'MANUAL' ? 'Manual' : 'AI' }}
-            </span>
+            <!-- Add task form inside TODO column -->
+            <form @submit.prevent="handleAddTask" class="flex gap-2 mb-3">
+              <input
+                v-model="newTaskTitle"
+                type="text"
+                placeholder="Nouvelle tâche..."
+                class="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white"
+              />
+              <button
+                type="submit"
+                :disabled="!newTaskTitle.trim() || tasksStore.loading"
+                class="bg-indigo-600 text-white px-3 py-2 rounded-xl hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                title="Ajouter"
+              >
+                <i class="pi pi-plus text-sm"></i>
+              </button>
+            </form>
 
-            <!-- Delete button -->
-            <button
-              @click="handleDeleteTask(task.id)"
-              class="text-gray-300 hover:text-red-500 transition-colors p-1"
-              title="Delete task"
+            <draggable
+              v-model="todoTasks"
+              group="tasks"
+              item-key="id"
+              class="flex-1 space-y-2 min-h-16"
+              @change="onColumnChange($event, 'TODO')"
             >
-              <i class="pi pi-trash text-sm"></i>
-            </button>
+              <template #item="{ element }">
+                <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm font-medium text-gray-900 flex-1">{{ element.title }}</p>
+                    <button
+                      @click="handleDeleteTask(element.id)"
+                      class="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+                      title="Supprimer"
+                    >
+                      <i class="pi pi-trash text-xs"></i>
+                    </button>
+                  </div>
+                  <p v-if="element.description" class="text-xs text-gray-500 mt-1">{{ element.description }}</p>
+                  <span
+                    class="mt-2 inline-flex text-xs px-2 py-0.5 rounded-full font-medium"
+                    :class="element.source === 'MANUAL' ? 'bg-gray-100 text-gray-500' : 'bg-indigo-50 text-indigo-600'"
+                  >
+                    {{ element.source === 'MANUAL' ? 'Manuel' : 'IA' }}
+                  </span>
+                </div>
+              </template>
+            </draggable>
+          </div>
+
+          <!-- Column: En cours (IN_PROGRESS) -->
+          <div class="w-80 flex flex-col bg-blue-50 rounded-2xl p-4">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="w-3 h-3 rounded-full bg-blue-400 inline-block"></span>
+              <h3 class="text-sm font-semibold text-gray-700 flex-1">En cours</h3>
+              <span class="text-xs bg-blue-100 text-blue-600 font-semibold px-2 py-0.5 rounded-full">{{ inProgressTasks.length }}</span>
+            </div>
+
+            <draggable
+              v-model="inProgressTasks"
+              group="tasks"
+              item-key="id"
+              class="flex-1 space-y-2 min-h-16"
+              @change="onColumnChange($event, 'IN_PROGRESS')"
+            >
+              <template #item="{ element }">
+                <div class="bg-white rounded-xl p-3 shadow-sm border border-blue-100 cursor-grab active:cursor-grabbing">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm font-medium text-gray-900 flex-1">{{ element.title }}</p>
+                    <button
+                      @click="handleDeleteTask(element.id)"
+                      class="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+                      title="Supprimer"
+                    >
+                      <i class="pi pi-trash text-xs"></i>
+                    </button>
+                  </div>
+                  <p v-if="element.description" class="text-xs text-gray-500 mt-1">{{ element.description }}</p>
+                  <span
+                    class="mt-2 inline-flex text-xs px-2 py-0.5 rounded-full font-medium"
+                    :class="element.source === 'MANUAL' ? 'bg-gray-100 text-gray-500' : 'bg-indigo-50 text-indigo-600'"
+                  >
+                    {{ element.source === 'MANUAL' ? 'Manuel' : 'IA' }}
+                  </span>
+                </div>
+              </template>
+            </draggable>
+          </div>
+
+          <!-- Column: Terminé (DONE) -->
+          <div class="w-80 flex flex-col bg-green-50 rounded-2xl p-4">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="w-3 h-3 rounded-full bg-green-400 inline-block"></span>
+              <h3 class="text-sm font-semibold text-gray-700 flex-1">Terminé</h3>
+              <span class="text-xs bg-green-100 text-green-600 font-semibold px-2 py-0.5 rounded-full">{{ doneTasks.length }}</span>
+            </div>
+
+            <draggable
+              v-model="doneTasks"
+              group="tasks"
+              item-key="id"
+              class="flex-1 space-y-2 min-h-16"
+              @change="onColumnChange($event, 'DONE')"
+            >
+              <template #item="{ element }">
+                <div class="bg-white rounded-xl p-3 shadow-sm border border-green-100 cursor-grab active:cursor-grabbing">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm font-medium text-gray-500 line-through flex-1">{{ element.title }}</p>
+                    <button
+                      @click="handleDeleteTask(element.id)"
+                      class="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+                      title="Supprimer"
+                    >
+                      <i class="pi pi-trash text-xs"></i>
+                    </button>
+                  </div>
+                  <p v-if="element.description" class="text-xs text-gray-400 mt-1">{{ element.description }}</p>
+                  <span
+                    class="mt-2 inline-flex text-xs px-2 py-0.5 rounded-full font-medium"
+                    :class="element.source === 'MANUAL' ? 'bg-gray-100 text-gray-500' : 'bg-indigo-50 text-indigo-600'"
+                  >
+                    {{ element.source === 'MANUAL' ? 'Manuel' : 'IA' }}
+                  </span>
+                </div>
+              </template>
+            </draggable>
           </div>
         </div>
       </div>
@@ -153,10 +214,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import draggable from 'vuedraggable'
 import { useAuthStore } from '../stores/auth'
 import { useTasksStore } from '../stores/tasks'
+import type { SavedTask } from '../stores/tasks'
 
 const authStore = useAuthStore()
 const tasksStore = useTasksStore()
@@ -168,6 +231,30 @@ const errorMessage = ref<string | null>(null)
 const navLinkClass =
   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors mb-1'
 
+const todoTasks = computed<SavedTask[]>({
+  get: () => tasksStore.savedTasks.filter((t) => t.status === 'TODO'),
+  set: () => {},
+})
+
+const inProgressTasks = computed<SavedTask[]>({
+  get: () => tasksStore.savedTasks.filter((t) => t.status === 'IN_PROGRESS'),
+  set: () => {},
+})
+
+const doneTasks = computed<SavedTask[]>({
+  get: () => tasksStore.savedTasks.filter((t) => t.status === 'DONE'),
+  set: () => {},
+})
+
+function onColumnChange(
+  event: { added?: { element: SavedTask; newIndex: number }; removed?: unknown; moved?: unknown },
+  columnStatus: string,
+) {
+  if (event.added) {
+    tasksStore.updateTaskStatus(event.added.element.id, columnStatus)
+  }
+}
+
 async function handleAddTask() {
   const title = newTaskTitle.value.trim()
   if (!title) return
@@ -178,7 +265,7 @@ async function handleAddTask() {
     await tasksStore.createManualTask(title)
     newTaskTitle.value = ''
   } catch {
-    errorMessage.value = 'Failed to add task. Please try again.'
+    errorMessage.value = 'Impossible d\'ajouter la tâche. Veuillez réessayer.'
   }
 }
 
@@ -188,7 +275,7 @@ async function handleDeleteTask(id: string) {
   try {
     await tasksStore.deleteTask(id)
   } catch {
-    errorMessage.value = 'Failed to delete task. Please try again.'
+    errorMessage.value = 'Impossible de supprimer la tâche. Veuillez réessayer.'
   }
 }
 
@@ -201,7 +288,7 @@ onMounted(async () => {
   try {
     await tasksStore.fetchSavedTasks()
   } catch {
-    errorMessage.value = 'Failed to load tasks.'
+    errorMessage.value = 'Impossible de charger les tâches.'
   }
 })
 </script>

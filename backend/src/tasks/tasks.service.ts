@@ -1,5 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+
+const VALID_STATUSES = ['TODO', 'IN_PROGRESS', 'DONE'] as const;
+type TaskStatus = (typeof VALID_STATUSES)[number];
 
 @Injectable()
 export class TasksService {
@@ -15,7 +18,7 @@ export class TasksService {
         title: data.title,
         description: data.description,
         source: data.source || 'MANUAL',
-        status: 'accepted',
+        status: 'TODO',
       },
     });
   }
@@ -36,8 +39,16 @@ export class TasksService {
   async updateTask(
     taskId: string,
     userId: string,
-    data: { isCompleted?: boolean; status?: string; title?: string },
+    data: { status?: string; title?: string },
   ) {
+    if (data.status !== undefined) {
+      if (!VALID_STATUSES.includes(data.status as TaskStatus)) {
+        throw new BadRequestException(
+          `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
+        );
+      }
+    }
+
     return this.prisma.task.updateMany({
       where: { id: taskId, userId },
       data,
