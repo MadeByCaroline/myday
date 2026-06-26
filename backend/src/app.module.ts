@@ -16,6 +16,7 @@ import { ScheduleOptimizeModule } from './schedule/schedule.module';
 import { PaymentsModule } from './payments/payments.module';
 import { FocusModule } from './focus/focus.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     PaymentsModule,
     FocusModule,
     AnalyticsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

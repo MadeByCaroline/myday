@@ -33,6 +33,10 @@ export interface CategorizedEmailSummary {
   summary: string;
   category: EmailCategory;
   suggestedActions: string[];
+  senderName: string;
+  senderEmail: string;
+  subject: string;
+  link: string;
 }
 
 export interface AiAnalysisResult {
@@ -147,9 +151,16 @@ export class AiService {
   async analyzeProductivityData(
     emails: EmailSummary[],
     events: CalendarEvent[],
+    aiSummaryInstructions?: string | null,
   ): Promise<AiAnalysisResult> {
+    const sanitizedInstructions = aiSummaryInstructions
+      ? aiSummaryInstructions.replace(/[<>{}[\]\\]/g, '').slice(0, 500).trim()
+      : null;
+    const customInstructionsLine = sanitizedInstructions
+      ? `\nInstructions personnalisées de l'utilisateur (concernant uniquement le format ou le style du résumé) : ${sanitizedInstructions}`
+      : '';
     const systemPrompt = `Tu es un assistant de productivité personnel. Analyse les emails et les événements de l'agenda de l'utilisateur.
-    Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
+    Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.${customInstructionsLine}
     Retourne UNIQUEMENT un objet JSON avec EXACTEMENT cette structure, rien d'autre. N'ajoute aucune explication, aucun commentaire et aucun texte hors du JSON :
     {
       "summary": "Un résumé clair de 2 ou 3 paragraphes de la journée de l'utilisateur, incluant les réunions et emails clés (rédigé en français)",
@@ -766,11 +777,16 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
         if (!summary) {
           return null;
         }
+        const { senderName, senderEmail } = this.parseSender(matchingEmail?.from || '');
         return {
           emailId: emailId || `email-${index + 1}`,
           summary,
           category,
           suggestedActions,
+          senderName,
+          senderEmail,
+          subject: matchingEmail?.subject || '',
+          link: this.buildEmailLink(matchingEmail),
         };
       })
       .filter((item): item is CategorizedEmailSummary => item !== null);
@@ -844,12 +860,43 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
   private buildFallbackEmailSummaries(
     emails: EmailSummary[],
   ): CategorizedEmailSummary[] {
-    return emails.map((email, index) => ({
-      emailId: email.id || `fallback-email-${index + 1}`,
-      summary: email.snippet || email.subject || 'Résumé indisponible.',
-      category: 'INFO',
-      suggestedActions: this.buildFallbackSuggestedActions(email),
-    }));
+    return emails.map((email, index) => {
+      const { senderName, senderEmail } = this.parseSender(email.from || '');
+      return {
+        emailId: email.id || `fallback-email-${index + 1}`,
+        summary: email.snippet || email.subject || 'Résumé indisponible.',
+        category: 'INFO',
+        suggestedActions: this.buildFallbackSuggestedActions(email),
+        senderName,
+        senderEmail,
+        subject: email.subject || '',
+        link: this.buildEmailLink(email),
+      };
+    });
+  }
+
+  private parseSender(from: string): { senderName: string; senderEmail: string } {
+    const match = from.match(/^(.*?)\s*<([^>]+)>/u);
+    if (match) {
+      return {
+        senderName: match[1].trim().replace(/^["']|["']$/g, ''),
+        senderEmail: match[2].trim(),
+      };
+    }
+    return { senderName: from.trim(), senderEmail: from.trim() };
+  }
+
+  private buildEmailLink(email?: EmailSummary): string {
+    if (!email) {
+      return '';
+    }
+    if (email.threadId) {
+      return `https://mail.google.com/mail/u/0/#inbox/${email.threadId}`;
+    }
+    if (email.id) {
+      return `https://mail.google.com/mail/u/0/#inbox/${email.id}`;
+    }
+    return '';
   }
 
   private buildFallbackSuggestedActions(email?: EmailSummary): string[] {

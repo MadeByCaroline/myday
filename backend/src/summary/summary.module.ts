@@ -4,11 +4,12 @@ import { CalendarModule } from '../calendar/calendar.module';
 import { MicrosoftService } from '../integrations/microsoft.service';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
+import { SettingsModule } from '../settings/settings.module';
 import { SummaryController } from './summary.controller';
 import { SummaryService } from './summary.service';
 
 @Module({
-  imports: [MailModule, CalendarModule, AiModule, UsersModule],
+  imports: [MailModule, CalendarModule, AiModule, UsersModule, SettingsModule],
   providers: [MicrosoftService, SummaryService],
   controllers: [SummaryController],
 })

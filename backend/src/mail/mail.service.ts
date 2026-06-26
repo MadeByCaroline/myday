@@ -4,6 +4,7 @@ import { google } from 'googleapis';
 
 export interface EmailSummary {
   id?: string;
+  threadId?: string;
   from: string;
   subject: string;
   snippet: string;
@@ -78,7 +79,7 @@ export class MailService {
             headers.find((header) => header.name === 'Date')?.value || '';
           const snippet = detail.data.snippet || '';
 
-          emails.push({ id: msg.id, from, subject, snippet, receivedAt: date });
+          emails.push({ id: msg.id, threadId: detail.data.threadId || undefined, from, subject, snippet, receivedAt: date });
         } catch (error) {
           const message =
             error instanceof Error
@@ -150,7 +151,7 @@ export class MailService {
             headers.find((header) => header.name === 'Date')?.value || '';
           const snippet = detail.data.snippet || '';
 
-          emails.push({ id: msg.id, from, subject, snippet, receivedAt: date });
+          emails.push({ id: msg.id, threadId: detail.data.threadId || undefined, from, subject, snippet, receivedAt: date });
         } catch (error) {
           const message =
             error instanceof Error ? error.message : 'Unknown Gmail message error';

@@ -31,6 +31,10 @@
           <i class="pi pi-chart-bar"></i>
           <span>Analyses</span>
         </RouterLink>
+        <RouterLink :to="{ name: 'settings' }" :class="navLinkClass">
+          <i class="pi pi-cog"></i>
+          <span>Settings</span>
+        </RouterLink>
       </nav>
 
       <div v-if="timerStore.activeEntry" class="mx-4 mb-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
