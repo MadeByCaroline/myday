@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from './auth'
+import { useWorkspaceStore } from './workspace.store'
 
 export interface SuggestedTask {
   id: string
@@ -10,13 +11,22 @@ export interface SuggestedTask {
   source: string
 }
 
+export interface TaskWorkspace {
+  id: string
+  name: string
+  color: string
+  icon: string
+}
+
 export interface SavedTask {
   id: string
   title: string
-  description?: string
+  description?: string | null
   status: string
   source: string
   createdAt: string
+  workspaceId?: string | null
+  workspace?: TaskWorkspace | null
 }
 
 export interface TimeBlock {
@@ -48,6 +58,11 @@ export const useTasksStore = defineStore('tasks', () => {
     return authStore.token ? { Authorization: 'Bearer ' + authStore.token } : {}
   }
 
+  function getTaskCreationWorkspaceId() {
+    const workspaceStore = useWorkspaceStore()
+    return workspaceStore.creationWorkspaceId || undefined
+  }
+
   async function acceptTask(task: SuggestedTask) {
     loading.value = true
 
@@ -58,6 +73,7 @@ export const useTasksStore = defineStore('tasks', () => {
           title: task.title,
           description: task.description,
           source: task.source,
+          workspaceId: getTaskCreationWorkspaceId(),
         },
         {
           headers: getAuthHeaders(),
@@ -77,7 +93,12 @@ export const useTasksStore = defineStore('tasks', () => {
     try {
       const { data } = await axios.post(
         `${import.meta.env.VITE_API_URL}/tasks`,
-        { title, description, source: 'MANUAL' },
+        {
+          title,
+          description,
+          source: 'MANUAL',
+          workspaceId: getTaskCreationWorkspaceId(),
+        },
         { headers: getAuthHeaders() },
       )
 
@@ -135,11 +156,11 @@ export const useTasksStore = defineStore('tasks', () => {
       const blocks = Array.isArray(data)
         ? data.filter(
             (block): block is TimeBlock =>
-              !!block &&
-              typeof block.taskId === 'string' &&
-              typeof block.title === 'string' &&
-              typeof block.suggestedStartTime === 'string' &&
-              typeof block.suggestedEndTime === 'string',
+              !!block
+              && typeof block.taskId === 'string'
+              && typeof block.title === 'string'
+              && typeof block.suggestedStartTime === 'string'
+              && typeof block.suggestedEndTime === 'string',
           )
         : []
 

@@ -64,7 +64,7 @@ export class ScheduleController {
         location: event.location,
       }));
 
-    const openTasks = await this.tasksService.getOpenTasks(userId);
+    const openTasks = await this.tasksService.getOpenTasksAcrossWorkspaces(userId);
 
     const timeBlocks = await this.aiService.generateTimeBlocking(
       openTasks.map((task) => ({
