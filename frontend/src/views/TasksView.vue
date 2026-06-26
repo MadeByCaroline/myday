@@ -56,13 +56,23 @@
                 <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing">
                   <div class="flex items-start justify-between gap-2">
                     <p class="text-sm font-medium text-gray-900 flex-1">{{ element.title }}</p>
-                    <button
-                      @click="handleDeleteTask(element.id)"
-                      class="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
-                      title="Supprimer"
-                    >
-                      <i class="pi pi-trash text-xs"></i>
-                    </button>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        @click="handleStartTimer(element.id)"
+                        :disabled="isStartDisabled(element.id)"
+                        :class="startButtonClass(element.id)"
+                        :title="timerStore.isTaskActive(element.id) ? 'Chrono en cours' : 'Démarrer le suivi du temps'"
+                      >
+                        <i class="pi pi-play text-xs"></i>
+                      </button>
+                      <button
+                        @click="handleDeleteTask(element.id)"
+                        class="text-gray-300 hover:text-red-500 transition-colors"
+                        title="Supprimer"
+                      >
+                        <i class="pi pi-trash text-xs"></i>
+                      </button>
+                    </div>
                   </div>
                   <p v-if="element.description" class="text-xs text-gray-500 mt-1">{{ element.description }}</p>
                   <span
@@ -95,13 +105,23 @@
                 <div class="bg-white rounded-xl p-3 shadow-sm border border-blue-100 cursor-grab active:cursor-grabbing">
                   <div class="flex items-start justify-between gap-2">
                     <p class="text-sm font-medium text-gray-900 flex-1">{{ element.title }}</p>
-                    <button
-                      @click="handleDeleteTask(element.id)"
-                      class="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
-                      title="Supprimer"
-                    >
-                      <i class="pi pi-trash text-xs"></i>
-                    </button>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        @click="handleStartTimer(element.id)"
+                        :disabled="isStartDisabled(element.id)"
+                        :class="startButtonClass(element.id)"
+                        :title="timerStore.isTaskActive(element.id) ? 'Chrono en cours' : 'Démarrer le suivi du temps'"
+                      >
+                        <i class="pi pi-play text-xs"></i>
+                      </button>
+                      <button
+                        @click="handleDeleteTask(element.id)"
+                        class="text-gray-300 hover:text-red-500 transition-colors"
+                        title="Supprimer"
+                      >
+                        <i class="pi pi-trash text-xs"></i>
+                      </button>
+                    </div>
                   </div>
                   <p v-if="element.description" class="text-xs text-gray-500 mt-1">{{ element.description }}</p>
                   <span
@@ -134,13 +154,23 @@
                 <div class="bg-white rounded-xl p-3 shadow-sm border border-green-100 cursor-grab active:cursor-grabbing">
                   <div class="flex items-start justify-between gap-2">
                     <p class="text-sm font-medium text-gray-500 line-through flex-1">{{ element.title }}</p>
-                    <button
-                      @click="handleDeleteTask(element.id)"
-                      class="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
-                      title="Supprimer"
-                    >
-                      <i class="pi pi-trash text-xs"></i>
-                    </button>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        @click="handleStartTimer(element.id)"
+                        :disabled="isStartDisabled(element.id)"
+                        :class="startButtonClass(element.id)"
+                        :title="timerStore.isTaskActive(element.id) ? 'Chrono en cours' : 'Démarrer le suivi du temps'"
+                      >
+                        <i class="pi pi-play text-xs"></i>
+                      </button>
+                      <button
+                        @click="handleDeleteTask(element.id)"
+                        class="text-gray-300 hover:text-red-500 transition-colors"
+                        title="Supprimer"
+                      >
+                        <i class="pi pi-trash text-xs"></i>
+                      </button>
+                    </div>
                   </div>
                   <p v-if="element.description" class="text-xs text-gray-400 mt-1">{{ element.description }}</p>
                   <span
@@ -159,14 +189,17 @@
 </template>
 
 <script setup lang="ts">
+import axios from 'axios'
 import { ref, computed, onMounted } from 'vue'
 import draggable from 'vuedraggable'
 import { useTasksStore } from '../stores/tasks'
+import { useTimerStore } from '../stores/timer.store'
 import type { SavedTask } from '../stores/tasks'
 
 type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE'
 
 const tasksStore = useTasksStore()
+const timerStore = useTimerStore()
 
 const newTaskTitle = ref('')
 const errorMessage = ref<string | null>(null)
@@ -182,6 +215,19 @@ function onColumnChange(
   if (event.added) {
     tasksStore.updateTaskStatus(event.added.element.id, columnStatus)
   }
+}
+
+function isStartDisabled(taskId: string) {
+  return !timerStore.canStartTask(taskId) || timerStore.loading
+}
+
+function startButtonClass(taskId: string) {
+  return [
+    'transition-colors',
+    timerStore.isTaskActive(taskId)
+      ? 'text-green-600'
+      : 'text-gray-300 hover:text-indigo-600 disabled:text-gray-200',
+  ]
 }
 
 async function handleAddTask() {
@@ -205,6 +251,21 @@ async function handleDeleteTask(id: string) {
     await tasksStore.deleteTask(id)
   } catch {
     errorMessage.value = 'Impossible de supprimer la tâche. Veuillez réessayer.'
+  }
+}
+
+async function handleStartTimer(taskId: string) {
+  errorMessage.value = null
+
+  try {
+    await timerStore.startTimer(taskId)
+  } catch (caughtError: unknown) {
+    if (axios.isAxiosError(caughtError)) {
+      errorMessage.value = caughtError.response?.data?.message || 'Impossible de démarrer le chrono.'
+      return
+    }
+
+    errorMessage.value = 'Impossible de démarrer le chrono.'
   }
 }
 

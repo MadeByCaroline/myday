@@ -29,6 +29,22 @@
         </RouterLink>
       </nav>
 
+      <div v-if="timerStore.activeEntry" class="mx-4 mb-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Running timer</p>
+        <p class="mt-2 text-sm font-medium text-gray-900">{{ timerStore.activeEntry.task.title }}</p>
+        <div class="mt-3 flex items-center justify-between gap-3">
+          <span class="font-mono text-lg font-semibold text-gray-900">{{ formattedElapsedTime }}</span>
+          <button
+            @click="handleStopTimer"
+            :disabled="timerStore.loading"
+            class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Stop
+          </button>
+        </div>
+        <p v-if="timerErrorMessage" class="mt-2 text-xs text-red-600">{{ timerErrorMessage }}</p>
+      </div>
+
       <div class="p-4 border-t border-gray-200">
         <div class="flex items-center gap-3">
           <img
@@ -58,17 +74,55 @@
 </template>
 
 <script setup lang="ts">
+import axios from 'axios'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useTimerStore } from '../stores/timer.store'
 
 const navLinkClass =
   'flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 mb-1 aria-[current=page]:bg-indigo-50 aria-[current=page]:text-indigo-700 aria-[current=page]:font-medium'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const timerStore = useTimerStore()
+const timerErrorMessage = ref<string | null>(null)
+
+const formattedElapsedTime = computed(() => {
+  const hours = String(Math.floor(timerStore.elapsedSeconds / 3600)).padStart(2, '0')
+  const minutes = String(Math.floor((timerStore.elapsedSeconds % 3600) / 60)).padStart(2, '0')
+  const seconds = String(timerStore.elapsedSeconds % 60).padStart(2, '0')
+
+  return `${hours}:${minutes}:${seconds}`
+})
+
+async function handleStopTimer() {
+  timerErrorMessage.value = null
+
+  try {
+    await timerStore.stopTimer()
+  } catch (caughtError: unknown) {
+    if (axios.isAxiosError(caughtError)) {
+      timerErrorMessage.value = caughtError.response?.data?.message || 'Unable to stop the running timer.'
+      return
+    }
+
+    timerErrorMessage.value = 'Unable to stop the running timer.'
+  }
+}
 
 function handleLogout() {
+  timerStore.reset()
   authStore.logout()
   router.push('/login')
 }
+
+onMounted(async () => {
+  if (!authStore.token) {
+    timerStore.reset()
+    return
+  }
+
+  await timerStore.fetchCurrentTimer()
+})
 </script>
