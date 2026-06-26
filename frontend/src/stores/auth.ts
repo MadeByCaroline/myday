@@ -6,6 +6,7 @@ interface User {
   email: string
   name: string
   role: string
+  hasActiveSubscription?: boolean
   picture?: string
   connectedGoogleAccounts?: string[]
   connectedOutlookAccounts?: string[]
