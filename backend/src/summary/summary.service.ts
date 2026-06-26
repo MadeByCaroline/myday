@@ -74,7 +74,8 @@ export class SummaryService {
 
     if (oauthTokens.length === 0) {
       return {
-        error: 'No OAuth token found. Please connect a Google or Outlook account.',
+        error:
+          'No OAuth token found. Please connect a Google or Outlook account.',
       };
     }
 
@@ -158,11 +159,15 @@ export class SummaryService {
       return {
         provider,
         emails,
-        events: events.map((event) => this.mapUnifiedEventToCalendarEvent(event)),
+        events: events.map((event) =>
+          this.mapUnifiedEventToCalendarEvent(event),
+        ),
       };
     }
 
-    this.logger.warn(`Skipping unsupported OAuth provider: ${oauthToken.provider}`);
+    this.logger.warn(
+      `Skipping unsupported OAuth provider: ${oauthToken.provider}`,
+    );
     return { provider, emails: [], events: [] };
   }
 

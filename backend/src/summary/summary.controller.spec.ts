@@ -9,7 +9,9 @@ describe('SummaryController', () => {
 
     await controller.generateSummary({ user: { id: 'user-1' } });
 
-    expect(summaryService.generateSummaryForUser).toHaveBeenCalledWith('user-1');
+    expect(summaryService.generateSummaryForUser).toHaveBeenCalledWith(
+      'user-1',
+    );
   });
 
   it('returns the shared service result when no OAuth accounts are connected', async () => {

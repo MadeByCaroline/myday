@@ -21,6 +21,26 @@ interface MicrosoftTokenParams {
   scope?: string;
 }
 
+function isMicrosoftProfile(value: unknown): value is MicrosoftProfile {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    ('id' in value ||
+      '_json' in value ||
+      'emails' in value ||
+      'displayName' in value)
+  );
+}
+
+function isMicrosoftTokenParams(value: unknown): value is MicrosoftTokenParams {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    'expires_in' in value &&
+    !('query' in value)
+  );
+}
+
 interface OAuthCallbackUser {
   email: string;
   name: string;
@@ -57,24 +77,21 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
   // NestJS Passport strategies return the user payload from validate().
   // eslint-disable-next-line @typescript-eslint/require-await
   async validate(
-    arg1: any,
-    arg2: any,
-    arg3: any,
-    arg4: any,
-    arg5?: any,
+    arg1: unknown,
+    arg2: unknown,
+    arg3: unknown,
+    arg4: unknown,
+    arg5?: unknown,
   ): Promise<OAuthCallbackUser> {
     // Passport strategies can shift arguments. The profile is usually an object with an 'id' or '_json'.
     // We find the profile object dynamically among the arguments.
     const args = [arg1, arg2, arg3, arg4, arg5];
-    const profile = args.find(
-      (arg) =>
-        arg &&
-        typeof arg === 'object' &&
-        (arg.id || arg._json || arg.emails || arg.displayName),
-    ) as MicrosoftProfile | undefined;
+    const profile = args.find(isMicrosoftProfile);
 
     // The tokens are usually strings.
-    const strings = args.filter((arg) => typeof arg === 'string');
+    const strings = args.filter(
+      (arg): arg is string => typeof arg === 'string',
+    );
     const accessToken = strings[0] || '';
     const refreshToken = strings[1] || '';
 
@@ -107,10 +124,7 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       typeof req?.query?.state === 'string' ? req.query.state : undefined;
 
     // Extract token params for expiresAt and scope
-    const params = args.find(
-      (arg) =>
-        arg && typeof arg === 'object' && 'expires_in' in arg && !('query' in arg),
-    ) as MicrosoftTokenParams | undefined;
+    const params = args.find(isMicrosoftTokenParams);
     const expiresInSeconds = Number(params?.expires_in);
 
     return {
