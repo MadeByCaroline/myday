@@ -100,7 +100,7 @@ const router = useRouter()
 const timerStore = useTimerStore()
 const uiStore = useUiStore()
 const timerErrorMessage = ref<string | null>(null)
-const MORNING_BRIEFING_DATE_KEY = 'lastBriefingDate'
+const LAST_BRIEFING_DATE_KEY = 'lastBriefingDate'
 const isMorningBriefingVisible = ref(false)
 const morningBriefing = ref({
   greeting: 'Good morning! Ready to start strong?',
@@ -144,7 +144,7 @@ function getDateKeyForToday() {
 }
 
 function dismissMorningBriefing() {
-  localStorage.setItem(MORNING_BRIEFING_DATE_KEY, getDateKeyForToday())
+  localStorage.setItem(LAST_BRIEFING_DATE_KEY, getDateKeyForToday())
   isMorningBriefingVisible.value = false
 }
 
@@ -154,7 +154,7 @@ async function maybeShowMorningBriefing() {
   }
 
   const today = getDateKeyForToday()
-  if (localStorage.getItem(MORNING_BRIEFING_DATE_KEY) === today) {
+  if (localStorage.getItem(LAST_BRIEFING_DATE_KEY) === today) {
     return
   }
 
@@ -171,7 +171,9 @@ async function maybeShowMorningBriefing() {
     }
 
     isMorningBriefingVisible.value = true
-  } catch {}
+  } catch (error) {
+    console.warn('Failed to load morning briefing.', error)
+  }
 }
 
 onMounted(async () => {

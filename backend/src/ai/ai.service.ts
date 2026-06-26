@@ -17,6 +17,14 @@ const EMAIL_CATEGORIES = [
   'ACTION_REQUIRED',
   'INFO',
 ] as const;
+const HIGH_PRIORITY_KEYWORDS = [
+  'high',
+  'priority',
+  'urgent',
+  'asap',
+  'important',
+  'p1',
+];
 
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
 
@@ -260,6 +268,7 @@ ${events.length > 0 ? JSON.stringify(events, null, 2) : 'Aucun événement perti
 
   async generateMorningBriefing(userId: string): Promise<MorningBriefingResult> {
     const todayKey = new Date().toISOString().slice(0, 10);
+    this.pruneMorningBriefingCache(todayKey);
     const cached = this.morningBriefingCache.get(userId);
     if (cached?.dateKey === todayKey) {
       return cached.briefing;
@@ -292,7 +301,9 @@ Generate the JSON response now.`;
         `${systemPrompt}\n\n${userPrompt}`,
         { isJson: true },
       );
-      briefing = this.normalizeMorningBriefing(JSON.parse(response) as unknown);
+      briefing = this.normalizeMorningBriefing(
+        this.parseMorningBriefingResponse(response),
+      );
     } catch (error) {
       const message =
         error instanceof Error
@@ -896,7 +907,13 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
     const threshold = Date.now() - hours * 60 * 60 * 1000;
     return emails.filter((email) => {
       const receivedAt = Date.parse(email.receivedAt);
-      return Number.isFinite(receivedAt) && receivedAt >= threshold;
+      if (!Number.isFinite(receivedAt)) {
+        this.logger.warn(
+          `Skipping email with invalid receivedAt value: ${email.receivedAt || '[empty]'}`,
+        );
+        return false;
+      }
+      return receivedAt >= threshold;
     });
   }
 
@@ -907,8 +924,6 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
       start: event.start,
       end: event.end,
       location: event.location,
-      description: undefined,
-      attendees: undefined,
     };
   }
 
@@ -917,7 +932,7 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
   ): Array<{ id: string; title: string; description: string | null }> {
     const highPriorityTasks = tasks.filter((task) => {
       const text = `${task.title} ${task.description || ''}`.toLowerCase();
-      return /(high|priority|urgent|asap|important|p1)/.test(text);
+      return HIGH_PRIORITY_KEYWORDS.some((keyword) => text.includes(keyword));
     });
 
     if (highPriorityTasks.length > 0) {
@@ -933,5 +948,21 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
     }
 
     return dependency;
+  }
+
+  private pruneMorningBriefingCache(todayKey: string): void {
+    for (const [cachedUserId, cacheValue] of this.morningBriefingCache.entries()) {
+      if (cacheValue.dateKey !== todayKey) {
+        this.morningBriefingCache.delete(cachedUserId);
+      }
+    }
+  }
+
+  private parseMorningBriefingResponse(response: string): unknown {
+    try {
+      return JSON.parse(response) as unknown;
+    } catch {
+      throw new Error('AI returned invalid morning briefing JSON.');
+    }
   }
 }
