@@ -54,7 +54,9 @@ describe('MicrosoftService', () => {
             start: { dateTime: '2026-06-26T10:00:00Z' },
             end: { dateTime: '2026-06-26T10:30:00Z' },
             location: { displayName: 'Teams Room' },
-            onlineMeeting: { joinUrl: 'https://teams.microsoft.com/l/meetup-join/test' },
+            onlineMeeting: {
+              joinUrl: 'https://teams.microsoft.com/l/meetup-join/test',
+            },
           },
         ],
       },
