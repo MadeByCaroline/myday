@@ -24,6 +24,10 @@
           <i class="pi pi-calendar"></i>
           <span>Calendar</span>
         </RouterLink>
+        <RouterLink to="/integrations" :class="navLinkClass">
+          <i class="pi pi-plug"></i>
+          <span>Integrations</span>
+        </RouterLink>
       </nav>
 
       <div class="p-4 border-t border-gray-200">

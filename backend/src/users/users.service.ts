@@ -135,4 +135,13 @@ export class UsersService {
       orderBy: { updatedAt: 'desc' },
     });
   }
+
+  async deleteOAuthTokens(userId: string, providers: string[]) {
+    return this.prisma.oAuthToken.deleteMany({
+      where: {
+        userId,
+        provider: { in: providers },
+      },
+    });
+  }
 }

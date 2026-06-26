@@ -24,6 +24,10 @@
           <i class="pi pi-calendar"></i>
           <span>Calendar</span>
         </RouterLink>
+        <RouterLink to="/integrations" :class="navLinkClass">
+          <i class="pi pi-plug"></i>
+          <span>Integrations</span>
+        </RouterLink>
       </nav>
 
       <div class="p-4 border-t border-gray-200">
@@ -67,41 +71,6 @@
         </button>
       </header>
 
-      <section class="bg-white border-b border-gray-200 px-8 py-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 class="text-sm font-semibold text-gray-900">Connected Accounts</h3>
-            <p class="text-xs text-gray-500 mt-1">
-              Google: {{ connectedGoogleAccounts.length > 0 ? connectedGoogleAccounts.join(', ') : 'none' }}
-            </p>
-            <p class="text-xs text-gray-500 mt-1">
-              Outlook: {{ connectedOutlookAccounts.length > 0 ? connectedOutlookAccounts.join(', ') : 'none' }}
-            </p>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button
-              @click="linkAnotherGoogleAccount"
-              :disabled="!authStore.token"
-              class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              Link another Google Account
-            </button>
-            <button
-              @click="connectOutlookAccount"
-              :disabled="!authStore.token"
-              class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              Connect Outlook
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section v-if="linkErrorMessage" class="bg-red-50 border-b border-red-200 px-8 py-3 text-sm text-red-700">
-        <i class="pi pi-exclamation-circle mr-2"></i>
-        {{ linkErrorMessage }}
-      </section>
-
       <!-- Content area -->
       <div class="flex-1 overflow-auto p-8">
         <div v-if="!summaryStore.generated && !summaryStore.loading" class="text-center py-16">
@@ -141,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
@@ -158,7 +127,6 @@ const navLinkClass =
   'flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 mb-1 aria-[current=page]:bg-indigo-50 aria-[current=page]:text-indigo-700 aria-[current=page]:font-medium'
 const summaryStore = useSummaryStore()
 const tasksStore = useTasksStore()
-const linkErrorMessage = ref<string | null>(null)
 
 const now = new Date()
 const hour = now.getHours()
@@ -177,8 +145,6 @@ const firstName = computed(() => {
 const currentDate = computed(() =>
   now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
 )
-const connectedGoogleAccounts = computed(() => authStore.user?.connectedGoogleAccounts || [])
-const connectedOutlookAccounts = computed(() => authStore.user?.connectedOutlookAccounts || [])
 
 async function generateSummary() {
   await summaryStore.generateSummary()
@@ -190,52 +156,14 @@ function handleLogout() {
   router.push('/login')
 }
 
-async function linkAnotherGoogleAccount() {
-  if (!authStore.token) return
-
-  try {
-    const { data } = await axios.get(
-      `${import.meta.env.VITE_API_URL}/auth/google/link`,
-      { headers: { Authorization: 'Bearer ' + authStore.token } },
-    )
-    window.location.href = data.url
-  } catch {
-    linkErrorMessage.value = 'Could not start Google account linking. Please refresh the page and try again.'
-  }
-}
-
-async function connectOutlookAccount() {
-  if (!authStore.token) return
-
-  try {
-    const { data } = await axios.get(
-      `${import.meta.env.VITE_API_URL}/auth/microsoft/link`,
-      { headers: { Authorization: 'Bearer ' + authStore.token } },
-    )
-    window.location.href = data.url
-  } catch {
-    linkErrorMessage.value = 'Could not start Outlook account linking. Please refresh the page and try again.'
-  }
-}
-
 onMounted(async () => {
-  const hasLinkError = new URLSearchParams(window.location.search).get('linkError') === '1'
-  if (hasLinkError) {
-    linkErrorMessage.value = 'Account linking failed. Please verify account permissions and try again.'
-  }
-
-  const refreshProfile = new URLSearchParams(window.location.search).get('refreshProfile') === '1'
-
-  if (authStore.isAuthenticated && (!authStore.user || refreshProfile)) {
+  if (authStore.isAuthenticated && !authStore.user) {
     try {
       const { data } = await axios.get(
         `${import.meta.env.VITE_API_URL}/auth/profile`,
         { headers: { Authorization: 'Bearer ' + authStore.token } },
       )
       authStore.setUser(data)
-      if (refreshProfile) {
-        window.history.replaceState({}, '', '/dashboard')
-      }
     } catch {
       authStore.logout()
       router.push('/login')

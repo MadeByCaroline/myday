@@ -37,6 +37,12 @@ const router = createRouter({
       component: () => import('../views/TasksView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/integrations',
+      name: 'integrations',
+      component: () => import('../views/IntegrationsView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
