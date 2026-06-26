@@ -3,7 +3,7 @@
       <!-- Header -->
       <header class="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
         <div>
-          <h2 class="text-2xl font-bold text-gray-900">Good {{ greeting }}, {{ firstName }}!</h2>
+          <h2 class="text-2xl font-bold text-gray-900">{{ greeting }}, {{ firstName }}&nbsp;!</h2>
           <p class="text-sm text-gray-500">{{ currentDate }}</p>
         </div>
         <div class="flex items-center gap-3">
@@ -23,7 +23,7 @@
           >
             <i class="pi pi-spin pi-spinner" v-if="dashboardStore.isLoading"></i>
             <i class="pi pi-sparkles" v-else></i>
-            {{ dashboardStore.isLoading ? 'Generating...' : 'Generate My Summary' }}
+            {{ dashboardStore.isLoading ? 'Génération...' : 'Générer mon résumé' }}
           </button>
         </div>
       </header>
@@ -34,9 +34,9 @@
           <div class="w-24 h-24 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
             <i class="pi pi-sparkles text-indigo-400 text-4xl"></i>
           </div>
-          <h3 class="text-xl font-semibold text-gray-700 mb-2">Ready to analyze your day?</h3>
+          <h3 class="text-xl font-semibold text-gray-700 mb-2">Prêt à analyser votre journée ?</h3>
           <p class="text-gray-500 max-w-md mx-auto">
-            Click "Generate My Summary" to get an AI-powered overview of your emails, calendar events, and suggested tasks.
+            Cliquez sur « Générer mon résumé » pour obtenir une vue d’ensemble IA de vos e-mails, de votre agenda et des tâches suggérées.
           </p>
         </div>
 
@@ -67,7 +67,7 @@
               <div class="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
                 <i class="pi pi-envelope text-indigo-600"></i>
               </div>
-              <h3 class="text-lg font-semibold text-gray-900">Email Highlights</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Temps forts des e-mails</h3>
             </div>
             <ul v-if="dashboardStore.emails.length > 0" class="space-y-3">
               <li
@@ -92,7 +92,7 @@
                       target="_blank"
                       rel="noopener noreferrer"
                       class="text-gray-400 hover:text-indigo-600 transition-colors shrink-0"
-                      title="Open original email"
+                      title="Ouvrir l’e-mail d’origine"
                     >
                       <i class="pi pi-external-link text-sm"></i>
                     </a>
@@ -102,18 +102,18 @@
                       class="text-xs font-medium px-2.5 py-1 rounded-full border"
                       :class="categoryBadgeClass(email.category)"
                     >
-                      {{ email.category }}
+                      {{ categoryLabel(email.category) }}
                     </span>
                     <button
                       type="button"
                       class="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-300 px-2 py-1 rounded-full transition-colors"
-                      :title="`Exclude ${email.senderEmail} from AI summaries`"
+                      :title="`Exclure ${email.senderEmail} des résumés IA`"
                       :disabled="banningEmailId === email.emailId"
                       @click="banSender(email)"
                     >
                       <i v-if="banningEmailId === email.emailId" class="pi pi-spin pi-spinner text-xs"></i>
                       <i v-else class="pi pi-ban text-xs"></i>
-                      Ban
+                      Exclure
                     </button>
                   </div>
                 </div>
@@ -145,7 +145,7 @@
                 </div>
               </li>
             </ul>
-            <p v-else class="text-sm text-gray-500">No email summaries available.</p>
+            <p v-else class="text-sm text-gray-500">Aucun résumé d’e-mail disponible.</p>
           </div>
         </div>
       </div>
@@ -178,26 +178,27 @@ const isOptimizing = ref(false)
 const banningEmailId = ref<string | null>(null)
 
 const greeting = computed(() => {
-  if (hour < 12) return 'morning'
-  if (hour < 18) return 'afternoon'
-  return 'evening'
+  if (hour < 12) return 'Bonjour'
+  if (hour < 18) return 'Bon après-midi'
+  return 'Bonsoir'
 })
 
 const firstName = computed(() => {
-  const name = authStore.user?.name || authStore.user?.email || 'there'
+  const name = authStore.user?.name || authStore.user?.email || 'vous'
   return name.split(' ')[0]
 })
 
 const currentDate = computed(() =>
-  now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+  now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
 )
 
 function senderInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter((p) => p.length > 0)
+  const trimmedName = name.trim()
+  const parts = trimmedName.split(/\s+/).filter((p) => p.length > 0)
   if (parts.length >= 2 && parts[0] && parts[1]) {
     return (parts[0][0] + parts[1][0]).toUpperCase()
   }
-  return (name.trim()[0] || '?').toUpperCase()
+  return (trimmedName[0] ?? '?').toUpperCase()
 }
 
 function categoryBadgeClass(category: string) {
@@ -213,6 +214,23 @@ function categoryBadgeClass(category: string) {
     case 'INFO':
     default:
       return 'bg-blue-100 text-blue-700 border-blue-200'
+  }
+}
+
+function categoryLabel(category: string): string {
+  switch (category) {
+    case 'URGENT':
+      return 'Urgent'
+    case 'ACTION_REQUIRED':
+      return 'Action requise'
+    case 'INVOICE':
+      return 'Facture'
+    case 'NEWSLETTER':
+      return 'Newsletter'
+    case 'INFO':
+      return 'Information'
+    default:
+      return category
   }
 }
 
@@ -337,4 +355,3 @@ onMounted(async () => {
   await dashboardStore.fetchDashboardData()
 })
 </script>
-

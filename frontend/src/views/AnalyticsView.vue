@@ -3,8 +3,8 @@
     <!-- Header -->
     <header class="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
       <div>
-        <h2 class="text-2xl font-bold text-gray-900">Analytics</h2>
-        <p class="text-sm text-gray-500">Time audit for the last 7 days</p>
+        <h2 class="text-2xl font-bold text-gray-900">Analyses</h2>
+        <p class="text-sm text-gray-500">Audit du temps sur les 7 derniers jours</p>
       </div>
       <button
         @click="loadStats"
@@ -13,7 +13,7 @@
       >
         <i class="pi pi-spin pi-spinner" v-if="isLoading"></i>
         <i class="pi pi-chart-bar" v-else></i>
-        {{ isLoading ? 'Analyzing...' : 'Refresh Analysis' }}
+        {{ isLoading ? 'Analyse en cours...' : "Actualiser l'analyse" }}
       </button>
     </header>
 
@@ -24,23 +24,23 @@
         <div class="w-24 h-24 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
           <i class="pi pi-chart-bar text-indigo-400 text-4xl"></i>
         </div>
-        <h3 class="text-xl font-semibold text-gray-700 mb-2">Ready to audit your time?</h3>
+        <h3 class="text-xl font-semibold text-gray-700 mb-2">Prêt à analyser votre temps ?</h3>
         <p class="text-gray-500 max-w-md mx-auto mb-6">
-          Get an AI-powered breakdown of how you've spent your time over the last 7 days and actionable recommendations.
+          Obtenez un bilan généré par l’IA de la façon dont vous avez utilisé votre temps ces 7 derniers jours, avec des recommandations concrètes.
         </p>
         <button
           @click="loadStats"
           class="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-indigo-700 transition-colors"
         >
           <i class="pi pi-sparkles"></i>
-          Generate Time Audit
+          Générer l’audit du temps
         </button>
       </div>
 
       <!-- Loading state -->
       <div v-if="isLoading" class="flex flex-col items-center justify-center py-16 gap-4">
         <i class="pi pi-spin pi-spinner text-indigo-400 text-4xl"></i>
-        <p class="text-gray-500">Analyzing your time data…</p>
+        <p class="text-gray-500">Analyse de vos données de temps…</p>
       </div>
 
       <!-- Error state -->
@@ -55,7 +55,7 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-3">
           <i class="pi pi-calendar text-indigo-500"></i>
           <span class="text-sm text-gray-600">
-            Period: <strong>{{ periodLabel }}</strong> · Total tracked:
+            Période : <strong>{{ periodLabel }}</strong> · Temps suivi :
             <strong>{{ formatDuration(totalDuration) }}</strong>
           </span>
         </div>
@@ -63,7 +63,7 @@
         <!-- No data state -->
         <div v-if="taskStats.length === 0" class="bg-white rounded-2xl border border-gray-200 p-10 text-center">
           <i class="pi pi-clock text-gray-300 text-5xl mb-4 block"></i>
-          <p class="text-gray-500">No time entries found for the last 7 days. Start tracking tasks to see your analytics.</p>
+          <p class="text-gray-500">Aucune session de temps trouvée sur les 7 derniers jours. Commencez à suivre vos tâches pour afficher vos analyses.</p>
         </div>
 
         <div v-else class="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -71,7 +71,7 @@
           <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <i class="pi pi-chart-pie text-indigo-500"></i>
-              Time Distribution
+              Répartition du temps
             </h3>
             <div class="flex justify-center">
               <div class="w-64 h-64">
@@ -84,7 +84,7 @@
           <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <i class="pi pi-chart-bar text-indigo-500"></i>
-              Time per Task (hours)
+              Temps par tâche (heures)
             </h3>
             <Bar :data="barData" :options="barOptions" />
           </div>
@@ -94,16 +94,16 @@
         <div v-if="taskStats.length > 0" class="bg-white rounded-2xl border border-gray-200 p-6">
           <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <i class="pi pi-list text-indigo-500"></i>
-            Task Breakdown
+            Détail des tâches
           </h3>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-100">
-                  <th class="text-left py-2 pr-4 text-gray-500 font-medium">Task</th>
-                  <th class="text-left py-2 pr-4 text-gray-500 font-medium">Status</th>
-                  <th class="text-right py-2 pr-4 text-gray-500 font-medium">Duration</th>
-                  <th class="text-right py-2 text-gray-500 font-medium">Share</th>
+                  <th class="text-left py-2 pr-4 text-gray-500 font-medium">Tâche</th>
+                  <th class="text-left py-2 pr-4 text-gray-500 font-medium">Statut</th>
+                  <th class="text-right py-2 pr-4 text-gray-500 font-medium">Durée</th>
+                  <th class="text-right py-2 text-gray-500 font-medium">Part</th>
                 </tr>
               </thead>
               <tbody>
@@ -117,7 +117,7 @@
                     <span
                       class="text-xs font-medium px-2 py-0.5 rounded-full"
                       :class="statusBadgeClass(stat.taskStatus)"
-                    >{{ stat.taskStatus }}</span>
+                    >{{ statusLabel(stat.taskStatus) }}</span>
                   </td>
                   <td class="py-3 pr-4 text-right text-gray-700 tabular-nums">{{ formatDuration(stat.totalDuration) }}</td>
                   <td class="py-3 text-right text-gray-700 tabular-nums">
@@ -135,7 +135,7 @@
             <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
               <i class="pi pi-sparkles text-white text-sm"></i>
             </div>
-            AI Coach
+            Coach IA
           </h3>
 
           <div class="bg-white rounded-xl border border-indigo-100 p-4 mb-4">
@@ -144,7 +144,7 @@
 
           <div v-if="audit.recommendations.length > 0">
             <h4 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
-              Recommendations for next week
+              Recommandations pour la semaine prochaine
             </h4>
             <ul class="space-y-2">
               <li
@@ -213,8 +213,8 @@ const CHART_COLORS = [
 
 const periodLabel = computed(() => {
   if (!periodStart.value || !periodEnd.value) return ''
-  const start = new Date(periodStart.value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  const end = new Date(periodEnd.value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const start = new Date(periodStart.value).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })
+  const end = new Date(periodEnd.value).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })
   return `${start} – ${end}`
 })
 
@@ -237,7 +237,7 @@ const doughnutOptions = {
     tooltip: {
       callbacks: {
         label: (ctx: TooltipItem<'doughnut'>) =>
-          ` ${ctx.label}: ${(ctx.raw as number).toFixed(1)}h`,
+          ` ${ctx.label} : ${(ctx.raw as number).toFixed(1)} h`,
       },
     },
   },
@@ -247,7 +247,7 @@ const barData = computed(() => ({
   labels: taskStats.value.map((s) => truncateLabel(s.taskTitle)),
   datasets: [
     {
-      label: 'Hours',
+      label: 'Heures',
       data: taskStats.value.map((s) => parseFloat((s.totalDuration / 3600).toFixed(2))),
       backgroundColor: CHART_COLORS.slice(0, taskStats.value.length),
       borderRadius: 6,
@@ -261,7 +261,7 @@ const barOptions = {
     legend: { display: false },
     tooltip: {
       callbacks: {
-        label: (ctx: TooltipItem<'bar'>) => ` ${(ctx.raw as number).toFixed(1)}h`,
+        label: (ctx: TooltipItem<'bar'>) => ` ${(ctx.raw as number).toFixed(1)} h`,
       },
     },
   },
@@ -284,9 +284,9 @@ function truncateLabel(label: string, max = 20): string {
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0 && m > 0) return `${h}h ${m}m`
-  if (h > 0) return `${h}h`
-  if (m > 0) return `${m}m`
+  if (h > 0 && m > 0) return `${h} h ${m} min`
+  if (h > 0) return `${h} h`
+  if (m > 0) return `${m} min`
   return `${seconds}s`
 }
 
@@ -298,6 +298,21 @@ function statusBadgeClass(status: string): string {
       return 'bg-blue-100 text-blue-700'
     default:
       return 'bg-gray-100 text-gray-600'
+  }
+}
+
+function statusLabel(status: string): string {
+  switch (status) {
+    case 'DONE':
+      return 'Terminé'
+    case 'IN_PROGRESS':
+      return 'En cours'
+    case 'SCHEDULED':
+      return 'Planifié'
+    case 'TODO':
+      return 'À faire'
+    default:
+      return status
   }
 }
 
@@ -316,9 +331,9 @@ async function loadStats() {
     generated.value = true
   } catch (caughtError: unknown) {
     if (axios.isAxiosError(caughtError)) {
-      error.value = caughtError.response?.data?.message || 'Failed to load analytics'
+      error.value = caughtError.response?.data?.message || 'Impossible de charger les analyses.'
     } else {
-      error.value = 'Failed to load analytics'
+      error.value = 'Impossible de charger les analyses.'
     }
   } finally {
     isLoading.value = false

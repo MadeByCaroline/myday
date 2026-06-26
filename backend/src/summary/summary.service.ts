@@ -155,11 +155,33 @@ export class SummaryService {
     if (excludedSenders.length === 0) {
       return emails;
     }
-    const lowerExcluded = excludedSenders.map((s) => s.toLowerCase());
+    const normalizedExcluded = excludedSenders
+      .map((sender) => sender.trim().toLowerCase())
+      .filter((sender) => sender.length > 0);
     return emails.filter((email) => {
-      const from = email.from.toLowerCase();
-      return !lowerExcluded.some((excluded) => from.includes(excluded));
+      const senderEmail = this.extractSenderEmail(email.from);
+      return !normalizedExcluded.some((excluded) =>
+        this.matchesExcludedSender(senderEmail, excluded),
+      );
     });
+  }
+
+  private extractSenderEmail(from: string): string {
+    const trimmedFrom = from.trim().toLowerCase();
+    const match = trimmedFrom.match(/<([^>]+)>/u);
+    return match?.[1]?.trim() || trimmedFrom;
+  }
+
+  private matchesExcludedSender(
+    senderEmail: string,
+    excludedSender: string,
+  ): boolean {
+    if (excludedSender.startsWith('@')) {
+      const senderDomain = senderEmail.split('@')[1] || '';
+      return senderDomain === excludedSender.slice(1);
+    }
+
+    return senderEmail === excludedSender;
   }
 
   private async fetchAccountData(oauthToken: OAuthToken) {

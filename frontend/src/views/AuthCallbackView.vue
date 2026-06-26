@@ -3,12 +3,12 @@
     <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
       <div v-if="error" class="text-red-500">
         <i class="pi pi-times-circle text-4xl mb-4 block"></i>
-        <p>Authentication failed: {{ error }}</p>
-        <RouterLink to="/login" class="mt-4 text-indigo-600 hover:underline block">Back to login</RouterLink>
+        <p>Échec de l’authentification : {{ error }}</p>
+        <RouterLink to="/login" class="mt-4 text-indigo-600 hover:underline block">Retour à la connexion</RouterLink>
       </div>
       <div v-else>
         <i class="pi pi-spin pi-spinner text-4xl text-indigo-600 mb-4 block"></i>
-        <p class="text-gray-600">Signing you in...</p>
+        <p class="text-gray-600">Connexion en cours...</p>
       </div>
     </div>
   </div>
@@ -31,13 +31,13 @@ onMounted(async () => {
 
   if (oauthError) {
     error.value = oauthError === 'oauth_login_failed'
-      ? 'Google authentication failed. Please retry sign-in and confirm Google permissions.'
-      : 'Google authentication failed'
+      ? "L’authentification Google a échoué. Veuillez réessayer et confirmer les autorisations Google."
+      : "L’authentification Google a échoué."
     return
   }
 
   if (!token) {
-    error.value = 'No token received'
+    error.value = 'Aucun jeton reçu.'
     return
   }
 
@@ -51,7 +51,7 @@ onMounted(async () => {
     authStore.setUser(data)
     router.push({ name: 'dashboard' })
   } catch {
-    error.value = 'Failed to fetch profile'
+    error.value = 'Impossible de récupérer le profil.'
     authStore.logout()
   }
 })

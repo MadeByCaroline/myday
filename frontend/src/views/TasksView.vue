@@ -2,8 +2,8 @@
   <main class="flex-1 flex flex-col overflow-hidden">
       <!-- Header -->
       <header class="bg-white border-b border-gray-200 px-8 py-4">
-        <h2 class="text-2xl font-bold text-gray-900">Tasks</h2>
-        <p class="text-sm text-gray-500 mt-1">Manage your tasks</p>
+        <h2 class="text-2xl font-bold text-gray-900">Tâches</h2>
+        <p class="text-sm text-gray-500 mt-1">Gérez vos tâches</p>
       </header>
 
       <div class="flex-1 overflow-x-auto p-6">
@@ -69,7 +69,7 @@
                         @click="handleStartDeepWork(element)"
                         :disabled="isDeepWorkDisabled(element.id)"
                         :class="deepWorkButtonClass(element.id)"
-                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session Deep Work active' : 'Lancer le mode Deep Work'"
+                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session de concentration active' : 'Lancer le mode concentration'"
                       >
                         <i class="pi pi-bolt text-xs"></i>
                       </button>
@@ -126,7 +126,7 @@
                         @click="handleStartDeepWork(element)"
                         :disabled="isDeepWorkDisabled(element.id)"
                         :class="deepWorkButtonClass(element.id)"
-                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session Deep Work active' : 'Lancer le mode Deep Work'"
+                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session de concentration active' : 'Lancer le mode concentration'"
                       >
                         <i class="pi pi-bolt text-xs"></i>
                       </button>
@@ -183,7 +183,7 @@
                         @click="handleStartDeepWork(element)"
                         :disabled="isDeepWorkDisabled(element.id)"
                         :class="deepWorkButtonClass(element.id)"
-                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session Deep Work active' : 'Lancer le mode Deep Work'"
+                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session de concentration active' : 'Lancer le mode concentration'"
                       >
                         <i class="pi pi-bolt text-xs"></i>
                       </button>
@@ -200,7 +200,7 @@
                   <span
                     class="mt-2 inline-flex text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-600"
                   >
-                    IA Planifié
+                    IA planifiée
                   </span>
                 </div>
               </template>
@@ -239,7 +239,7 @@
                         @click="handleStartDeepWork(element)"
                         :disabled="isDeepWorkDisabled(element.id)"
                         :class="deepWorkButtonClass(element.id)"
-                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session Deep Work active' : 'Lancer le mode Deep Work'"
+                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session de concentration active' : 'Lancer le mode concentration'"
                       >
                         <i class="pi pi-bolt text-xs"></i>
                       </button>
@@ -380,11 +380,11 @@ async function handleStartDeepWork(task: SavedTask) {
     })
   } catch (caughtError: unknown) {
     if (axios.isAxiosError(caughtError)) {
-      errorMessage.value = caughtError.response?.data?.message || 'Impossible de lancer le mode Deep Work.'
+      errorMessage.value = caughtError.response?.data?.message || 'Impossible de lancer le mode concentration.'
       return
     }
 
-    errorMessage.value = 'Impossible de lancer le mode Deep Work.'
+    errorMessage.value = 'Impossible de lancer le mode concentration.'
   }
 }
 

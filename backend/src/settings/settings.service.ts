@@ -45,7 +45,7 @@ export class SettingsService {
     };
   }
 
-  parseExcludedSenders(raw: string): string[] {
+  private parseExcludedSenders(raw: string): string[] {
     try {
       const parsed = JSON.parse(raw) as unknown;
       if (Array.isArray(parsed)) {

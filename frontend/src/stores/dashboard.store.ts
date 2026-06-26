@@ -82,9 +82,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
       generated.value = true
     } catch (caughtError: unknown) {
       if (axios.isAxiosError(caughtError)) {
-        error.value = caughtError.response?.data?.message || 'Failed to generate summary'
+        error.value = caughtError.response?.data?.message || 'Impossible de générer le résumé.'
       } else {
-        error.value = 'Failed to generate summary'
+        error.value = 'Impossible de générer le résumé.'
       }
     } finally {
       isLoading.value = false
