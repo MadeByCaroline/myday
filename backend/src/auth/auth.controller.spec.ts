@@ -38,4 +38,26 @@ describe('AuthController', () => {
       connectedOutlookAccounts: ['outlook@example.com'],
     });
   });
+
+  it('returns USER role in profile response for non-admin users', () => {
+    const result = controller.getProfile({
+      protocol: 'http',
+      get: jest.fn(),
+      user: {
+        id: 'user-2',
+        email: 'user@example.com',
+        name: 'User',
+        role: 'USER',
+        oauthTokens: [],
+      },
+    });
+
+    expect(result).toMatchObject({
+      id: 'user-2',
+      email: 'user@example.com',
+      role: 'USER',
+      connectedGoogleAccounts: [],
+      connectedOutlookAccounts: [],
+    });
+  });
 });
