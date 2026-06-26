@@ -66,6 +66,47 @@ export class AiService {
     );
   }
 
+  async generateContent(prompt: string): Promise<string> {
+    if (this.configService.get<string>('USE_LOCAL_AI') === 'true') {
+      return await this.generateContentLocal(prompt);
+    }
+
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown Gemini API error';
+      this.logger.error('Gemini generateContent error', message);
+      throw error;
+    }
+  }
+
+  async generateContentLocal(prompt: string): Promise<string> {
+    try {
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'gemma4', prompt: prompt, stream: false }),
+      });
+      if (!response.ok) {
+        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      }
+      const data = (await response.json()) as { response?: string };
+      if (typeof data.response !== 'string') {
+        throw new Error('Unexpected response structure from Ollama API');
+      }
+      return data.response;
+    } catch (error) {
+      this.logger.error(
+        'Local Ollama generation failed. Is the server running?',
+        error instanceof Error ? error.message : String(error),
+      );
+      throw error;
+    }
+  }
+
   async analyzeProductivityData(
     emails: EmailSummary[],
     events: CalendarEvent[],
