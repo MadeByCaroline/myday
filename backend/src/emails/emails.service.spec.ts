@@ -32,6 +32,10 @@ describe('EmailsService', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   function createService() {
     return new EmailsService(
       usersService as any,
@@ -147,5 +151,33 @@ describe('EmailsService', () => {
     ).rejects.toThrow(
       'The requested email could not be found in the connected mailboxes.',
     );
+  });
+
+  it('treats a same-day named weekday as the next occurrence', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-06-29T08:00:00.000Z'));
+    usersService.getOAuthTokens.mockResolvedValue([
+      {
+        id: 'google-token',
+        provider: 'google',
+        accessToken: 'google-access',
+        refreshToken: 'google-refresh',
+        expiresAt: null,
+      },
+    ]);
+    calendarService.getEventsForRange.mockResolvedValue([]);
+    mailService.getEmailById.mockResolvedValue(null);
+
+    const service = createService();
+
+    await expect(
+      service.createDraft('user-1', 'missing-message', 'Proposer lundi'),
+    ).rejects.toThrow(
+      'The requested email could not be found in the connected mailboxes.',
+    );
+
+    const [, , startDate, endDate] = calendarService.getEventsForRange.mock
+      .calls[0] as [string, string, Date, Date];
+    expect(startDate.toISOString()).toBe('2026-07-06T00:00:00.000Z');
+    expect(endDate.toISOString()).toBe('2026-07-06T23:59:59.000Z');
   });
 });

@@ -2,6 +2,7 @@ import type { OAuthToken } from '@prisma/client';
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -34,6 +35,7 @@ interface AccountContext {
 
 @Injectable()
 export class EmailsService {
+  private readonly logger = new Logger(EmailsService.name);
   private static readonly MICROSOFT_SCOPES = [
     'openid',
     'profile',
@@ -227,7 +229,7 @@ export class EmailsService {
         const currentDay = now.getDay();
         const dayOffset =
           matchingDayIndex === currentDay
-            ? 0
+            ? 7
             : (matchingDayIndex - currentDay + 7) % 7;
         targetDate.setDate(now.getDate() + dayOffset);
       }
@@ -285,9 +287,13 @@ export class EmailsService {
   private extractEmailAddress(value: string): string {
     const match = value.match(/<([^>]+)>/u);
     const candidate = (match?.[1] || value).trim();
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(candidate)
-      ? candidate
-      : value.trim();
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(candidate)) {
+      return candidate;
+    }
+
+    const fallback = value.trim();
+    this.logger.warn(`Unable to confidently parse email address from: ${fallback}`);
+    return fallback;
   }
 
   private buildReplySubject(subject: string): string {
