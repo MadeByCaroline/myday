@@ -198,7 +198,7 @@ function senderInitials(name: string): string {
   if (parts.length >= 2 && parts[0] && parts[1]) {
     return (parts[0][0] + parts[1][0]).toUpperCase()
   }
-  return (trimmedName[0] || '?').toUpperCase()
+  return (trimmedName[0] ?? '?').toUpperCase()
 }
 
 function categoryBadgeClass(category: string) {

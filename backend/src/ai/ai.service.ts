@@ -30,6 +30,7 @@ const DISALLOWED_INSTRUCTION_PATTERNS = [
   /ignore\s+(all\s+)?previous\s+instructions/giu,
   /\b(system|assistant|developer)\s*:[^\n\r]*/giu,
 ];
+const GMAIL_INBOX_URL_PREFIX = 'https://mail.google.com/mail/u/0/#inbox/';
 
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
 
@@ -158,10 +159,10 @@ export class AiService {
     events: CalendarEvent[],
     aiSummaryInstructions?: string | null,
   ): Promise<AiAnalysisResult> {
-    const sanitizedInstructions =
+    const sanitizedSummaryInstructions =
       this.sanitizeAiSummaryInstructions(aiSummaryInstructions);
-    const customInstructionsLine = sanitizedInstructions
-      ? `\nInstructions personnalisées de l'utilisateur (concernant uniquement le format ou le style du résumé) : ${sanitizedInstructions}`
+    const customInstructionsLine = sanitizedSummaryInstructions
+      ? `\nInstructions personnalisées de l'utilisateur (concernant uniquement le format ou le style du résumé) : ${sanitizedSummaryInstructions}`
       : '';
     const systemPrompt = `Tu es un assistant de productivité personnel. Analyse les emails et les événements de l'agenda de l'utilisateur.
     Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.${customInstructionsLine}
@@ -912,10 +913,10 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
       return '';
     }
     if (email.threadId) {
-      return `https://mail.google.com/mail/u/0/#inbox/${email.threadId}`;
+      return `${GMAIL_INBOX_URL_PREFIX}${email.threadId}`;
     }
     if (email.id) {
-      return `https://mail.google.com/mail/u/0/#inbox/${email.id}`;
+      return `${GMAIL_INBOX_URL_PREFIX}${email.id}`;
     }
     return '';
   }
