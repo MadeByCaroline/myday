@@ -189,6 +189,80 @@ describe('AiService', () => {
     });
   });
 
+  describe('generateContent', () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+      process.env = originalEnv;
+      jest.restoreAllMocks();
+    });
+
+    it('calls Gemini when USE_LOCAL_AI is not set', async () => {
+      process.env = { ...originalEnv, USE_LOCAL_AI: undefined };
+      mockGenerateContent.mockResolvedValue({
+        response: { text: () => 'Gemini response' },
+      });
+
+      const service = new AiService(configService);
+      const result = await service.generateContent('test prompt');
+
+      expect(result).toBe('Gemini response');
+      expect(mockGetGenerativeModel).toHaveBeenCalledWith({
+        model: 'gemini-2.5-flash',
+      });
+    });
+
+    it('routes to generateContentLocal when USE_LOCAL_AI is true', async () => {
+      process.env = { ...originalEnv, USE_LOCAL_AI: 'true' };
+      const mockFetch = jest.fn().mockResolvedValue({
+        json: async () => ({ response: 'Ollama response' }),
+      });
+      jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
+
+      const service = new AiService(configService);
+      const result = await service.generateContent('test prompt');
+
+      expect(result).toBe('Ollama response');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:11434/api/generate',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'gemma4',
+            prompt: 'test prompt',
+            stream: false,
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('generateContentLocal', () => {
+    it('returns the response from Ollama', async () => {
+      const mockFetch = jest.fn().mockResolvedValue({
+        json: async () => ({ response: 'Local AI response' }),
+      });
+      jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
+
+      const service = new AiService(configService);
+      const result = await service.generateContentLocal('hello');
+
+      expect(result).toBe('Local AI response');
+    });
+
+    it('throws and logs when Ollama is unreachable', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('Connection refused'));
+
+      const service = new AiService(configService);
+      await expect(service.generateContentLocal('hello')).rejects.toThrow(
+        'Connection refused',
+      );
+    });
+  });
+
   describe('generateTimeBlocking', () => {
     const tasks = [
       { id: 'task-1', title: 'Write report', description: 'Q2 report' },
