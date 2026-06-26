@@ -65,7 +65,7 @@ router.beforeEach((to) => {
     return { name: 'dashboard' }
   }
 
-  if (to.meta.requiresSubscription && !authStore.isAdmin) {
+  if (to.meta.requiresSubscription && authStore.user && !authStore.isAdmin) {
     return { name: 'pricing' }
   }
 
