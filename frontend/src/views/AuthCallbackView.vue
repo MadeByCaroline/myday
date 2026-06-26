@@ -19,11 +19,9 @@ import { onMounted, ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
-import { useThemeStore } from '../stores/theme.store'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const themeStore = useThemeStore()
 const error = ref<string | null>(null)
 
 onMounted(async () => {
@@ -51,7 +49,6 @@ onMounted(async () => {
       { headers: { Authorization: 'Bearer ' + token } },
     )
     authStore.setUser(data)
-    await themeStore.hydrateThemeFromSettings()
     router.push({ name: 'dashboard' })
   } catch {
     error.value = 'Impossible de récupérer le profil.'

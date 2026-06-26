@@ -204,9 +204,6 @@ async function fetchSettings() {
     const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/settings`, {
       headers: getAuthHeaders(),
     })
-    if (typeof data.theme === 'string') {
-      await themeStore.setTheme(data.theme, false)
-    }
     aiSummaryInstructions.value = data.aiSummaryInstructions ?? ''
     excludedSenders.value = Array.isArray(data.excludedSenders) ? data.excludedSenders : []
   } catch {

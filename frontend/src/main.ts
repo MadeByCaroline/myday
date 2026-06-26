@@ -26,6 +26,5 @@ app.use(ToastService)
 
 const themeStore = useThemeStore(pinia)
 themeStore.initializeTheme()
-void themeStore.hydrateThemeFromSettings()
 
 app.mount('#app')

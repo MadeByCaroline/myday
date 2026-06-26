@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useAuthStore } from './auth'
 
 export const THEMES = ['light', 'dark', 'zen'] as const
@@ -14,7 +14,9 @@ function normalizeTheme(theme?: string | null): ThemeName {
 }
 
 export const useThemeStore = defineStore('theme', () => {
+  const authStore = useAuthStore()
   const currentTheme = ref<ThemeName>('light')
+  const hasHydratedFromServer = ref(false)
 
   function applyTheme(themeName: ThemeName) {
     document.documentElement.setAttribute('data-theme', themeName)
@@ -41,7 +43,6 @@ export const useThemeStore = defineStore('theme', () => {
       return
     }
 
-    const authStore = useAuthStore()
     if (!authStore.token) {
       return
     }
@@ -54,8 +55,7 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   async function hydrateThemeFromSettings() {
-    const authStore = useAuthStore()
-    if (!authStore.token) {
+    if (!authStore.token || hasHydratedFromServer.value) {
       return
     }
 
@@ -66,7 +66,22 @@ export const useThemeStore = defineStore('theme', () => {
     if (typeof data.theme === 'string') {
       await setTheme(data.theme, false)
     }
+
+    hasHydratedFromServer.value = true
   }
+
+  watch(
+    () => authStore.token,
+    (token) => {
+      if (!token) {
+        hasHydratedFromServer.value = false
+        return
+      }
+
+      void hydrateThemeFromSettings()
+    },
+    { immediate: true },
+  )
 
   return { currentTheme, initializeTheme, setTheme, hydrateThemeFromSettings }
 })
