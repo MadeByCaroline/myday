@@ -12,18 +12,18 @@
       </div>
 
       <nav class="p-4 flex-1">
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-medium mb-1">
+        <RouterLink to="/dashboard" :class="navLinkClass">
           <i class="pi pi-home"></i>
           <span>Dashboard</span>
-        </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 mb-1">
+        </RouterLink>
+        <RouterLink to="/tasks" :class="navLinkClass">
           <i class="pi pi-check-square"></i>
           <span>Tasks</span>
-        </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 mb-1">
+        </RouterLink>
+        <RouterLink to="/calendar" :class="navLinkClass">
           <i class="pi pi-calendar"></i>
           <span>Calendar</span>
-        </a>
+        </RouterLink>
       </nav>
 
       <div class="p-4 border-t border-gray-200">
@@ -142,7 +142,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useSummaryStore } from '../stores/summary'
@@ -153,6 +153,9 @@ import TaskListView from '../components/TaskListView.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+const navLinkClass =
+  'flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 mb-1 aria-[current=page]:bg-indigo-50 aria-[current=page]:text-indigo-700 aria-[current=page]:font-medium'
 const summaryStore = useSummaryStore()
 const tasksStore = useTasksStore()
 const linkErrorMessage = ref<string | null>(null)
