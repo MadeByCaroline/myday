@@ -65,14 +65,32 @@
                 class="border border-gray-100 rounded-xl p-3 flex items-start gap-3"
               >
                 <span
-                  class="text-xs font-medium px-2.5 py-1 rounded-full border"
-                  :class="categoryBadgeClass(email.category)"
-                >
-                  {{ email.category }}
-                </span>
-                <p class="text-sm text-gray-700 leading-relaxed flex-1">
-                  {{ email.summary }}
-                </p>
+                 class="text-xs font-medium px-2.5 py-1 rounded-full border"
+                 :class="categoryBadgeClass(email.category)"
+               >
+                 {{ email.category }}
+               </span>
+               <div class="flex-1 space-y-3">
+                 <p class="text-sm text-gray-700 leading-relaxed">
+                   {{ email.summary }}
+                 </p>
+                 <div class="flex flex-wrap gap-2">
+                   <button
+                     v-for="action in email.suggestedActions"
+                     :key="action"
+                     type="button"
+                     class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                     :disabled="dashboardStore.isDrafting(email.emailId, action)"
+                     @click="createDraft(email.emailId, action)"
+                   >
+                     <i
+                       v-if="dashboardStore.isDrafting(email.emailId, action)"
+                       class="pi pi-spin pi-spinner"
+                     ></i>
+                     <span>{{ action }}</span>
+                   </button>
+                 </div>
+               </div>
               </li>
             </ul>
             <p v-else class="text-sm text-gray-500">No email summaries available.</p>
@@ -86,6 +104,7 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '../stores/auth'
 import { useDashboardStore } from '../stores/dashboard.store'
 import { useTasksStore } from '../stores/tasks'
@@ -95,6 +114,7 @@ import TaskListView from '../components/TaskListView.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const dashboardStore = useDashboardStore()
 const tasksStore = useTasksStore()
@@ -135,6 +155,33 @@ function categoryBadgeClass(category: string) {
 
 async function generateSummary() {
   await dashboardStore.generateSummary()
+}
+
+async function createDraft(emailId: string, action: string) {
+  try {
+    const result = await dashboardStore.createDraft(emailId, action)
+    toast.add({
+      severity: 'success',
+      summary: 'Succès',
+      detail:
+        result.provider === 'MICROSOFT'
+          ? 'Brouillon créé dans Outlook !'
+          : 'Brouillon créé dans Gmail !',
+      life: 3000,
+    })
+  } catch (caughtError: unknown) {
+    const detail =
+      axios.isAxiosError(caughtError) && typeof caughtError.response?.data?.message === 'string'
+        ? caughtError.response.data.message
+        : 'Impossible de créer le brouillon.'
+
+    toast.add({
+      severity: 'error',
+      summary: 'Erreur',
+      detail,
+      life: 4000,
+    })
+  }
 }
 
 onMounted(async () => {

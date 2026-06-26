@@ -19,6 +19,7 @@ export interface CategorizedEmailSummary {
   emailId: string
   summary: string
   category: EmailCategory
+  suggestedActions: string[]
 }
 
 export const useDashboardStore = defineStore('dashboard', () => {
@@ -26,6 +27,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const emails = ref<CategorizedEmailSummary[]>([])
   const events = ref<CalendarEvent[]>([])
   const isLoading = ref(false)
+  const draftingActionKey = ref<string | null>(null)
   const error = ref<string | null>(null)
   const generated = ref(false)
 
@@ -62,7 +64,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
       summary.value = data.summary || ''
       events.value = data.events || []
-      emails.value = data.email_summaries || []
+      emails.value = (data.email_summaries || []).map((email: Partial<CategorizedEmailSummary>) => ({
+        emailId: email.emailId || '',
+        summary: email.summary || '',
+        category: (email.category as EmailCategory) || 'INFO',
+        suggestedActions: Array.isArray(email.suggestedActions) ? email.suggestedActions : [],
+      }))
       tasksStore.setSuggestedTasks(data.suggested_tasks || [])
       generated.value = true
     } catch (caughtError: unknown) {
@@ -76,13 +83,53 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  function getDraftActionKey(emailId: string, action: string) {
+    return `${emailId}:${action}`
+  }
+
+  function isDrafting(emailId: string, action: string) {
+    return draftingActionKey.value === getDraftActionKey(emailId, action)
+  }
+
+  async function createDraft(emailId: string, action: string) {
+    draftingActionKey.value = getDraftActionKey(emailId, action)
+
+    try {
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_API_URL}/emails/draft/${emailId}`,
+        { action },
+        {
+          headers: getAuthHeaders(),
+        },
+      )
+
+      return data as { draftId: string | null; provider: 'GOOGLE' | 'MICROSOFT' }
+    } finally {
+      draftingActionKey.value = null
+    }
+  }
+
   function reset() {
     summary.value = ''
     emails.value = []
     events.value = []
     generated.value = false
+    draftingActionKey.value = null
     error.value = null
   }
 
-  return { summary, emails, events, isLoading, error, generated, fetchDashboardData, generateSummary, reset }
+  return {
+    summary,
+    emails,
+    events,
+    isLoading,
+    draftingActionKey,
+    error,
+    generated,
+    fetchDashboardData,
+    generateSummary,
+    createDraft,
+    isDrafting,
+    reset,
+  }
 })

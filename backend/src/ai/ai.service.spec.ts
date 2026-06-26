@@ -68,6 +68,11 @@ describe('AiService', () => {
           emailId: 'mail-1',
           summary: 'Can you send the notes?',
           category: 'INFO',
+          suggestedActions: [
+            'Répondre poliment',
+            'Demander plus de détails',
+            'Proposer un suivi rapide',
+          ],
         },
       ],
     });
@@ -95,17 +100,66 @@ describe('AiService', () => {
         emailId: 'mail-1',
         summary: 'Demande d’envoyer un compte rendu',
         category: 'ACTION_REQUIRED',
+        suggestedActions: [
+          'Répondre poliment',
+          'Demander plus de détails',
+          'Proposer un suivi rapide',
+        ],
       },
       {
         emailId: 'mail-2',
         summary: 'Mise à jour hebdomadaire',
         category: 'NEWSLETTER',
+        suggestedActions: [
+          'Répondre poliment',
+          'Demander plus de détails',
+          'Proposer un suivi rapide',
+        ],
       },
       {
         emailId: 'mail-3',
         summary: 'Notification d’information',
         category: 'INFO',
+        suggestedActions: [
+          'Répondre poliment',
+          'Demander plus de détails',
+          'Proposer un suivi rapide',
+        ],
       },
+    ]);
+  });
+
+  it('keeps three suggested actions returned by Gemini for each email summary', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () =>
+          JSON.stringify({
+            summary: 'Résumé du jour.',
+            events,
+            suggested_tasks: [],
+            email_summaries: [
+              {
+                emailId: 'mail-1',
+                summary: 'Besoin de revenir vers Alice',
+                category: 'ACTION_REQUIRED',
+                suggestedActions: [
+                  'Accepter pour mardi',
+                  'Proposer demain matin',
+                  'Décliner poliment',
+                ],
+              },
+            ],
+          }),
+      },
+    });
+
+    const service = new AiService(configService);
+    const result = await service.analyzeProductivityData(emails, events);
+
+    expect(result.email_summaries[0]?.suggestedActions).toEqual([
+      'Accepter pour mardi',
+      'Proposer demain matin',
+      'Décliner poliment',
     ]);
   });
 
@@ -125,6 +179,11 @@ describe('AiService', () => {
           emailId: 'mail-1',
           summary: 'Can you send the notes?',
           category: 'INFO',
+          suggestedActions: [
+            'Répondre poliment',
+            'Demander plus de détails',
+            'Proposer un suivi rapide',
+          ],
         },
       ],
     });
