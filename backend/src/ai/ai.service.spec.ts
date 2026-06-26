@@ -80,6 +80,10 @@ describe('AiService', () => {
             'Demander plus de détails',
             'Proposer un suivi rapide',
           ],
+          senderName: 'alice@example.com',
+          senderEmail: 'alice@example.com',
+          subject: 'Need follow-up',
+          link: 'https://mail.google.com/mail/u/0/#inbox/mail-1',
         },
       ],
     });
@@ -112,6 +116,10 @@ describe('AiService', () => {
           'Demander plus de détails',
           'Proposer un suivi rapide',
         ],
+        senderName: 'alice@example.com',
+        senderEmail: 'alice@example.com',
+        subject: 'Need follow-up',
+        link: 'https://mail.google.com/mail/u/0/#inbox/mail-1',
       },
       {
         emailId: 'mail-2',
@@ -122,16 +130,24 @@ describe('AiService', () => {
           'Demander plus de détails',
           'Proposer un suivi rapide',
         ],
+        senderName: '',
+        senderEmail: '',
+        subject: '',
+        link: '',
       },
       {
         emailId: 'mail-3',
-        summary: 'Notification d’information',
+        summary: "Notification d\u2019information",
         category: 'INFO',
         suggestedActions: [
           'Répondre poliment',
           'Demander plus de détails',
           'Proposer un suivi rapide',
         ],
+        senderName: '',
+        senderEmail: '',
+        subject: '',
+        link: '',
       },
     ]);
   });
@@ -194,6 +210,10 @@ describe('AiService', () => {
             'Demander plus de détails',
             'Proposer un suivi rapide',
           ],
+          senderName: 'alice@example.com',
+          senderEmail: 'alice@example.com',
+          subject: 'Need follow-up',
+          link: 'https://mail.google.com/mail/u/0/#inbox/mail-1',
         },
       ],
     });

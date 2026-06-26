@@ -12,6 +12,7 @@ import { MicrosoftService } from '../integrations/microsoft.service';
 import type { EmailSummary } from '../mail/mail.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 
 interface RefreshedOAuthToken {
   accessToken: string;
@@ -45,6 +46,7 @@ export class SummaryService {
     private readonly microsoftService: MicrosoftService,
     private readonly aiService: AiService,
     private readonly configService: ConfigService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_6AM)
@@ -85,9 +87,12 @@ export class SummaryService {
         oauthTokens.map((token) => token.provider).join(', '),
     );
 
-    const accountData = await Promise.allSettled(
-      oauthTokens.map((oauthToken) => this.fetchAccountData(oauthToken)),
-    );
+    const [accountData, userSettings] = await Promise.all([
+      Promise.allSettled(
+        oauthTokens.map((oauthToken) => this.fetchAccountData(oauthToken)),
+      ),
+      this.settingsService.getSettings(userId),
+    ]);
 
     const successfulData = accountData
       .filter(
@@ -112,20 +117,27 @@ export class SummaryService {
         );
       });
 
-    const googleEmails = successfulData
-      .filter((data) => data.provider === 'GOOGLE')
-      .flatMap((data) => data.emails);
-    const microsoftEmails = successfulData
-      .filter((data) => data.provider === 'MICROSOFT')
-      .flatMap((data) => data.emails);
+    const allEmails = successfulData.flatMap((data) => data.emails);
+    const filteredEmails = this.filterExcludedSenders(
+      allEmails,
+      userSettings.excludedSenders,
+    );
+
+    const googleEmailCount = successfulData
+      .filter((d) => d.provider === 'GOOGLE')
+      .flatMap((d) => d.emails).length;
+    const microsoftEmailCount = successfulData
+      .filter((d) => d.provider === 'MICROSOFT')
+      .flatMap((d) => d.emails).length;
 
     this.logger.log(
-      `Aggregated Data -> Google Emails: ${googleEmails.length} | Microsoft Emails: ${microsoftEmails.length}`,
+      `Aggregated Data -> Google Emails: ${googleEmailCount} | Microsoft Emails: ${microsoftEmailCount} | After filter: ${filteredEmails.length}`,
     );
 
     const analysis = await this.aiService.analyzeProductivityData(
-      successfulData.flatMap((data) => data.emails),
+      filteredEmails,
       successfulData.flatMap((data) => data.events),
+      userSettings.aiSummaryInstructions,
     );
 
     await this.prisma.user.update({
@@ -134,6 +146,22 @@ export class SummaryService {
     });
 
     return analysis;
+  }
+
+  private filterExcludedSenders(
+    emails: EmailSummary[],
+    excludedSenders: string[],
+  ): EmailSummary[] {
+    if (excludedSenders.length === 0) {
+      return emails;
+    }
+    return emails.filter((email) => {
+      const from = email.from.toLowerCase();
+      return !excludedSenders.some((excluded) => {
+        const lowerExcluded = excluded.toLowerCase();
+        return from.includes(lowerExcluded);
+      });
+    });
   }
 
   private async fetchAccountData(oauthToken: OAuthToken) {
