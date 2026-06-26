@@ -15,8 +15,10 @@ jest.mock('@google/generative-ai', () => ({
 
 describe('AiService', () => {
   const getOrThrowMock = jest.fn().mockReturnValue('test-gemini-key');
+  const getMock = jest.fn().mockReturnValue(undefined);
   const configService = {
     getOrThrow: getOrThrowMock,
+    get: getMock,
   } as unknown as ConfigService;
 
   const emails = [
@@ -39,6 +41,11 @@ describe('AiService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    getMock.mockReturnValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('uses Gemini JSON mode and fills missing fields from existing inputs', async () => {
@@ -165,6 +172,9 @@ describe('AiService', () => {
 
   it('returns a safe fallback when Gemini fails', async () => {
     mockGenerateContent.mockRejectedValue(new Error('quota exceeded'));
+    jest
+      .spyOn(global, 'fetch')
+      .mockRejectedValue(new Error('Local provider unavailable'));
 
     const service = new AiService(configService);
     const result = await service.analyzeProductivityData(emails, events);
@@ -187,6 +197,31 @@ describe('AiService', () => {
         },
       ],
     });
+  });
+
+  it('uses local AI for JSON analysis when USE_LOCAL_AI is true', async () => {
+    const localConfigService = {
+      getOrThrow: jest.fn().mockReturnValue('test-gemini-key'),
+      get: jest.fn().mockReturnValue('true'),
+    } as unknown as ConfigService;
+    const mockFetch = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          response: JSON.stringify({ summary: 'Résumé local', events }),
+        }),
+    } as unknown as Response);
+
+    const service = new AiService(localConfigService);
+    const result = await service.analyzeProductivityData(emails, events);
+
+    expect(mockGetGenerativeModel).not.toHaveBeenCalled();
+    expect(result.summary).toBe('Résumé local');
+    const requestInit = mockFetch.mock.calls[0][1] as RequestInit;
+    const body = JSON.parse((requestInit.body as string) || '{}') as {
+      prompt: string;
+    };
+    expect(body.prompt).toContain('Return ONLY raw JSON');
   });
 
   describe('generateContent', () => {
@@ -219,7 +254,7 @@ describe('AiService', () => {
       } as unknown as ConfigService;
       const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ response: 'Ollama response' }),
+        json: () => Promise.resolve({ response: 'Ollama response' }),
       });
       jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
 
@@ -240,6 +275,27 @@ describe('AiService', () => {
         }),
       );
     });
+
+    it('falls back to Gemini when local provider fails', async () => {
+      const localConfigService = {
+        getOrThrow: jest.fn().mockReturnValue('test-gemini-key'),
+        get: jest.fn().mockReturnValue('true'),
+      } as unknown as ConfigService;
+      jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('Connection refused'));
+      mockGenerateContent.mockResolvedValue({
+        response: { text: () => 'Gemini fallback response' },
+      });
+
+      const service = new AiService(localConfigService);
+      const result = await service.generateContent('test prompt');
+
+      expect(result).toBe('Gemini fallback response');
+      expect(mockGetGenerativeModel).toHaveBeenCalledWith({
+        model: 'gemini-2.5-flash',
+      });
+    });
   });
 
   describe('generateContentLocal', () => {
@@ -250,7 +306,7 @@ describe('AiService', () => {
     it('returns the response from Ollama', async () => {
       const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ response: 'Local AI response' }),
+        json: () => Promise.resolve({ response: 'Local AI response' }),
       });
       jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
 
@@ -265,7 +321,7 @@ describe('AiService', () => {
         ok: false,
         status: 503,
         statusText: 'Service Unavailable',
-        json: async () => ({}),
+        json: () => Promise.resolve({}),
       } as Response);
 
       const service = new AiService(configService);
@@ -277,7 +333,7 @@ describe('AiService', () => {
     it('throws when Ollama response is missing the response field', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
-        json: async () => ({ error: 'model not found' }),
+        json: () => Promise.resolve({ error: 'model not found' }),
       } as unknown as Response);
 
       const service = new AiService(configService);
@@ -314,8 +370,18 @@ describe('AiService', () => {
 
     it('returns parsed time blocks from Gemini', async () => {
       const aiBlocks = [
-        { taskId: 'task-1', suggestedStartTime: '09:30', suggestedEndTime: '10:00', title: 'Write report' },
-        { taskId: 'task-2', suggestedStartTime: '10:00', suggestedEndTime: '10:30', title: 'Review PR' },
+        {
+          taskId: 'task-1',
+          suggestedStartTime: '09:30',
+          suggestedEndTime: '10:00',
+          title: 'Write report',
+        },
+        {
+          taskId: 'task-2',
+          suggestedStartTime: '10:00',
+          suggestedEndTime: '10:30',
+          title: 'Review PR',
+        },
       ];
       mockGenerateContent.mockResolvedValue({
         response: { text: () => JSON.stringify(aiBlocks) },
@@ -329,7 +395,12 @@ describe('AiService', () => {
 
     it('filters out malformed entries from the AI response', async () => {
       const aiResponse = [
-        { taskId: 'task-1', suggestedStartTime: '09:30', suggestedEndTime: '10:00', title: 'Write report' },
+        {
+          taskId: 'task-1',
+          suggestedStartTime: '09:30',
+          suggestedEndTime: '10:00',
+          title: 'Write report',
+        },
         { taskId: 'task-2' },
       ];
       mockGenerateContent.mockResolvedValue({
@@ -365,6 +436,36 @@ describe('AiService', () => {
       expect(result).toHaveLength(2);
       expect(result[0].taskId).toBe('task-1');
       expect(result[1].taskId).toBe('task-2');
+    });
+
+    it('uses local AI for JSON time blocking when USE_LOCAL_AI is true', async () => {
+      const localConfigService = {
+        getOrThrow: jest.fn().mockReturnValue('test-gemini-key'),
+        get: jest.fn().mockReturnValue('true'),
+      } as unknown as ConfigService;
+      const aiBlocks = [
+        {
+          taskId: 'task-1',
+          suggestedStartTime: '09:30',
+          suggestedEndTime: '10:00',
+          title: 'Write report',
+        },
+      ];
+      const mockFetch = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ response: JSON.stringify(aiBlocks) }),
+      } as unknown as Response);
+
+      const service = new AiService(localConfigService);
+      const result = await service.generateTimeBlocking(tasks, calendarEvents);
+
+      expect(result).toEqual(aiBlocks);
+      expect(mockGetGenerativeModel).not.toHaveBeenCalled();
+      const requestInit = mockFetch.mock.calls[0][1] as RequestInit;
+      const body = JSON.parse((requestInit.body as string) || '{}') as {
+        prompt: string;
+      };
+      expect(body.prompt).toContain('Return ONLY raw JSON');
     });
   });
 });
