@@ -108,7 +108,7 @@ describe('AiService', () => {
             events,
             suggested_tasks: [],
             email_summaries:
-              '[{"emailId":"mail-1","summary":"Demande d\\u2019envoyer un compte rendu","category":"ACTION_REQUIRED"},{"emailId":"mail-2","summary":"Mise \\u00e0 jour hebdomadaire","category":"newsletter"},{"emailId":"mail-3","summary":"Notification d\\u2019information","category":"UNKNOWN"}]',
+              `[{"emailId":"mail-1","summary":"Demande d'envoyer un compte rendu","category":"ACTION_REQUIRED"},{"emailId":"mail-2","summary":"Mise à jour hebdomadaire","category":"newsletter"},{"emailId":"mail-3","summary":"Notification d'information","category":"UNKNOWN"}]`,
           }),
       },
     });
@@ -119,7 +119,7 @@ describe('AiService', () => {
     expect(result.email_summaries).toEqual([
       {
         emailId: 'mail-1',
-        summary: 'Demande d’envoyer un compte rendu',
+        summary: "Demande d'envoyer un compte rendu",
         category: 'ACTION_REQUIRED',
         suggestedActions: [
           'Répondre poliment',
@@ -147,7 +147,7 @@ describe('AiService', () => {
       },
       {
         emailId: 'mail-3',
-        summary: "Notification d\u2019information",
+        summary: "Notification d'information",
         category: 'INFO',
         suggestedActions: [
           'Répondre poliment',

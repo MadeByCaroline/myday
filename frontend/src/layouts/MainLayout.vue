@@ -33,7 +33,7 @@
         </RouterLink>
         <RouterLink :to="{ name: 'settings' }" :class="navLinkClass">
           <i class="pi pi-cog"></i>
-          <span>Settings</span>
+          <span>Paramètres</span>
         </RouterLink>
       </nav>
 
