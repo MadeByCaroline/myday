@@ -25,6 +25,7 @@ const HIGH_PRIORITY_KEYWORDS = [
   'important',
   'p1',
 ];
+const MAX_CUSTOM_INSTRUCTIONS_LENGTH = 500;
 
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
 
@@ -154,7 +155,10 @@ export class AiService {
     aiSummaryInstructions?: string | null,
   ): Promise<AiAnalysisResult> {
     const sanitizedInstructions = aiSummaryInstructions
-      ? aiSummaryInstructions.replace(/[<>{}[\]\\]/g, '').slice(0, 500).trim()
+      ? aiSummaryInstructions
+          .replace(/[<>{}[\]\\]/g, '')
+          .slice(0, MAX_CUSTOM_INSTRUCTIONS_LENGTH)
+          .trim()
       : null;
     const customInstructionsLine = sanitizedInstructions
       ? `\nInstructions personnalisées de l'utilisateur (concernant uniquement le format ou le style du résumé) : ${sanitizedInstructions}`

@@ -193,11 +193,12 @@ const currentDate = computed(() =>
 )
 
 function senderInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter((p) => p.length > 0)
+  const trimmedName = name.trim()
+  const parts = trimmedName.split(/\s+/).filter((p) => p.length > 0)
   if (parts.length >= 2 && parts[0] && parts[1]) {
     return (parts[0][0] + parts[1][0]).toUpperCase()
   }
-  return (name.trim()[0] || '?').toUpperCase()
+  return (trimmedName[0] || '?').toUpperCase()
 }
 
 function categoryBadgeClass(category: string) {

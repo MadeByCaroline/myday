@@ -230,6 +230,63 @@ describe('SummaryService', () => {
     );
   });
 
+  it('matches excluded sender domains precisely without filtering broader lookalikes', async () => {
+    settingsService.getSettings.mockResolvedValue({
+      aiSummaryInstructions: null,
+      excludedSenders: ['@news.com'],
+    });
+    prisma.oAuthToken.findMany.mockResolvedValue([
+      {
+        id: 'google-token',
+        provider: 'google',
+        accessToken: 'google-access',
+        refreshToken: 'google-refresh',
+        expiresAt: null,
+      },
+    ]);
+
+    const keptEmail = {
+      id: 'keep-1',
+      from: 'John Doe <john@newsletter.com>',
+      subject: 'Newsletter',
+    };
+    const excludedEmail = {
+      id: 'skip-1',
+      from: 'Alerts <team@news.com>',
+      subject: 'Breaking news',
+    };
+    const mailService = {
+      getRecentEmails: jest
+        .fn()
+        .mockResolvedValue([excludedEmail, keptEmail]),
+    };
+    const aiService = {
+      analyzeProductivityData: jest.fn().mockResolvedValue({
+        summary: 'Résumé généré',
+        events: [],
+        suggested_tasks: [],
+        email_summaries: [],
+      }),
+    };
+    const service = new SummaryService(
+      prisma as any,
+      mailService as any,
+      { getTodayEvents: jest.fn().mockResolvedValue([]) } as any,
+      { getUnreadEmails: jest.fn(), getTodayEvents: jest.fn() } as any,
+      aiService as any,
+      configService as any,
+      settingsService as any,
+    );
+
+    await service.generateSummaryForUser('user-1');
+
+    expect(aiService.analyzeProductivityData).toHaveBeenCalledWith(
+      [keptEmail],
+      [],
+      null,
+    );
+  });
+
   it('continues generating summaries when one user fails in the cron job', async () => {
     prisma.user.findMany.mockResolvedValue([
       { id: 'user-a' },
