@@ -52,13 +52,13 @@ export class AnalyticsService {
       const existing = taskMap.get(taskId);
 
       if (existing) {
-        existing.totalDuration += entry.duration ?? 0;
+        existing.totalDuration += entry.duration as number;
       } else {
         taskMap.set(taskId, {
           taskId,
           taskTitle: entry.task.title,
           taskStatus: entry.task.status,
-          totalDuration: entry.duration ?? 0,
+          totalDuration: entry.duration as number,
         });
       }
     }

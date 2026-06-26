@@ -411,6 +411,7 @@ Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
       totalDuration: number;
     }>;
   }): Promise<{ analysis: string; recommendations: string[] }> {
+    const MAX_RECOMMENDATIONS = 2;
     const totalHours = (statsData.totalDuration / 3600).toFixed(1);
     const taskBreakdown = statsData.taskStats
       .map((stat) => {
@@ -441,7 +442,7 @@ Total tracked time: ${totalHours} hours
 Time breakdown by task:
 ${taskBreakdown || 'No tasks tracked this week.'}
 
-Please analyze my time distribution and provide 2 actionable recommendations to improve my productivity next week.`;
+Please analyze my time distribution and provide ${MAX_RECOMMENDATIONS} actionable recommendations to improve my productivity next week.`;
 
     try {
       const content = await this.resolveAIRequest(
@@ -468,7 +469,7 @@ Please analyze my time distribution and provide 2 actionable recommendations to 
         analysis,
         recommendations:
           recommendations.length > 0
-            ? recommendations.slice(0, 2)
+            ? recommendations.slice(0, MAX_RECOMMENDATIONS)
             : this.buildFallbackRecommendations(),
       };
     } catch (error) {

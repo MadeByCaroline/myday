@@ -268,7 +268,7 @@ const barOptions = {
   scales: {
     y: {
       beginAtZero: true,
-      ticks: { callback: (v: number | string) => `${v}h` },
+      ticks: { callback: (v: number | string) => `${typeof v === 'number' ? v : Number(v)}h` },
       grid: { color: '#f3f4f6' },
     },
     x: {
