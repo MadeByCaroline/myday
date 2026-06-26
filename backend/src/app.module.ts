@@ -13,6 +13,7 @@ import { SummaryModule } from './summary/summary.module';
 import { EmailsModule } from './emails/emails.module';
 import { ChatModule } from './chat/chat.module';
 import { ScheduleOptimizeModule } from './schedule/schedule.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ScheduleOptimizeModule } from './schedule/schedule.module';
     EmailsModule,
     ChatModule,
     ScheduleOptimizeModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}
