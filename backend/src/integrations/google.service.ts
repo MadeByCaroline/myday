@@ -14,16 +14,7 @@ export class GoogleService {
     refreshToken?: string,
   ): Promise<UnifiedEvent[]> {
     try {
-      const oauth2Client = new google.auth.OAuth2(
-        this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
-        this.configService.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
-        this.configService.getOrThrow<string>('GOOGLE_CALLBACK_URL'),
-      );
-
-      oauth2Client.setCredentials({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
+      const oauth2Client = this.createOAuthClient(accessToken, refreshToken);
 
       const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
       const now = new Date();
@@ -81,5 +72,74 @@ export class GoogleService {
       this.logger.error('Failed to fetch Google calendar events', message);
       return [];
     }
+  }
+
+  async createBusyEvent(
+    accessToken: string,
+    refreshToken: string | undefined,
+    start: Date,
+    end: Date,
+    description: string,
+  ): Promise<string | null> {
+    try {
+      const oauth2Client = this.createOAuthClient(accessToken, refreshToken);
+      const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+      const response = await calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: {
+          summary: 'Deep Work',
+          description,
+          start: {
+            dateTime: start.toISOString(),
+          },
+          end: {
+            dateTime: end.toISOString(),
+          },
+          transparency: 'opaque',
+          visibility: 'private',
+        },
+      });
+
+      return response.data.id || null;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown Google Calendar error';
+      this.logger.error('Failed to create Google deep work event', message);
+      return null;
+    }
+  }
+
+  async deleteBusyEvent(
+    accessToken: string,
+    refreshToken: string | undefined,
+    eventId: string,
+  ) {
+    try {
+      const oauth2Client = this.createOAuthClient(accessToken, refreshToken);
+      const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+      await calendar.events.delete({
+        calendarId: 'primary',
+        eventId,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown Google Calendar error';
+      this.logger.error('Failed to delete Google deep work event', message);
+    }
+  }
+
+  private createOAuthClient(accessToken: string, refreshToken?: string) {
+    const oauth2Client = new google.auth.OAuth2(
+      this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
+      this.configService.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
+      this.configService.getOrThrow<string>('GOOGLE_CALLBACK_URL'),
+    );
+
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    return oauth2Client;
   }
 }

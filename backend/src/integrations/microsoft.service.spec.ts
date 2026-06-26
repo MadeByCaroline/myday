@@ -95,4 +95,68 @@ describe('MicrosoftService', () => {
       $orderby: 'start/dateTime',
     });
   });
+
+  it('creates an Outlook busy event for deep work sessions', async () => {
+    const postSpy = jest.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        id: 'event-42',
+      },
+    });
+
+    const service = new MicrosoftService();
+
+    await expect(
+      service.createBusyEvent(
+        'access-token',
+        new Date('2026-06-26T14:00:00.000Z'),
+        new Date('2026-06-26T15:00:00.000Z'),
+        'Busy until 3:00 PM',
+      ),
+    ).resolves.toBe('event-42');
+    expect(postSpy).toHaveBeenCalledWith(
+      'https://graph.microsoft.com/v1.0/me/events',
+      {
+        subject: 'Deep Work',
+        body: {
+          contentType: 'Text',
+          content: 'Busy until 3:00 PM',
+        },
+        start: {
+          dateTime: '2026-06-26T14:00:00.000Z',
+          timeZone: 'UTC',
+        },
+        end: {
+          dateTime: '2026-06-26T15:00:00.000Z',
+          timeZone: 'UTC',
+        },
+        showAs: 'busy',
+        isReminderOn: false,
+      },
+      {
+        headers: {
+          Authorization: 'Bearer ' + 'access-token',
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+  });
+
+  it('deletes an Outlook busy event when deep work stops', async () => {
+    const deleteSpy = jest.spyOn(axios, 'delete').mockResolvedValue({
+      data: {},
+    });
+
+    const service = new MicrosoftService();
+
+    await service.deleteBusyEvent('access-token', 'event-42');
+
+    expect(deleteSpy).toHaveBeenCalledWith(
+      'https://graph.microsoft.com/v1.0/me/events/event-42',
+      {
+        headers: {
+          Authorization: 'Bearer ' + 'access-token',
+        },
+      },
+    );
+  });
 });

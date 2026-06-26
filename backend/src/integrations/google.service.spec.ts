@@ -1,5 +1,7 @@
 let mockColorsGet: jest.Mock;
 let mockEventsList: jest.Mock;
+let mockEventsInsert: jest.Mock;
+let mockEventsDelete: jest.Mock;
 let mockSetCredentials: jest.Mock;
 let mockOAuth2: jest.Mock;
 let mockCalendar: jest.Mock;
@@ -22,13 +24,19 @@ describe('GoogleService', () => {
   beforeEach(() => {
     mockColorsGet = jest.fn();
     mockEventsList = jest.fn();
+    mockEventsInsert = jest.fn();
+    mockEventsDelete = jest.fn();
     mockSetCredentials = jest.fn();
     mockOAuth2 = jest.fn().mockImplementation(() => ({
       setCredentials: mockSetCredentials,
     }));
     mockCalendar = jest.fn().mockReturnValue({
       colors: { get: mockColorsGet },
-      events: { list: mockEventsList },
+      events: {
+        list: mockEventsList,
+        insert: mockEventsInsert,
+        delete: mockEventsDelete,
+      },
     });
   });
 
@@ -86,5 +94,61 @@ describe('GoogleService', () => {
         orderBy: 'startTime',
       }),
     );
+  });
+
+  it('creates a private busy event for deep work sessions', async () => {
+    mockEventsInsert.mockResolvedValue({
+      data: {
+        id: 'deep-work-event',
+      },
+    });
+
+    const configService = {
+      getOrThrow: jest.fn((key: string) => key),
+    };
+    const service = new GoogleService(configService as unknown as ConfigService);
+
+    await expect(
+      service.createBusyEvent(
+        'access-token',
+        'refresh-token',
+        new Date('2026-06-26T14:00:00.000Z'),
+        new Date('2026-06-26T15:00:00.000Z'),
+        'Busy until 3:00 PM',
+      ),
+    ).resolves.toBe('deep-work-event');
+    expect(mockEventsInsert).toHaveBeenCalledWith({
+      calendarId: 'primary',
+      requestBody: {
+        summary: 'Deep Work',
+        description: 'Busy until 3:00 PM',
+        start: {
+          dateTime: '2026-06-26T14:00:00.000Z',
+        },
+        end: {
+          dateTime: '2026-06-26T15:00:00.000Z',
+        },
+        transparency: 'opaque',
+        visibility: 'private',
+      },
+    });
+  });
+
+  it('deletes a deep work event from Google Calendar', async () => {
+    const configService = {
+      getOrThrow: jest.fn((key: string) => key),
+    };
+    const service = new GoogleService(configService as unknown as ConfigService);
+
+    await service.deleteBusyEvent(
+      'access-token',
+      'refresh-token',
+      'deep-work-event',
+    );
+
+    expect(mockEventsDelete).toHaveBeenCalledWith({
+      calendarId: 'primary',
+      eventId: 'deep-work-event',
+    });
   });
 });

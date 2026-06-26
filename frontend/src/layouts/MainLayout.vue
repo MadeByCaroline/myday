@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 flex">
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col">
+    <aside v-if="!uiStore.isDeepWorkModeActive" class="w-64 bg-white border-r border-gray-200 flex flex-col">
       <div class="p-6 border-b border-gray-200">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
@@ -67,11 +67,12 @@
       </div>
     </aside>
 
-    <main class="flex-1 min-w-0">
+    <main v-if="!uiStore.isDeepWorkModeActive" class="flex-1 min-w-0">
       <RouterView />
     </main>
 
-    <AIChat />
+    <AIChat v-if="!uiStore.isDeepWorkModeActive" />
+    <DeepWorkOverlay v-if="uiStore.isDeepWorkModeActive" />
   </div>
 </template>
 
@@ -80,8 +81,10 @@ import axios from 'axios'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import AIChat from '../components/AIChat.vue'
+import DeepWorkOverlay from '../components/DeepWorkOverlay.vue'
 import { useAuthStore } from '../stores/auth'
 import { useTimerStore } from '../stores/timer.store'
+import { useUiStore } from '../stores/ui.store'
 
 const navLinkClass =
   'flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 mb-1 aria-[current=page]:bg-indigo-50 aria-[current=page]:text-indigo-700 aria-[current=page]:font-medium'
@@ -89,6 +92,7 @@ const navLinkClass =
 const authStore = useAuthStore()
 const router = useRouter()
 const timerStore = useTimerStore()
+const uiStore = useUiStore()
 const timerErrorMessage = ref<string | null>(null)
 
 const formattedElapsedTime = computed(() => {
@@ -115,6 +119,7 @@ async function handleStopTimer() {
 }
 
 function handleLogout() {
+  uiStore.resetDeepWork()
   timerStore.reset()
   authStore.logout()
   router.push('/login')
