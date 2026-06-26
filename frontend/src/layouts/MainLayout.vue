@@ -13,28 +13,28 @@
       <nav class="p-4 flex-1">
         <RouterLink :to="{ name: 'dashboard' }" :class="navLinkClass">
           <i class="pi pi-home"></i>
-          <span>Dashboard</span>
+          <span>Tableau de bord</span>
         </RouterLink>
         <RouterLink :to="{ name: 'tasks' }" :class="navLinkClass">
           <i class="pi pi-check-square"></i>
-          <span>Tasks</span>
+          <span>Tâches</span>
         </RouterLink>
         <RouterLink :to="{ name: 'calendar' }" :class="navLinkClass">
           <i class="pi pi-calendar"></i>
-          <span>Calendar</span>
+          <span>Calendrier</span>
         </RouterLink>
         <RouterLink :to="{ name: 'integrations' }" :class="navLinkClass">
           <i class="pi pi-plug"></i>
-          <span>Integrations</span>
+          <span>Intégrations</span>
         </RouterLink>
         <RouterLink :to="{ name: 'analytics' }" :class="navLinkClass">
           <i class="pi pi-chart-bar"></i>
-          <span>Analytics</span>
+          <span>Analyses</span>
         </RouterLink>
       </nav>
 
       <div v-if="timerStore.activeEntry" class="mx-4 mb-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Running timer</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Chrono en cours</p>
         <p class="mt-2 text-sm font-medium text-gray-900">{{ timerStore.activeEntry.task.title }}</p>
         <div class="mt-3 flex items-center justify-between gap-3">
           <span class="font-mono text-lg font-semibold text-gray-900">{{ formattedElapsedTime }}</span>
@@ -43,7 +43,7 @@
             :disabled="timerStore.loading"
             class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Stop
+            Arrêter
           </button>
         </div>
         <p v-if="timerErrorMessage" class="mt-2 text-xs text-red-600">{{ timerErrorMessage }}</p>
@@ -107,10 +107,10 @@ const timerErrorMessage = ref<string | null>(null)
 const LAST_BRIEFING_DATE_KEY = 'lastBriefingDate'
 const isMorningBriefingVisible = ref(false)
 const morningBriefing = ref({
-  greeting: 'Good morning! Ready to start strong?',
-  emailSummary: 'No briefing data available.',
-  scheduleOverview: 'No briefing data available.',
-  recommendedFocus: 'Start with your top TODO task.',
+  greeting: 'Bonjour ! Tout est prêt pour bien démarrer.',
+  emailSummary: 'Aucune donnée de briefing disponible.',
+  scheduleOverview: 'Aucune donnée de briefing disponible.',
+  recommendedFocus: 'Commencez par votre tâche prioritaire.',
 })
 
 const formattedElapsedTime = computed(() => {
@@ -128,11 +128,11 @@ async function handleStopTimer() {
     await timerStore.stopTimer()
   } catch (caughtError: unknown) {
     if (axios.isAxiosError(caughtError)) {
-      timerErrorMessage.value = caughtError.response?.data?.message || 'Unable to stop the running timer.'
+      timerErrorMessage.value = caughtError.response?.data?.message || "Impossible d'arrêter le chrono en cours."
       return
     }
 
-    timerErrorMessage.value = 'Unable to stop the running timer.'
+    timerErrorMessage.value = "Impossible d'arrêter le chrono en cours."
   }
 }
 
@@ -176,7 +176,7 @@ async function maybeShowMorningBriefing() {
 
     isMorningBriefingVisible.value = true
   } catch (error) {
-    console.warn('Failed to load morning briefing.', error)
+    console.warn('Impossible de charger le briefing matinal.', error)
   }
 }
 

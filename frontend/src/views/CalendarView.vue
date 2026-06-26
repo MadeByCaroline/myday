@@ -3,16 +3,16 @@
     <div class="max-w-5xl mx-auto">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Daily Timeline</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Planning quotidien</h1>
           <p class="text-sm text-gray-500">{{ todayLabel }}</p>
         </div>
         <span class="text-sm text-gray-500">
-          {{ events.length }} event{{ events.length === 1 ? '' : 's' }}
+          {{ events.length }} événement{{ events.length === 1 ? '' : 's' }}
         </span>
       </div>
 
       <div v-if="loading" class="bg-white rounded-2xl border border-gray-200 p-8 text-gray-500">
-        Loading your calendar events...
+        Chargement de vos événements de calendrier...
       </div>
 
       <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-2xl p-4 text-red-700">
@@ -21,7 +21,7 @@
 
       <div v-else class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div v-if="events.length === 0" class="p-12 text-center text-gray-500">
-          No events found between 08:00 and 20:00 today.
+          Aucun événement trouvé entre 08:00 et 20:00 aujourd’hui.
         </div>
 
         <div v-else class="relative h-[720px]">
@@ -63,7 +63,7 @@
                   class="mt-2 text-xs bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700"
                   @click="openLink(event.link)"
                 >
-                  Join Meeting
+                  Rejoindre la réunion
                 </button>
               </div>
             </div>
@@ -96,7 +96,7 @@ const events = ref<UnifiedEvent[]>([])
 const hours = Array.from({ length: 13 }, (_, index) => index + 8)
 
 const todayLabel = computed(() =>
-  new Date().toLocaleDateString('en-US', {
+  new Date().toLocaleDateString('fr-FR', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -160,7 +160,7 @@ async function fetchTodayEvents() {
     })
     events.value = Array.isArray(data) ? data : []
   } catch {
-    error.value = 'Failed to load calendar events.'
+    error.value = 'Impossible de charger les événements du calendrier.'
   } finally {
     loading.value = false
   }

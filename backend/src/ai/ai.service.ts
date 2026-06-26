@@ -148,9 +148,9 @@ export class AiService {
     emails: EmailSummary[],
     events: CalendarEvent[],
   ): Promise<AiAnalysisResult> {
-    const systemPrompt = `Tu es un assistant de productivité personnel. Analyse les emails et les événements de l'agenda de l'utilisateur. 
-    Rédige TOUT ton contenu (résumé, titres, descriptions) en FRANÇAIS.
-    Retourne UNIQUEMENT un objet JSON avec EXACTEMENT cette structure, rien d'autre :
+    const systemPrompt = `Tu es un assistant de productivité personnel. Analyse les emails et les événements de l'agenda de l'utilisateur.
+    Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
+    Retourne UNIQUEMENT un objet JSON avec EXACTEMENT cette structure, rien d'autre. N'ajoute aucune explication, aucun commentaire et aucun texte hors du JSON :
     {
       "summary": "Un résumé clair de 2 ou 3 paragraphes de la journée de l'utilisateur, incluant les réunions et emails clés (rédigé en français)",
       "events": [le tableau des événements fourni, inchangé],
@@ -175,13 +175,13 @@ export class AiService {
       ]
     }`;
 
-    const userContent = `Here are my emails from the last 24 hours:
-${emails.length > 0 ? JSON.stringify(emails, null, 2) : 'No emails in the last 24 hours.'}
+    const userContent = `Voici mes e-mails des dernières 24 heures :
+${emails.length > 0 ? JSON.stringify(emails, null, 2) : 'Aucun e-mail au cours des dernières 24 heures.'}
 
-Here are my calendar events for today:
-${events.length > 0 ? JSON.stringify(events, null, 2) : 'No calendar events today.'}
+Voici mes événements de calendrier pour aujourd'hui :
+${events.length > 0 ? JSON.stringify(events, null, 2) : "Aucun événement au calendrier aujourd'hui."}
 
-Please analyze and return the JSON response.`;
+Analyse ces éléments et retourne maintenant la réponse JSON.`;
 
     try {
       const content = await this.resolveAIRequest(
@@ -214,7 +214,7 @@ Please analyze and return the JSON response.`;
       this.logger.error('Gemini API error', message);
       return {
         summary:
-          'Unable to generate AI summary at this time. Please check your Gemini configuration.',
+          "Impossible de générer le résumé IA pour le moment. Vérifiez la configuration de Gemini.",
         events,
         suggested_tasks: [],
         email_summaries: this.buildFallbackEmailSummaries(emails),
@@ -236,7 +236,9 @@ Please analyze and return the JSON response.`;
     action: string;
     events: CalendarEvent[];
   }): Promise<string> {
-    const systemPrompt = `Tu es un assistant email. Rédige uniquement le corps d'une réponse email professionnelle et polie en FRANÇAIS.
+const systemPrompt = `Tu es un assistant email.
+Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
+Rédige uniquement le corps d'une réponse email professionnelle et polie.
 Ne produis ni objet, ni signature fictive, ni markdown, ni explication.
 Tiens compte de l'action demandée et des disponibilités du calendrier pour proposer une réponse cohérente et concise.`;
 
@@ -278,7 +280,7 @@ ${events.length > 0 ? JSON.stringify(events, null, 2) : 'Aucun événement perti
 
     const systemPrompt = `Tu es un assistant exécutif préparant un court briefing matinal pour l'utilisateur.
 Utilise un ton encourageant, bienveillant et concis.
-Rédige TOUT le contenu en FRANÇAIS.
+Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
 
 Retourne UNIQUEMENT un objet JSON valide avec EXACTEMENT cette structure, sans aucune autre explication ou texte en dehors du bloc JSON :
 {
@@ -288,14 +290,14 @@ Retourne UNIQUEMENT un objet JSON valide avec EXACTEMENT cette structure, sans a
   "recommendedFocus": "Un objectif clair de concentration prioritaire pour aujourd'hui en français"
 }`;
 
-    const userPrompt = `Context for user ${userId}:
-- Unread emails from last 12 hours:
+    const userPrompt = `Contexte pour l'utilisateur ${userId} :
+- E-mails non lus des 12 dernières heures :
 ${context.unreadEmails.length > 0 ? JSON.stringify(context.unreadEmails, null, 2) : '[]'}
-- Today's calendar events:
+- Événements du calendrier prévus aujourd'hui :
 ${context.todayEvents.length > 0 ? JSON.stringify(context.todayEvents, null, 2) : '[]'}
-- High-priority TODO tasks:
+- Tâches TODO prioritaires :
 ${context.highPriorityTodoTasks.length > 0 ? JSON.stringify(context.highPriorityTodoTasks, null, 2) : '[]'}
-Generate the JSON response now.`;
+Génère maintenant la réponse JSON.`;
 
     let briefing: MorningBriefingResult;
     try {
@@ -325,7 +327,10 @@ Generate the JSON response now.`;
     tools: WorkspaceChatToolset;
   }): Promise<string> {
     try {
+      const systemPrompt =
+        "Tu es l'assistant de l'espace de travail de l'utilisateur. Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS. Réponds avec un ton encourageant, professionnel et concis.";
       const workspacePrompt = [
+        `Instructions système : ${systemPrompt}`,
         ...(params.history || []).map(
           (message) =>
             `${message.role === 'assistant' ? 'Assistant' : 'Utilisateur'}: ${message.content}`,
@@ -336,12 +341,15 @@ Generate the JSON response now.`;
         history: params.history,
         tools: params.tools,
       });
-      return text || 'I was unable to formulate a response at this time.';
+      return (
+        text ||
+        "Je n'ai pas pu formuler une réponse pour le moment."
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown AI provider error';
       this.logger.error('AI workspace chat error', message);
-      return "I'm experiencing a temporary issue responding to your question.";
+      return 'Je rencontre temporairement un problème pour répondre à votre question.';
     }
   }
 
@@ -349,13 +357,13 @@ Generate the JSON response now.`;
     tasks: Array<{ id: string; title: string; description?: string | null }>,
     calendarEvents: CalendarEvent[],
   ): Promise<TimeBlock[]> {
-    const systemPrompt = `Tu es un assistant exécutif expert en gestion du temps. 
+const systemPrompt = `Tu es un assistant exécutif expert en gestion du temps.
 Analyse les tâches ouvertes et les événements du calendrier pour aujourd'hui.
 Trouve les créneaux libres dans la journée (heures de travail : 9h00-18h00, pause déjeuner : 12h30-13h30).
 Attribue chaque tâche à un créneau disponible, en estimant 30 minutes par tâche sauf indication contraire.
 Ne chevauche pas les événements existants.
-Rédige les titres en FRANÇAIS.
-Retourne UNIQUEMENT un tableau JSON avec EXACTEMENT cette structure, rien d'autre :
+Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
+Retourne UNIQUEMENT un tableau JSON avec EXACTEMENT cette structure, rien d'autre. N'ajoute aucune explication, aucun commentaire et aucun texte hors du JSON :
 [
   {
     "taskId": "id exact de la tâche",
@@ -424,25 +432,25 @@ Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
       })
       .join('\n');
 
-    const systemPrompt = `You are a productivity coach and time management expert. 
-Analyze the user's weekly time tracking data and provide a clear, actionable performance report.
-Write your response in English.
-Return ONLY a valid JSON object with EXACTLY this structure, nothing else:
+    const systemPrompt = `Tu es un coach de productivité expert en gestion du temps.
+Analyse les données hebdomadaires de suivi du temps de l'utilisateur et fournis un bilan clair, actionnable et encourageant.
+Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
+Retourne UNIQUEMENT un objet JSON valide avec EXACTEMENT cette structure, rien d'autre. N'ajoute aucune explication, aucun commentaire et aucun texte hors du JSON :
 {
-  "analysis": "A 2-3 paragraph analysis of how the user spent their time this week, highlighting what went well and areas of concern",
+  "analysis": "Une analyse en 2 ou 3 paragraphes de la manière dont l'utilisateur a réparti son temps cette semaine, mettant en avant les points positifs et les points d'attention",
   "recommendations": [
-    "First actionable recommendation to improve productivity next week",
-    "Second actionable recommendation to improve productivity next week"
+    "Première recommandation actionnable pour améliorer la productivité la semaine prochaine",
+    "Deuxième recommandation actionnable pour améliorer la productivité la semaine prochaine"
   ]
 }`;
 
-    const userContent = `Here is my time tracking data for the last 7 days:
-Total tracked time: ${totalHours} hours
+    const userContent = `Voici mes données de suivi du temps sur les 7 derniers jours :
+Temps total suivi : ${totalHours} heures
 
-Time breakdown by task:
-${taskBreakdown || 'No tasks tracked this week.'}
+Répartition du temps par tâche :
+${taskBreakdown || 'Aucune tâche suivie cette semaine.'}
 
-Please analyze my time distribution and provide ${MAX_RECOMMENDATIONS} actionable recommendations to improve my productivity next week.`;
+Analyse ma répartition du temps et fournis ${MAX_RECOMMENDATIONS} recommandations actionnables pour améliorer ma productivité la semaine prochaine.`;
 
     try {
       const content = await this.resolveAIRequest(
@@ -489,17 +497,17 @@ Please analyze my time distribution and provide ${MAX_RECOMMENDATIONS} actionabl
   }): string {
     const totalHours = (statsData.totalDuration / 3600).toFixed(1);
     if (statsData.taskStats.length === 0) {
-      return 'No time entries were recorded this week. Start tracking your tasks to get AI-powered insights on your productivity.';
+      return "Aucune session de temps n'a été enregistrée cette semaine. Commencez à suivre vos tâches pour obtenir des analyses de productivité générées par l'IA.";
     }
     const topTask = statsData.taskStats[0];
     const topHours = (topTask.totalDuration / 3600).toFixed(1);
-    return `This week you tracked a total of ${totalHours} hours across ${statsData.taskStats.length} task(s). Your most time-consuming task was "${topTask.taskTitle}" with ${topHours} hours logged. Review your time allocation to ensure your efforts align with your priorities.`;
+    return `Cette semaine, vous avez suivi un total de ${totalHours} heures sur ${statsData.taskStats.length} tâche(s). La tâche la plus chronophage a été "${topTask.taskTitle}" avec ${topHours} heures enregistrées. Vérifiez que la répartition de votre temps reste bien alignée avec vos priorités.`;
   }
 
   private buildFallbackRecommendations(): string[] {
     return [
-      'Start tracking all your work sessions consistently to get more accurate insights.',
-      'Review your task priorities each Monday to ensure your time allocation matches your goals.',
+      'Suivez régulièrement toutes vos sessions de travail pour obtenir des analyses plus fiables.',
+      'Revoyez vos priorités chaque lundi afin de vérifier que votre temps soutient bien vos objectifs.',
     ];
   }
 
@@ -567,7 +575,7 @@ Please analyze my time distribution and provide ${MAX_RECOMMENDATIONS} actionabl
 
     return `${prompt}
 
-IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or explanations.`;
+IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni libellé, ni explication, ni texte hors JSON.`;
   }
 
   private async generateWorkspaceQuestionWithGemini(
@@ -838,7 +846,7 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
   ): CategorizedEmailSummary[] {
     return emails.map((email, index) => ({
       emailId: email.id || `fallback-email-${index + 1}`,
-      summary: email.snippet || email.subject || 'No summary available.',
+      summary: email.snippet || email.subject || 'Résumé indisponible.',
       category: 'INFO',
       suggestedActions: this.buildFallbackSuggestedActions(email),
     }));

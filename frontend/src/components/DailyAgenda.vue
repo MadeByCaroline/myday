@@ -4,15 +4,15 @@
       <div class="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center">
         <i class="pi pi-calendar text-green-600"></i>
       </div>
-      <h3 class="text-lg font-semibold text-gray-900">Today's Agenda</h3>
+      <h3 class="text-lg font-semibold text-gray-900">Agenda du jour</h3>
       <span class="ml-auto text-sm text-gray-500">
-        {{ events.length }} event{{ events.length !== 1 ? 's' : '' }}
+        {{ events.length }} événement{{ events.length !== 1 ? 's' : '' }}
       </span>
     </div>
 
     <div v-if="events.length === 0" class="text-center py-8 text-gray-400">
       <i class="pi pi-calendar text-3xl mb-3 block"></i>
-      <p>No events scheduled for today</p>
+      <p>Aucun événement prévu aujourd’hui</p>
     </div>
 
     <div v-else class="space-y-3">
@@ -74,10 +74,10 @@ const sortedEvents = computed(() =>
 function formatTime(dateStr: string): string {
   if (!dateStr) return ''
   try {
-    return new Date(dateStr).toLocaleTimeString('en-US', {
+    return new Date(dateStr).toLocaleTimeString('fr-FR', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true,
+      hour12: false,
     })
   } catch { return '' }
 }

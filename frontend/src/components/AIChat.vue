@@ -4,7 +4,7 @@
     class="fixed bottom-5 right-5 z-40 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700"
     @click="toggleChat"
   >
-    Talk to my AI
+    Discuter avec mon IA
   </button>
 
   <div
@@ -15,7 +15,7 @@
     <aside class="absolute right-0 top-0 h-full w-full max-w-md border-l border-gray-200 bg-white shadow-2xl">
       <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
         <div>
-          <h3 class="text-sm font-semibold text-gray-900">Workspace AI</h3>
+          <h3 class="text-sm font-semibold text-gray-900">Assistant IA</h3>
           <p class="text-xs text-gray-500">Ctrl+K / Cmd+K</p>
         </div>
         <button type="button" class="text-gray-500 hover:text-gray-700" @click="closeChat">
@@ -25,7 +25,7 @@
 
       <div class="h-[calc(100%-8.5rem)] space-y-3 overflow-y-auto px-4 py-4">
         <p v-if="messages.length === 0" class="rounded-xl border border-dashed border-gray-200 p-3 text-sm text-gray-500">
-          Ask about your schedule, tasks, or tracked time.
+          Posez une question sur votre planning, vos tâches ou votre temps suivi.
         </p>
 
         <div
@@ -43,7 +43,7 @@
 
         <div v-if="isTyping" class="inline-flex items-center gap-2 rounded-2xl bg-gray-100 px-3 py-2 text-sm text-gray-700">
           <i class="pi pi-spin pi-spinner text-xs"></i>
-          AI is typing...
+          L’IA rédige sa réponse...
         </div>
       </div>
 
@@ -53,7 +53,7 @@
             ref="inputRef"
             v-model="prompt"
             type="text"
-            placeholder="Ask anything about your workspace..."
+            placeholder="Posez votre question sur votre espace de travail..."
             class="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
           />
           <button
@@ -61,7 +61,7 @@
             :disabled="!prompt.trim() || isTyping"
             class="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Send
+            Envoyer
           </button>
         </div>
       </form>
@@ -142,13 +142,13 @@ async function sendMessage() {
     messages.value.push({
       id: `${Date.now()}-assistant`,
       role: 'assistant',
-      content: data?.message || 'No response from AI.',
+      content: data?.message || "Aucune réponse n'a été reçue de l’IA.",
     })
   } catch {
     messages.value.push({
       id: `${Date.now()}-assistant-error`,
       role: 'assistant',
-      content: 'Unable to fetch AI response right now.',
+      content: "Impossible de récupérer une réponse de l’IA pour le moment.",
     })
   } finally {
     isTyping.value = false

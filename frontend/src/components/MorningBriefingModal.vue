@@ -9,23 +9,23 @@
           <i class="pi pi-sparkles text-lg text-white"></i>
         </div>
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-indigo-500">Morning Briefing</p>
-          <h2 class="text-xl font-bold text-gray-900">Your daily stand-up</h2>
+          <p class="text-xs font-semibold uppercase tracking-wider text-indigo-500">Briefing matinal</p>
+          <h2 class="text-xl font-bold text-gray-900">Votre point quotidien</h2>
         </div>
       </div>
 
       <div class="space-y-4 text-sm text-gray-700">
         <p class="rounded-2xl bg-indigo-50/80 px-4 py-3 font-medium text-indigo-900">{{ briefing.greeting }}</p>
         <section>
-          <h3 class="mb-1 text-sm font-semibold text-gray-900">Overnight email summary</h3>
+          <h3 class="mb-1 text-sm font-semibold text-gray-900">Résumé des e-mails récents</h3>
           <p>{{ briefing.emailSummary }}</p>
         </section>
         <section>
-          <h3 class="mb-1 text-sm font-semibold text-gray-900">Today's schedule</h3>
+          <h3 class="mb-1 text-sm font-semibold text-gray-900">Planning du jour</h3>
           <p>{{ briefing.scheduleOverview }}</p>
         </section>
         <section>
-          <h3 class="mb-1 text-sm font-semibold text-gray-900">Recommended focus</h3>
+          <h3 class="mb-1 text-sm font-semibold text-gray-900">Priorité recommandée</h3>
           <p>{{ briefing.recommendedFocus }}</p>
         </section>
       </div>
@@ -36,7 +36,7 @@
           class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
           @click="$emit('close')"
         >
-          Let's go!
+          C'est parti !
         </button>
       </div>
     </div>

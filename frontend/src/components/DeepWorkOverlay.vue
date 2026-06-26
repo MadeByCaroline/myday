@@ -1,19 +1,19 @@
 <template>
   <div class="fixed inset-0 z-50 flex min-h-screen items-center justify-center bg-slate-950 px-6 py-10 text-white">
     <div class="w-full max-w-4xl text-center">
-      <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-300">Deep Work</p>
+      <p class="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-300">Concentration</p>
       <p class="mt-6 font-mono text-7xl font-semibold tracking-tight sm:text-8xl">{{ formattedTimer }}</p>
       <p class="mt-3 text-sm text-slate-400">
         {{ timerLabel }}
       </p>
 
       <div class="mt-12 rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
-        <p class="text-sm uppercase tracking-[0.25em] text-slate-400">Current task</p>
+        <p class="text-sm uppercase tracking-[0.25em] text-slate-400">Tâche en cours</p>
         <h2 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">
-          {{ uiStore.deepWorkTask?.title || 'Deep work session' }}
+          {{ uiStore.deepWorkTask?.title || 'Session de concentration' }}
         </h2>
         <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-300">
-          {{ uiStore.deepWorkTask?.description || 'Focus on one important thing. Everything else can wait.' }}
+          {{ uiStore.deepWorkTask?.description || 'Concentrez-vous sur une seule priorité importante. Le reste peut attendre.' }}
         </p>
       </div>
 
@@ -22,7 +22,7 @@
         :disabled="uiStore.loading"
         class="mt-12 inline-flex items-center rounded-full border border-red-400/40 bg-red-500/10 px-8 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        End Deep Work
+        Terminer la session
       </button>
 
       <p v-if="errorMessage" class="mt-4 text-sm text-red-300">{{ errorMessage }}</p>
@@ -57,7 +57,7 @@ const formattedTimer = computed(() => {
 })
 
 const timerLabel = computed(() =>
-  remainingSeconds.value > 0 ? 'Remaining in this focus block' : 'Focus block complete — end when you are ready',
+  remainingSeconds.value > 0 ? 'Temps restant dans cette session de concentration' : 'Session terminée — vous pouvez la clôturer quand vous le souhaitez',
 )
 
 async function handleStopDeepWork() {
@@ -67,11 +67,11 @@ async function handleStopDeepWork() {
     await uiStore.stopDeepWork()
   } catch (caughtError: unknown) {
     if (axios.isAxiosError(caughtError)) {
-      errorMessage.value = caughtError.response?.data?.message || 'Unable to end deep work mode.'
+      errorMessage.value = caughtError.response?.data?.message || 'Impossible de terminer le mode concentration.'
       return
     }
 
-    errorMessage.value = 'Unable to end deep work mode.'
+    errorMessage.value = 'Impossible de terminer le mode concentration.'
   }
 }
 
