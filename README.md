@@ -65,7 +65,7 @@ GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 GOOGLE_CALLBACK_URL="http://127.0.0.1:3000/auth/google/callback"
 
-# Microsoft OAuth (optional)
+# Microsoft OAuth (optional — remove if not used)
 MICROSOFT_CLIENT_ID="your-microsoft-client-id"
 MICROSOFT_CLIENT_SECRET="your-microsoft-client-secret"
 MICROSOFT_CALLBACK_URL="http://127.0.0.1:3000/auth/microsoft/callback"
