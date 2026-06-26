@@ -255,12 +255,16 @@ ${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun év
     const parsedActions = Array.isArray(value)
       ? value.filter((action): action is string => typeof action === 'string')
       : [];
+    const seenActions = new Set<string>();
     const normalizedActions = parsedActions
       .map((action) => action.trim())
       .filter(
-        (action, index, array) =>
-          action.length > 0 && array.indexOf(action) === index,
+        (action) => action.length > 0 && !seenActions.has(action),
       )
+      .map((action) => {
+        seenActions.add(action);
+        return action;
+      })
       .slice(0, 3);
 
     return [
