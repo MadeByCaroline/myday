@@ -50,7 +50,9 @@ export class WorkspacesService {
 
     const workspaceData = this.normalizeWorkspaceInput(data, true);
     if (Object.keys(workspaceData).length === 0) {
-      throw new BadRequestException('At least one workspace field is required.');
+      throw new BadRequestException(
+        'At least one field (name, color, or icon) must be provided for update.',
+      );
     }
 
     return this.prisma.workspace.update({
@@ -71,7 +73,9 @@ export class WorkspacesService {
     }
 
     if (workspaces.length <= 1) {
-      throw new BadRequestException('At least one workspace must remain available.');
+      throw new BadRequestException(
+        'Cannot delete the last workspace. At least one workspace must exist.',
+      );
     }
 
     const fallbackWorkspace = workspaces.find((entry) => entry.id !== workspaceId);
