@@ -12,11 +12,17 @@ model User {
   email       String       @unique
   name        String?
   picture     String?
+  role        Role         @default(USER)
   dailySummary String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   oauthTokens OAuthToken[]
   tasks       Task[]
+}
+
+enum Role {
+  USER
+  ADMIN
 }
 
 model OAuthToken {

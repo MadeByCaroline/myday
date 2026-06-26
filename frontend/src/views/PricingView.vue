@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white py-12 px-4">
     <div class="mx-auto max-w-6xl space-y-8">
-      <section class="rounded-3xl border border-indigo-100 bg-white p-6 shadow-sm sm:p-8">
+      <section v-if="!authStore.isAdmin" class="rounded-3xl border border-indigo-100 bg-white p-6 shadow-sm sm:p-8">
         <p class="text-lg font-semibold text-gray-900 sm:text-xl">
           🎁 Offre de pré-lancement : Rejoignez la Whitelist ! Les 100 premiers inscrits ont 1 chance sur 5 de
           remporter 2 mois d'abonnement gratuit.
@@ -33,7 +33,7 @@
         </p>
       </section>
 
-      <section class="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+      <section v-if="!authStore.isAdmin" class="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <h2 class="text-xl font-bold text-gray-900">Choisissez votre formule</h2>
           <div class="inline-flex items-center gap-3 rounded-full bg-gray-100 p-1">
@@ -57,7 +57,7 @@
         </div>
       </section>
 
-      <section class="grid gap-6 lg:grid-cols-2">
+      <section v-if="!authStore.isAdmin" class="grid gap-6 lg:grid-cols-2">
         <article
           class="rounded-3xl border bg-white p-6 shadow-sm transition"
           :class="!isAnnual ? 'border-indigo-300 ring-2 ring-indigo-100' : 'border-gray-200'"
@@ -116,6 +116,13 @@
           </p>
         </article>
       </section>
+
+      <section v-else class="rounded-3xl border border-emerald-100 bg-emerald-50 p-6 text-emerald-800 shadow-sm sm:p-8">
+        <h2 class="text-xl font-bold">Accès administrateur actif</h2>
+        <p class="mt-2 text-sm">
+          Votre compte administrateur a un accès complet à toutes les fonctionnalités premium.
+        </p>
+      </section>
     </div>
   </div>
 </template>
@@ -123,8 +130,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const MONTHLY_PRICE = 29
 const ANNUAL_PRICE = 243
 const ANNUAL_REGULAR_PRICE = 348
