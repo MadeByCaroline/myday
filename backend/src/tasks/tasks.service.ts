@@ -18,7 +18,7 @@ export class TasksService {
         title: data.title,
         description: data.description,
         source: data.source || 'MANUAL',
-        status: 'TODO',
+        status: VALID_STATUSES[0],
       },
     });
   }

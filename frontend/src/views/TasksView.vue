@@ -100,7 +100,7 @@
             </form>
 
             <draggable
-              v-model="todoTasks"
+              :list="todoTasks"
               group="tasks"
               item-key="id"
               class="flex-1 space-y-2 min-h-16"
@@ -139,7 +139,7 @@
             </div>
 
             <draggable
-              v-model="inProgressTasks"
+              :list="inProgressTasks"
               group="tasks"
               item-key="id"
               class="flex-1 space-y-2 min-h-16"
@@ -178,7 +178,7 @@
             </div>
 
             <draggable
-              v-model="doneTasks"
+              :list="doneTasks"
               group="tasks"
               item-key="id"
               class="flex-1 space-y-2 min-h-16"
@@ -221,6 +221,8 @@ import { useAuthStore } from '../stores/auth'
 import { useTasksStore } from '../stores/tasks'
 import type { SavedTask } from '../stores/tasks'
 
+type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE'
+
 const authStore = useAuthStore()
 const tasksStore = useTasksStore()
 const router = useRouter()
@@ -231,24 +233,13 @@ const errorMessage = ref<string | null>(null)
 const navLinkClass =
   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors mb-1'
 
-const todoTasks = computed<SavedTask[]>({
-  get: () => tasksStore.savedTasks.filter((t) => t.status === 'TODO'),
-  set: () => {},
-})
-
-const inProgressTasks = computed<SavedTask[]>({
-  get: () => tasksStore.savedTasks.filter((t) => t.status === 'IN_PROGRESS'),
-  set: () => {},
-})
-
-const doneTasks = computed<SavedTask[]>({
-  get: () => tasksStore.savedTasks.filter((t) => t.status === 'DONE'),
-  set: () => {},
-})
+const todoTasks = computed<SavedTask[]>(() => tasksStore.savedTasks.filter((t) => t.status === 'TODO'))
+const inProgressTasks = computed<SavedTask[]>(() => tasksStore.savedTasks.filter((t) => t.status === 'IN_PROGRESS'))
+const doneTasks = computed<SavedTask[]>(() => tasksStore.savedTasks.filter((t) => t.status === 'DONE'))
 
 function onColumnChange(
   event: { added?: { element: SavedTask; newIndex: number }; removed?: unknown; moved?: unknown },
-  columnStatus: string,
+  columnStatus: TaskStatus,
 ) {
   if (event.added) {
     tasksStore.updateTaskStatus(event.added.element.id, columnStatus)
