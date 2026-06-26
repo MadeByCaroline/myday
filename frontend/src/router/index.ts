@@ -16,6 +16,11 @@ const router = createRouter({
       component: () => import('../views/AuthCallbackView.vue'),
     },
     {
+      path: '/pricing',
+      name: 'pricing',
+      component: () => import('../views/PricingView.vue'),
+    },
+    {
       path: '/',
       component: () => import('../layouts/MainLayout.vue'),
       meta: { requiresAuth: true },
