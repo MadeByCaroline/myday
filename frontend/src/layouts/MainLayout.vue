@@ -73,6 +73,11 @@
 
     <AIChat v-if="!uiStore.isDeepWorkModeActive" />
     <DeepWorkOverlay v-if="uiStore.isDeepWorkModeActive" />
+    <MorningBriefingModal
+      :visible="isMorningBriefingVisible"
+      :briefing="morningBriefing"
+      @close="dismissMorningBriefing"
+    />
   </div>
 </template>
 
@@ -82,6 +87,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import AIChat from '../components/AIChat.vue'
 import DeepWorkOverlay from '../components/DeepWorkOverlay.vue'
+import MorningBriefingModal from '../components/MorningBriefingModal.vue'
 import { useAuthStore } from '../stores/auth'
 import { useTimerStore } from '../stores/timer.store'
 import { useUiStore } from '../stores/ui.store'
@@ -94,6 +100,14 @@ const router = useRouter()
 const timerStore = useTimerStore()
 const uiStore = useUiStore()
 const timerErrorMessage = ref<string | null>(null)
+const LAST_BRIEFING_DATE_KEY = 'lastBriefingDate'
+const isMorningBriefingVisible = ref(false)
+const morningBriefing = ref({
+  greeting: 'Good morning! Ready to start strong?',
+  emailSummary: 'No briefing data available.',
+  scheduleOverview: 'No briefing data available.',
+  recommendedFocus: 'Start with your top TODO task.',
+})
 
 const formattedElapsedTime = computed(() => {
   const hours = String(Math.floor(timerStore.elapsedSeconds / 3600)).padStart(2, '0')
@@ -125,6 +139,43 @@ function handleLogout() {
   router.push('/login')
 }
 
+function getDateKeyForToday() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function dismissMorningBriefing() {
+  localStorage.setItem(LAST_BRIEFING_DATE_KEY, getDateKeyForToday())
+  isMorningBriefingVisible.value = false
+}
+
+async function maybeShowMorningBriefing() {
+  if (!authStore.token) {
+    return
+  }
+
+  const today = getDateKeyForToday()
+  if (localStorage.getItem(LAST_BRIEFING_DATE_KEY) === today) {
+    return
+  }
+
+  try {
+    const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/ai/morning-briefing`, {
+      headers: { Authorization: 'Bearer ' + authStore.token },
+    })
+
+    morningBriefing.value = {
+      greeting: data.greeting || morningBriefing.value.greeting,
+      emailSummary: data.emailSummary || morningBriefing.value.emailSummary,
+      scheduleOverview: data.scheduleOverview || morningBriefing.value.scheduleOverview,
+      recommendedFocus: data.recommendedFocus || morningBriefing.value.recommendedFocus,
+    }
+
+    isMorningBriefingVisible.value = true
+  } catch (error) {
+    console.warn('Failed to load morning briefing.', error)
+  }
+}
+
 onMounted(async () => {
   if (!authStore.token) {
     timerStore.reset()
@@ -132,5 +183,6 @@ onMounted(async () => {
   }
 
   await timerStore.fetchCurrentTimer()
+  await maybeShowMorningBriefing()
 })
 </script>

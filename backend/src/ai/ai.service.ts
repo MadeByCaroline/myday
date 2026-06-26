@@ -1,8 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { CalendarEvent } from '../calendar/calendar.service';
+import type { UnifiedEvent } from '../calendar/unified-event.interface';
+import { CalendarService } from '../calendar/calendar.service';
+import { MicrosoftService } from '../integrations/microsoft.service';
 import { EmailSummary } from '../mail/mail.service';
+import { MailService } from '../mail/mail.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { TasksService } from '../tasks/tasks.service';
 
 const EMAIL_CATEGORIES = [
   'URGENT',
@@ -11,6 +17,14 @@ const EMAIL_CATEGORIES = [
   'ACTION_REQUIRED',
   'INFO',
 ] as const;
+const HIGH_PRIORITY_KEYWORDS = [
+  'high',
+  'priority',
+  'urgent',
+  'asap',
+  'important',
+  'p1',
+];
 
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
 
@@ -58,6 +72,13 @@ export interface WorkspaceChatToolset {
   ) => Promise<unknown>;
 }
 
+export interface MorningBriefingResult {
+  greeting: string;
+  emailSummary: string;
+  scheduleOverview: string;
+  recommendedFocus: string;
+}
+
 type AiProvider = 'local' | 'gemini';
 
 interface ResolveAIRequestOptions {
@@ -70,8 +91,19 @@ interface ResolveAIRequestOptions {
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly genAI: GoogleGenerativeAI;
+  private readonly morningBriefingCache = new Map<
+    string,
+    { dateKey: string; briefing: MorningBriefingResult }
+  >();
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly mailService?: MailService,
+    @Optional() private readonly calendarService?: CalendarService,
+    @Optional() private readonly tasksService?: TasksService,
+    @Optional() private readonly microsoftService?: MicrosoftService,
+  ) {
     this.genAI = new GoogleGenerativeAI(
       this.configService.getOrThrow<string>('GEMINI_API_KEY'),
     );
@@ -232,6 +264,57 @@ ${events.length > 0 ? JSON.stringify(events, null, 2) : 'Aucun événement perti
       this.logger.error('AI draft generation error', message);
       return this.buildFallbackDraftReply(action);
     }
+  }
+
+  async generateMorningBriefing(userId: string): Promise<MorningBriefingResult> {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    this.pruneMorningBriefingCache(todayKey);
+    const cached = this.morningBriefingCache.get(userId);
+    if (cached?.dateKey === todayKey) {
+      return cached.briefing;
+    }
+
+    const context = await this.getMorningBriefingContext(userId);
+
+    const systemPrompt = `You are an executive assistant preparing a short morning briefing.
+Use an encouraging, concise tone.
+Return ONLY valid JSON with exactly this structure:
+{
+  "greeting": "short encouraging greeting",
+  "emailSummary": "summary of unread emails from the last 12 hours",
+  "scheduleOverview": "overview of today's schedule",
+  "recommendedFocus": "1 clear recommended focus for today"
+}`;
+
+    const userPrompt = `Context for user ${userId}:
+- Unread emails from last 12 hours:
+${context.unreadEmails.length > 0 ? JSON.stringify(context.unreadEmails, null, 2) : '[]'}
+- Today's calendar events:
+${context.todayEvents.length > 0 ? JSON.stringify(context.todayEvents, null, 2) : '[]'}
+- High-priority TODO tasks:
+${context.highPriorityTodoTasks.length > 0 ? JSON.stringify(context.highPriorityTodoTasks, null, 2) : '[]'}
+Generate the JSON response now.`;
+
+    let briefing: MorningBriefingResult;
+    try {
+      const response = await this.resolveAIRequest(
+        `${systemPrompt}\n\n${userPrompt}`,
+        { isJson: true },
+      );
+      briefing = this.normalizeMorningBriefing(
+        this.parseMorningBriefingResponse(response),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unknown morning briefing generation error';
+      this.logger.error('AI morning briefing error', message);
+      briefing = this.buildFallbackMorningBriefing(context);
+    }
+
+    this.morningBriefingCache.set(userId, { dateKey: todayKey, briefing });
+    return briefing;
   }
 
   async answerWorkspaceQuestion(params: {
@@ -679,5 +762,207 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
 
   private buildFallbackDraftReply(action: string): string {
     return `Bonjour,\n\nMerci pour votre message. ${action}.\n\nBien cordialement,`;
+  }
+
+  private async getMorningBriefingContext(userId: string): Promise<{
+    unreadEmails: EmailSummary[];
+    todayEvents: CalendarEvent[];
+    highPriorityTodoTasks: Array<{
+      id: string;
+      title: string;
+      description: string | null;
+    }>;
+  }> {
+    const prisma = this.requireDependency(this.prisma, 'PrismaService');
+    const mailService = this.requireDependency(this.mailService, 'MailService');
+    const calendarService = this.requireDependency(
+      this.calendarService,
+      'CalendarService',
+    );
+    const tasksService = this.requireDependency(
+      this.tasksService,
+      'TasksService',
+    );
+    const microsoftService = this.requireDependency(
+      this.microsoftService,
+      'MicrosoftService',
+    );
+
+    const oauthTokens = await prisma.oAuthToken.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const [taskRows, providerData] = await Promise.all([
+      tasksService.getUserTasks(userId),
+      Promise.all(
+        oauthTokens.map(async (oauthToken) => {
+          const provider = oauthToken.provider.toUpperCase();
+
+          if (provider === 'GOOGLE') {
+            const [emails, events] = await Promise.all([
+              mailService.getUnreadEmailsSince(
+                oauthToken.accessToken,
+                oauthToken.refreshToken || undefined,
+                12,
+              ),
+              calendarService.getTodayEvents(
+                oauthToken.accessToken,
+                oauthToken.refreshToken || undefined,
+              ),
+            ]);
+
+            return { emails, events };
+          }
+
+          if (provider === 'MICROSOFT') {
+            const [emails, events] = await Promise.all([
+              microsoftService.getUnreadEmails(oauthToken.accessToken),
+              microsoftService.getTodayEvents(oauthToken.accessToken),
+            ]);
+
+            return {
+              emails: this.filterEmailsFromLastHours(emails, 12),
+              events: events.map((event) => this.mapUnifiedEvent(event)),
+            };
+          }
+
+          return { emails: [], events: [] };
+        }),
+      ),
+    ]);
+
+    const todoTasks = taskRows.filter((task) => task.status === 'TODO');
+    const highPriorityTodoTasks = this.selectHighPriorityTasks(todoTasks);
+
+    return {
+      unreadEmails: providerData.flatMap((entry) => entry.emails),
+      todayEvents: providerData.flatMap((entry) => entry.events),
+      highPriorityTodoTasks,
+    };
+  }
+
+  private normalizeMorningBriefing(value: unknown): MorningBriefingResult {
+    if (typeof value !== 'object' || value === null) {
+      return this.buildFallbackMorningBriefing({
+        unreadEmails: [],
+        todayEvents: [],
+        highPriorityTodoTasks: [],
+      });
+    }
+
+    const data = value as Record<string, unknown>;
+    return {
+      greeting: this.safeString(
+        data.greeting,
+        'Good morning! Here is your plan for the day.',
+      ),
+      emailSummary: this.safeString(
+        data.emailSummary,
+        'No unread emails from the last 12 hours.',
+      ),
+      scheduleOverview: this.safeString(
+        data.scheduleOverview,
+        "You don't have calendar events for today.",
+      ),
+      recommendedFocus: this.safeString(
+        data.recommendedFocus,
+        'Start with your top TODO task to build momentum.',
+      ),
+    };
+  }
+
+  private buildFallbackMorningBriefing(context: {
+    unreadEmails: EmailSummary[];
+    todayEvents: CalendarEvent[];
+    highPriorityTodoTasks: Array<{ title: string }>;
+  }): MorningBriefingResult {
+    const topTask =
+      context.highPriorityTodoTasks[0]?.title || 'your top TODO task';
+
+    return {
+      greeting: 'Good morning! You’re set up for a strong start.',
+      emailSummary:
+        context.unreadEmails.length > 0
+          ? `You have ${context.unreadEmails.length} unread email(s) from the last 12 hours.`
+          : 'No unread emails from the last 12 hours.',
+      scheduleOverview:
+        context.todayEvents.length > 0
+          ? `You have ${context.todayEvents.length} event(s) on your calendar today.`
+          : "Your calendar is open today, so you can create focused time blocks.",
+      recommendedFocus: `Prioritize ${topTask} first, then batch email follow-ups.`,
+    };
+  }
+
+  private safeString(value: unknown, fallback: string): string {
+    return typeof value === 'string' && value.trim().length > 0
+      ? value.trim()
+      : fallback;
+  }
+
+  private filterEmailsFromLastHours(
+    emails: EmailSummary[],
+    hours: number,
+  ): EmailSummary[] {
+    const threshold = Date.now() - hours * 60 * 60 * 1000;
+    return emails.filter((email) => {
+      const receivedAt = Date.parse(email.receivedAt);
+      if (!Number.isFinite(receivedAt)) {
+        this.logger.warn(
+          `Skipping email with invalid receivedAt value: ${email.receivedAt || '[empty]'}`,
+        );
+        return false;
+      }
+      return receivedAt >= threshold;
+    });
+  }
+
+  private mapUnifiedEvent(event: UnifiedEvent): CalendarEvent {
+    return {
+      id: event.id,
+      title: event.title,
+      start: event.start,
+      end: event.end,
+      location: event.location,
+    };
+  }
+
+  private selectHighPriorityTasks(
+    tasks: Array<{ id: string; title: string; description: string | null }>,
+  ): Array<{ id: string; title: string; description: string | null }> {
+    const highPriorityTasks = tasks.filter((task) => {
+      const text = `${task.title} ${task.description || ''}`.toLowerCase();
+      return HIGH_PRIORITY_KEYWORDS.some((keyword) => text.includes(keyword));
+    });
+
+    if (highPriorityTasks.length > 0) {
+      return highPriorityTasks.slice(0, 5);
+    }
+
+    return tasks.slice(0, 5);
+  }
+
+  private requireDependency<T>(dependency: T | undefined, name: string): T {
+    if (!dependency) {
+      throw new Error(`${name} is required for morning briefing generation.`);
+    }
+
+    return dependency;
+  }
+
+  private pruneMorningBriefingCache(todayKey: string): void {
+    for (const [cachedUserId, cacheValue] of this.morningBriefingCache.entries()) {
+      if (cacheValue.dateKey !== todayKey) {
+        this.morningBriefingCache.delete(cachedUserId);
+      }
+    }
+  }
+
+  private parseMorningBriefingResponse(response: string): unknown {
+    try {
+      return JSON.parse(response) as unknown;
+    } catch {
+      throw new Error('AI returned invalid morning briefing JSON.');
+    }
   }
 }
