@@ -245,10 +245,15 @@ describe('SummaryService', () => {
       },
     ]);
 
-    const keptEmail = {
+    const keptLookalikeEmail = {
       id: 'keep-1',
       from: 'John Doe <john@newsletter.com>',
       subject: 'Newsletter',
+    };
+    const keptDifferentDomainEmail = {
+      id: 'keep-2',
+      from: 'Updates <updates@realnews.com>',
+      subject: 'Industry update',
     };
     const excludedEmail = {
       id: 'skip-1',
@@ -258,7 +263,11 @@ describe('SummaryService', () => {
     const mailService = {
       getRecentEmails: jest
         .fn()
-        .mockResolvedValue([excludedEmail, keptEmail]),
+        .mockResolvedValue([
+          excludedEmail,
+          keptLookalikeEmail,
+          keptDifferentDomainEmail,
+        ]),
     };
     const aiService = {
       analyzeProductivityData: jest.fn().mockResolvedValue({
@@ -281,7 +290,7 @@ describe('SummaryService', () => {
     await service.generateSummaryForUser('user-1');
 
     expect(aiService.analyzeProductivityData).toHaveBeenCalledWith(
-      [keptEmail],
+      [keptLookalikeEmail, keptDifferentDomainEmail],
       [],
       null,
     );

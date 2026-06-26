@@ -177,7 +177,8 @@ export class SummaryService {
     excludedSender: string,
   ): boolean {
     if (excludedSender.startsWith('@')) {
-      return senderEmail.endsWith(excludedSender);
+      const senderDomain = senderEmail.split('@')[1] || '';
+      return senderDomain === excludedSender.slice(1);
     }
 
     return senderEmail === excludedSender;

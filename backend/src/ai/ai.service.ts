@@ -26,6 +26,10 @@ const HIGH_PRIORITY_KEYWORDS = [
   'p1',
 ];
 const MAX_CUSTOM_INSTRUCTIONS_LENGTH = 500;
+const DISALLOWED_INSTRUCTION_PATTERNS = [
+  /ignore\s+(all\s+)?previous\s+instructions/giu,
+  /\b(system|assistant|developer)\s*:[^\n\r]*/giu,
+];
 
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
 
@@ -154,12 +158,8 @@ export class AiService {
     events: CalendarEvent[],
     aiSummaryInstructions?: string | null,
   ): Promise<AiAnalysisResult> {
-    const sanitizedInstructions = aiSummaryInstructions
-      ? aiSummaryInstructions
-          .replace(/[<>{}[\]\\]/g, '')
-          .slice(0, MAX_CUSTOM_INSTRUCTIONS_LENGTH)
-          .trim()
-      : null;
+    const sanitizedInstructions =
+      this.sanitizeAiSummaryInstructions(aiSummaryInstructions);
     const customInstructionsLine = sanitizedInstructions
       ? `\nInstructions personnalisées de l'utilisateur (concernant uniquement le format ou le style du résumé) : ${sanitizedInstructions}`
       : '';
@@ -852,6 +852,23 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
       ...normalizedActions,
       ...this.buildFallbackSuggestedActions(email),
     ].slice(0, 3);
+  }
+
+  private sanitizeAiSummaryInstructions(
+    instructions?: string | null,
+  ): string | null {
+    if (!instructions) {
+      return null;
+    }
+
+    const sanitized = DISALLOWED_INSTRUCTION_PATTERNS.reduce(
+      (value, pattern) => value.replace(pattern, ''),
+      instructions.replace(/[<>{}[\]\\]/g, ''),
+    )
+      .slice(0, MAX_CUSTOM_INSTRUCTIONS_LENGTH)
+      .trim();
+
+    return sanitized.length > 0 ? sanitized : null;
   }
 
   private normalizeCategory(value: string): EmailCategory {
