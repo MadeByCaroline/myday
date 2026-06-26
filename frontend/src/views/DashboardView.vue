@@ -3,7 +3,7 @@
       <!-- Header -->
       <header class="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
         <div>
-          <h2 class="text-2xl font-bold text-gray-900">{{ greeting }}, {{ firstName }} !</h2>
+          <h2 class="text-2xl font-bold text-gray-900">{{ greeting }}, {{ firstName }}&nbsp;!</h2>
           <p class="text-sm text-gray-500">{{ currentDate }}</p>
         </div>
         <div class="flex items-center gap-3">

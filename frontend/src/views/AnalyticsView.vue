@@ -237,7 +237,7 @@ const doughnutOptions = {
     tooltip: {
       callbacks: {
         label: (ctx: TooltipItem<'doughnut'>) =>
-          ` ${ctx.label}: ${(ctx.raw as number).toFixed(1)}h`,
+          ` ${ctx.label} : ${(ctx.raw as number).toFixed(1)} h`,
       },
     },
   },
@@ -261,7 +261,7 @@ const barOptions = {
     legend: { display: false },
     tooltip: {
       callbacks: {
-        label: (ctx: TooltipItem<'bar'>) => ` ${(ctx.raw as number).toFixed(1)}h`,
+        label: (ctx: TooltipItem<'bar'>) => ` ${(ctx.raw as number).toFixed(1)} h`,
       },
     },
   },
@@ -284,8 +284,8 @@ function truncateLabel(label: string, max = 20): string {
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0 && m > 0) return `${h}h ${m} min`
-  if (h > 0) return `${h}h`
+  if (h > 0 && m > 0) return `${h} h ${m} min`
+  if (h > 0) return `${h} h`
   if (m > 0) return `${m} min`
   return `${seconds}s`
 }
