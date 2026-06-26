@@ -209,18 +209,26 @@ export class WorkspacesService {
     fallback: string,
     partial: boolean,
   ): Partial<Pick<NormalizedWorkspaceData, 'color' | 'icon'>> {
+    if (field === 'color') {
+      if (value) {
+        return { color: value };
+      }
+
+      if (partial) {
+        return {};
+      }
+
+      return { color: fallback };
+    }
+
     if (value) {
-      return { [field]: value } as Partial<
-        Pick<NormalizedWorkspaceData, 'color' | 'icon'>
-      >;
+      return { icon: value };
     }
 
     if (partial) {
       return {};
     }
 
-    return { [field]: fallback } as Partial<
-      Pick<NormalizedWorkspaceData, 'color' | 'icon'>
-    >;
+    return { icon: fallback };
   }
 }
