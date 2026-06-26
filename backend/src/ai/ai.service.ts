@@ -153,8 +153,11 @@ export class AiService {
     events: CalendarEvent[],
     aiSummaryInstructions?: string | null,
   ): Promise<AiAnalysisResult> {
-    const customInstructionsLine = aiSummaryInstructions
-      ? `\nInstructions personnalisées de l'utilisateur : ${aiSummaryInstructions}`
+    const sanitizedInstructions = aiSummaryInstructions
+      ? aiSummaryInstructions.replace(/[<>{}[\]\\]/g, '').slice(0, 500).trim()
+      : null;
+    const customInstructionsLine = sanitizedInstructions
+      ? `\nInstructions personnalisées de l'utilisateur (concernant uniquement le format ou le style du résumé) : ${sanitizedInstructions}`
       : '';
     const systemPrompt = `Tu es un assistant de productivité personnel. Analyse les emails et les événements de l'agenda de l'utilisateur. 
     Rédige TOUT ton contenu (résumé, titres, descriptions) en FRANÇAIS.${customInstructionsLine}

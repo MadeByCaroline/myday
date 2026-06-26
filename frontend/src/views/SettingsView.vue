@@ -13,7 +13,7 @@
             <i class="pi pi-sparkles text-violet-600"></i>
           </div>
           <div>
-            <h3 class="text-lg font-semibold text-gray-900">Style du résumé IA</h3>
+            <h3 class="text-lg font-semibold text-gray-900">AI Summary Style</h3>
             <p class="text-sm text-gray-500">Customize how the AI summarizes your emails</p>
           </div>
         </div>
@@ -44,7 +44,7 @@
             <i class="pi pi-ban text-red-600"></i>
           </div>
           <div>
-            <h3 class="text-lg font-semibold text-gray-900">Emails ignorés</h3>
+            <h3 class="text-lg font-semibold text-gray-900">Ignored Senders</h3>
             <p class="text-sm text-gray-500">Emails from these senders will be excluded from AI summaries</p>
           </div>
         </div>

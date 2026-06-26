@@ -193,11 +193,11 @@ const currentDate = computed(() =>
 )
 
 function senderInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length >= 2) {
+  const parts = name.trim().split(/\s+/).filter((p) => p.length > 0)
+  if (parts.length >= 2 && parts[0] && parts[1]) {
     return (parts[0][0] + parts[1][0]).toUpperCase()
   }
-  return (name[0] || '?').toUpperCase()
+  return (name.trim()[0] || '?').toUpperCase()
 }
 
 function categoryBadgeClass(category: string) {
@@ -267,15 +267,15 @@ async function banSender(email: CategorizedEmailSummary) {
     }
     toast.add({
       severity: 'success',
-      summary: 'Sender excluded',
-      detail: `"${senderEmail}" will be excluded from future AI summaries.`,
+      summary: 'Expéditeur exclu',
+      detail: `"${senderEmail}" sera exclu des futurs résumés IA.`,
       life: 3000,
     })
   } catch {
     toast.add({
       severity: 'error',
       summary: 'Erreur',
-      detail: 'Could not update exclusion list.',
+      detail: 'Impossible de mettre à jour la liste d\'exclusion.',
       life: 4000,
     })
   } finally {

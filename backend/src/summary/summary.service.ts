@@ -155,12 +155,10 @@ export class SummaryService {
     if (excludedSenders.length === 0) {
       return emails;
     }
+    const lowerExcluded = excludedSenders.map((s) => s.toLowerCase());
     return emails.filter((email) => {
       const from = email.from.toLowerCase();
-      return !excludedSenders.some((excluded) => {
-        const lowerExcluded = excluded.toLowerCase();
-        return from.includes(lowerExcluded);
-      });
+      return !lowerExcluded.some((excluded) => from.includes(excluded));
     });
   }
 
