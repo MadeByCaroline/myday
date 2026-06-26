@@ -198,6 +198,65 @@ export class MicrosoftService {
     }
   }
 
+  async createBusyEvent(
+    accessToken: string,
+    start: Date,
+    end: Date,
+    description: string,
+  ): Promise<string | null> {
+    try {
+      const response = await axios.post<{ id?: string }>(
+        'https://graph.microsoft.com/v1.0/me/events',
+        {
+          subject: 'Deep Work',
+          body: {
+            contentType: 'Text',
+            content: description,
+          },
+          start: {
+            dateTime: start.toISOString(),
+            timeZone: 'UTC',
+          },
+          end: {
+            dateTime: end.toISOString(),
+            timeZone: 'UTC',
+          },
+          showAs: 'busy',
+          isReminderOn: false,
+        },
+        {
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      return response.data.id || null;
+    } catch (error) {
+      const detail = this.getErrorDetail(error);
+      this.logger.error('Microsoft Graph Deep Work Create Error:', detail);
+      return null;
+    }
+  }
+
+  async deleteBusyEvent(accessToken: string, eventId: string) {
+    try {
+      const safeEventId = encodeURIComponent(eventId);
+      await axios.delete(
+        `https://graph.microsoft.com/v1.0/me/events/${safeEventId}`,
+        {
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+          },
+        },
+      );
+    } catch (error) {
+      const detail = this.getErrorDetail(error);
+      this.logger.error('Microsoft Graph Deep Work Delete Error:', detail);
+    }
+  }
+
   private getErrorDetail(error: unknown): string {
     if (isAxiosError(error)) {
       const data: unknown = error.response?.data;

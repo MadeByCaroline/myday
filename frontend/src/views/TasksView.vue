@@ -66,6 +66,14 @@
                         <i class="pi pi-play text-xs"></i>
                       </button>
                       <button
+                        @click="handleStartDeepWork(element)"
+                        :disabled="isDeepWorkDisabled(element.id)"
+                        :class="deepWorkButtonClass(element.id)"
+                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session Deep Work active' : 'Lancer le mode Deep Work'"
+                      >
+                        <i class="pi pi-bolt text-xs"></i>
+                      </button>
+                      <button
                         @click="handleDeleteTask(element.id)"
                         class="text-gray-300 hover:text-red-500 transition-colors"
                         title="Supprimer"
@@ -113,6 +121,14 @@
                         :title="timerStore.isTaskActive(element.id) ? 'Chrono en cours' : 'Démarrer le suivi du temps'"
                       >
                         <i class="pi pi-play text-xs"></i>
+                      </button>
+                      <button
+                        @click="handleStartDeepWork(element)"
+                        :disabled="isDeepWorkDisabled(element.id)"
+                        :class="deepWorkButtonClass(element.id)"
+                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session Deep Work active' : 'Lancer le mode Deep Work'"
+                      >
+                        <i class="pi pi-bolt text-xs"></i>
                       </button>
                       <button
                         @click="handleDeleteTask(element.id)"
@@ -164,6 +180,14 @@
                         <i class="pi pi-play text-xs"></i>
                       </button>
                       <button
+                        @click="handleStartDeepWork(element)"
+                        :disabled="isDeepWorkDisabled(element.id)"
+                        :class="deepWorkButtonClass(element.id)"
+                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session Deep Work active' : 'Lancer le mode Deep Work'"
+                      >
+                        <i class="pi pi-bolt text-xs"></i>
+                      </button>
+                      <button
                         @click="handleDeleteTask(element.id)"
                         class="text-gray-300 hover:text-red-500 transition-colors"
                         title="Supprimer"
@@ -212,6 +236,14 @@
                         <i class="pi pi-play text-xs"></i>
                       </button>
                       <button
+                        @click="handleStartDeepWork(element)"
+                        :disabled="isDeepWorkDisabled(element.id)"
+                        :class="deepWorkButtonClass(element.id)"
+                        :title="uiStore.deepWorkTask?.id === element.id ? 'Session Deep Work active' : 'Lancer le mode Deep Work'"
+                      >
+                        <i class="pi pi-bolt text-xs"></i>
+                      </button>
+                      <button
                         @click="handleDeleteTask(element.id)"
                         class="text-gray-300 hover:text-red-500 transition-colors"
                         title="Supprimer"
@@ -242,12 +274,14 @@ import { ref, computed, onMounted } from 'vue'
 import draggable from 'vuedraggable'
 import { useTasksStore } from '../stores/tasks'
 import { useTimerStore } from '../stores/timer.store'
+import { useUiStore } from '../stores/ui.store'
 import type { SavedTask } from '../stores/tasks'
 
 type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'SCHEDULED'
 
 const tasksStore = useTasksStore()
 const timerStore = useTimerStore()
+const uiStore = useUiStore()
 
 const newTaskTitle = ref('')
 const errorMessage = ref<string | null>(null)
@@ -276,6 +310,19 @@ function startButtonClass(taskId: string) {
     timerStore.isTaskActive(taskId)
       ? 'text-green-600'
       : 'text-gray-300 hover:text-indigo-600 disabled:text-gray-200',
+  ]
+}
+
+function isDeepWorkDisabled(taskId: string) {
+  return !timerStore.canStartTask(taskId) || timerStore.loading || uiStore.loading
+}
+
+function deepWorkButtonClass(taskId: string) {
+  return [
+    'transition-colors',
+    uiStore.deepWorkTask?.id === taskId && uiStore.isDeepWorkModeActive
+      ? 'text-violet-600'
+      : 'text-gray-300 hover:text-violet-600 disabled:text-gray-200',
   ]
 }
 
@@ -315,6 +362,29 @@ async function handleStartTimer(taskId: string) {
     }
 
     errorMessage.value = 'Impossible de démarrer le chrono.'
+  }
+}
+
+async function handleStartDeepWork(task: SavedTask) {
+  errorMessage.value = null
+
+  try {
+    if (!timerStore.isTaskActive(task.id)) {
+      await timerStore.startTimer(task.id)
+    }
+
+    await uiStore.startDeepWork({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+    })
+  } catch (caughtError: unknown) {
+    if (axios.isAxiosError(caughtError)) {
+      errorMessage.value = caughtError.response?.data?.message || 'Impossible de lancer le mode Deep Work.'
+      return
+    }
+
+    errorMessage.value = 'Impossible de lancer le mode Deep Work.'
   }
 }
 
