@@ -190,20 +190,20 @@ describe('AiService', () => {
   });
 
   describe('generateContent', () => {
-    const originalEnv = process.env;
-
     afterEach(() => {
-      process.env = originalEnv;
       jest.restoreAllMocks();
     });
 
     it('calls Gemini when USE_LOCAL_AI is not set', async () => {
-      process.env = { ...originalEnv, USE_LOCAL_AI: undefined };
+      const localConfigService = {
+        getOrThrow: jest.fn().mockReturnValue('test-gemini-key'),
+        get: jest.fn().mockReturnValue(undefined),
+      } as unknown as ConfigService;
       mockGenerateContent.mockResolvedValue({
         response: { text: () => 'Gemini response' },
       });
 
-      const service = new AiService(configService);
+      const service = new AiService(localConfigService);
       const result = await service.generateContent('test prompt');
 
       expect(result).toBe('Gemini response');
@@ -213,13 +213,17 @@ describe('AiService', () => {
     });
 
     it('routes to generateContentLocal when USE_LOCAL_AI is true', async () => {
-      process.env = { ...originalEnv, USE_LOCAL_AI: 'true' };
+      const localConfigService = {
+        getOrThrow: jest.fn().mockReturnValue('test-gemini-key'),
+        get: jest.fn().mockReturnValue('true'),
+      } as unknown as ConfigService;
       const mockFetch = jest.fn().mockResolvedValue({
+        ok: true,
         json: async () => ({ response: 'Ollama response' }),
       });
       jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
 
-      const service = new AiService(configService);
+      const service = new AiService(localConfigService);
       const result = await service.generateContent('test prompt');
 
       expect(result).toBe('Ollama response');
@@ -239,8 +243,13 @@ describe('AiService', () => {
   });
 
   describe('generateContentLocal', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it('returns the response from Ollama', async () => {
       const mockFetch = jest.fn().mockResolvedValue({
+        ok: true,
         json: async () => ({ response: 'Local AI response' }),
       });
       jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
@@ -249,6 +258,32 @@ describe('AiService', () => {
       const result = await service.generateContentLocal('hello');
 
       expect(result).toBe('Local AI response');
+    });
+
+    it('throws when Ollama returns a non-2xx status', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        json: async () => ({}),
+      } as Response);
+
+      const service = new AiService(configService);
+      await expect(service.generateContentLocal('hello')).rejects.toThrow(
+        'Ollama API error: 503 Service Unavailable',
+      );
+    });
+
+    it('throws when Ollama response is missing the response field', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({ error: 'model not found' }),
+      } as unknown as Response);
+
+      const service = new AiService(configService);
+      await expect(service.generateContentLocal('hello')).rejects.toThrow(
+        'Unexpected response structure from Ollama API',
+      );
     });
 
     it('throws and logs when Ollama is unreachable', async () => {

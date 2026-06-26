@@ -67,7 +67,7 @@ export class AiService {
   }
 
   async generateContent(prompt: string): Promise<string> {
-    if (process.env.USE_LOCAL_AI === 'true') {
+    if (this.configService.get<string>('USE_LOCAL_AI') === 'true') {
       return await this.generateContentLocal(prompt);
     }
 
@@ -90,7 +90,13 @@ export class AiService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'gemma4', prompt: prompt, stream: false }),
       });
-      const data = (await response.json()) as { response: string };
+      if (!response.ok) {
+        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      }
+      const data = (await response.json()) as { response?: string };
+      if (typeof data.response !== 'string') {
+        throw new Error('Unexpected response structure from Ollama API');
+      }
       return data.response;
     } catch (error) {
       this.logger.error(
