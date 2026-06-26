@@ -14,6 +14,7 @@ export interface SavedTask {
   id: string
   title: string
   description?: string
+  isCompleted: boolean
   status: string
   source: string
   createdAt: string
@@ -64,6 +65,22 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  async function createManualTask(title: string, description?: string) {
+    loading.value = true
+
+    try {
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_API_URL}/tasks`,
+        { title, description, source: 'MANUAL' },
+        { headers: getAuthHeaders() },
+      )
+
+      savedTasks.value.unshift(data)
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function fetchSavedTasks() {
     loading.value = true
 
@@ -75,6 +92,24 @@ export const useTasksStore = defineStore('tasks', () => {
       savedTasks.value = Array.isArray(data) ? data : []
     } finally {
       loading.value = false
+    }
+  }
+
+  async function toggleTask(id: string) {
+    const task = savedTasks.value.find((t) => t.id === id)
+    if (!task) return
+
+    const newValue = !task.isCompleted
+    task.isCompleted = newValue
+
+    try {
+      await axios.patch(
+        `${import.meta.env.VITE_API_URL}/tasks/${id}`,
+        { isCompleted: newValue },
+        { headers: getAuthHeaders() },
+      )
+    } catch {
+      task.isCompleted = !newValue
     }
   }
 
@@ -93,7 +128,9 @@ export const useTasksStore = defineStore('tasks', () => {
     setSuggestedTasks,
     removeSuggestedTask,
     acceptTask,
+    createManualTask,
     fetchSavedTasks,
+    toggleTask,
     deleteTask,
   }
 })
