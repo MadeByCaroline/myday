@@ -205,7 +205,11 @@ export class MicrosoftService {
         return data;
       }
       if (data) {
-        return JSON.stringify(data);
+        try {
+          return JSON.stringify(data);
+        } catch {
+          return '[unserializable error payload]';
+        }
       }
       return error.message;
     }

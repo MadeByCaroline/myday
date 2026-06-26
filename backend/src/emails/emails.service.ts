@@ -284,7 +284,10 @@ export class EmailsService {
 
   private extractEmailAddress(value: string): string {
     const match = value.match(/<([^>]+)>/u);
-    return match?.[1] || value.trim();
+    const candidate = (match?.[1] || value).trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(candidate)
+      ? candidate
+      : value.trim();
   }
 
   private buildReplySubject(subject: string): string {

@@ -205,7 +205,8 @@ export class MailService {
       return this.decodeBase64Url(payload.body.data);
     }
 
-    for (const part of payload.parts || []) {
+    const parts = Array.isArray(payload.parts) ? payload.parts : [];
+    for (const part of parts) {
       const partBody = this.extractMessageBody(part);
       if (partBody) {
         return partBody;
