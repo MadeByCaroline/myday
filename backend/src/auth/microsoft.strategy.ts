@@ -65,6 +65,7 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
         'email',
         'user.read',
         'mail.read',
+        'Mail.ReadWrite',
         'Calendars.Read',
         'offline_access',
       ],

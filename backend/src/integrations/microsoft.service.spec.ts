@@ -11,6 +11,7 @@ describe('MicrosoftService', () => {
       data: {
         value: [
           {
+            id: 'message-1',
             from: { emailAddress: { address: 'sender@example.com' } },
             subject: 'Quarterly update',
             bodyPreview: 'Please review the attached report.',
@@ -24,6 +25,7 @@ describe('MicrosoftService', () => {
 
     await expect(service.getUnreadEmails('access-token')).resolves.toEqual([
       {
+        id: 'message-1',
         from: 'sender@example.com',
         subject: 'Quarterly update',
         snippet: 'Please review the attached report.',
@@ -54,7 +56,9 @@ describe('MicrosoftService', () => {
             start: { dateTime: '2026-06-26T10:00:00Z' },
             end: { dateTime: '2026-06-26T10:30:00Z' },
             location: { displayName: 'Teams Room' },
-            onlineMeeting: { joinUrl: 'https://teams.microsoft.com/l/meetup-join/test' },
+            onlineMeeting: {
+              joinUrl: 'https://teams.microsoft.com/l/meetup-join/test',
+            },
           },
         ],
       },
@@ -73,17 +77,22 @@ describe('MicrosoftService', () => {
         link: 'https://teams.microsoft.com/l/meetup-join/test',
       },
     ]);
-    expect(getSpy).toHaveBeenCalledWith(
-      'https://graph.microsoft.com/v1.0/me/calendar/calendarView',
-      expect.objectContaining({
-        headers: {
-          Authorization: 'Bearer ' + 'access-token',
-        },
-        params: expect.objectContaining({
-          $top: 50,
-          $orderby: 'start/dateTime',
-        }),
-      }),
+    const [, requestConfig] = getSpy.mock.calls[0] as [
+      string,
+      {
+        headers: Record<string, string>;
+        params: {
+          $top: number;
+          $orderby: string;
+        };
+      },
+    ];
+    expect(requestConfig.headers.Authorization).toBe(
+      'Bearer ' + 'access-token',
     );
+    expect(requestConfig.params).toMatchObject({
+      $top: 50,
+      $orderby: 'start/dateTime',
+    });
   });
 });

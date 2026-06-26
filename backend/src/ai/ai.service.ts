@@ -18,6 +18,7 @@ export interface CategorizedEmailSummary {
   emailId: string;
   summary: string;
   category: EmailCategory;
+  suggestedActions: string[];
 }
 
 export interface AiAnalysisResult {
@@ -70,7 +71,12 @@ export class AiService {
         {
           "emailId": "id exact de l'email fourni en entrée",
           "summary": "Résumé en 1 phrase de l'email (en français)",
-          "category": "URGENT | NEWSLETTER | INVOICE | ACTION_REQUIRED | INFO"
+          "category": "URGENT | NEWSLETTER | INVOICE | ACTION_REQUIRED | INFO",
+          "suggestedActions": [
+            "Action courte 1 en français",
+            "Action courte 2 en français",
+            "Action courte 3 en français"
+          ]
         }
       ]
     }`;
@@ -124,6 +130,52 @@ Please analyze and return the JSON response.`;
     }
   }
 
+  async generateDraftReply(params: {
+    email: {
+      from: string;
+      subject: string;
+      snippet: string;
+      body: string;
+    };
+    action: string;
+    events: CalendarEvent[];
+  }): Promise<string> {
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+    });
+
+    const systemPrompt = `Tu es un assistant email. Rédige uniquement le corps d'une réponse email professionnelle et polie en FRANÇAIS.
+Ne produis ni objet, ni signature fictive, ni markdown, ni explication.
+Tiens compte de l'action demandée et des disponibilités du calendrier pour proposer une réponse cohérente et concise.`;
+
+    const userContent = `Email d'origine :
+De : ${params.email.from}
+Sujet : ${params.email.subject}
+Extrait : ${params.email.snippet}
+Contenu :
+${params.email.body}
+
+Action choisie :
+${params.action}
+
+Contexte calendrier :
+${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun événement pertinent trouvé.'}`;
+
+    try {
+      const result = await model.generateContent([
+        { text: systemPrompt },
+        { text: userContent },
+      ]);
+      const content = result.response.text().trim();
+      return content || this.buildFallbackDraftReply(params.action);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown Gemini API error';
+      this.logger.error('Gemini draft generation error', message);
+      return this.buildFallbackDraftReply(params.action);
+    }
+  }
+
   private normalizeEmailSummaries(
     value: unknown,
     emails: EmailSummary[],
@@ -135,9 +187,19 @@ Please analyze and return the JSON response.`;
 
     const normalizedItems = rawItems
       .map((item, index) => {
+        const matchingEmail =
+          emails.find(
+            (email) => email.id === this.getStringValue(item, 'emailId'),
+          ) || emails[index];
         const emailId = this.getStringValue(item, 'emailId');
         const summary = this.getStringValue(item, 'summary');
-        const category = this.normalizeCategory(this.getStringValue(item, 'category'));
+        const category = this.normalizeCategory(
+          this.getStringValue(item, 'category'),
+        );
+        const suggestedActions = this.normalizeSuggestedActions(
+          item.suggestedActions,
+          matchingEmail,
+        );
         if (!summary) {
           return null;
         }
@@ -145,6 +207,7 @@ Please analyze and return the JSON response.`;
           emailId: emailId || `email-${index + 1}`,
           summary,
           category,
+          suggestedActions,
         };
       })
       .filter((item): item is CategorizedEmailSummary => item !== null);
@@ -154,7 +217,9 @@ Please analyze and return the JSON response.`;
       : this.buildFallbackEmailSummaries(emails);
   }
 
-  private parseEmailSummariesValue(value: unknown): Array<Record<string, unknown>> | null {
+  private parseEmailSummariesValue(
+    value: unknown,
+  ): Array<Record<string, unknown>> | null {
     if (Array.isArray(value)) {
       return value.filter(
         (item): item is Record<string, unknown> =>
@@ -183,6 +248,27 @@ Please analyze and return the JSON response.`;
     return typeof value === 'string' ? value.trim() : '';
   }
 
+  private normalizeSuggestedActions(
+    value: unknown,
+    email?: EmailSummary,
+  ): string[] {
+    const parsedActions = Array.isArray(value)
+      ? value.filter((action): action is string => typeof action === 'string')
+      : [];
+    const normalizedActions = parsedActions
+      .map((action) => action.trim())
+      .filter(
+        (action, index, array) =>
+          action.length > 0 && array.indexOf(action) === index,
+      )
+      .slice(0, 3);
+
+    return [
+      ...normalizedActions,
+      ...this.buildFallbackSuggestedActions(email),
+    ].slice(0, 3);
+  }
+
   private normalizeCategory(value: string): EmailCategory {
     const upperValue = value.toUpperCase();
     return EMAIL_CATEGORIES.includes(upperValue as EmailCategory)
@@ -197,6 +283,29 @@ Please analyze and return the JSON response.`;
       emailId: email.id || `fallback-email-${index + 1}`,
       summary: email.snippet || email.subject || 'No summary available.',
       category: 'INFO',
+      suggestedActions: this.buildFallbackSuggestedActions(email),
     }));
+  }
+
+  private buildFallbackSuggestedActions(email?: EmailSummary): string[] {
+    const subject = email?.subject?.toLowerCase() || '';
+
+    if (subject.includes('meeting') || subject.includes('rendez-vous')) {
+      return [
+        'Accepter pour le créneau proposé',
+        'Proposer un autre créneau',
+        'Demander plus de détails',
+      ];
+    }
+
+    return [
+      'Répondre poliment',
+      'Demander plus de détails',
+      'Proposer un suivi rapide',
+    ];
+  }
+
+  private buildFallbackDraftReply(action: string): string {
+    return `Bonjour,\n\nMerci pour votre message. ${action}.\n\nBien cordialement,`;
   }
 }

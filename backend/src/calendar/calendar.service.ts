@@ -22,6 +22,21 @@ export class CalendarService {
     accessToken: string,
     refreshToken?: string,
   ): Promise<CalendarEvent[]> {
+    const now = new Date();
+    return this.getEventsForRange(
+      accessToken,
+      refreshToken,
+      new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+      new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59),
+    );
+  }
+
+  async getEventsForRange(
+    accessToken: string,
+    refreshToken: string | undefined,
+    start: Date,
+    end: Date,
+  ): Promise<CalendarEvent[]> {
     try {
       const oauth2Client = new google.auth.OAuth2(
         this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
@@ -35,28 +50,11 @@ export class CalendarService {
       });
 
       const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-      const now = new Date();
-      const startOfDay = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        0,
-        0,
-        0,
-      );
-      const endOfDay = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        23,
-        59,
-        59,
-      );
 
       const response = await calendar.events.list({
         calendarId: 'primary',
-        timeMin: startOfDay.toISOString(),
-        timeMax: endOfDay.toISOString(),
+        timeMin: start.toISOString(),
+        timeMax: end.toISOString(),
         singleEvents: true,
         orderBy: 'startTime',
         maxResults: 20,

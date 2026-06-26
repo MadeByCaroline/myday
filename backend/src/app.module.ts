@@ -10,6 +10,7 @@ import { AiModule } from './ai/ai.module';
 import { TasksModule } from './tasks/tasks.module';
 import { TimeTrackingModule } from './time-tracking/time-tracking.module';
 import { SummaryModule } from './summary/summary.module';
+import { EmailsModule } from './emails/emails.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SummaryModule } from './summary/summary.module';
     TasksModule,
     TimeTrackingModule,
     SummaryModule,
+    EmailsModule,
   ],
 })
 export class AppModule {}
