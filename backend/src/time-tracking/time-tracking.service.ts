@@ -18,6 +18,27 @@ const timeEntryInclude = {
 export class TimeTrackingService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getTimeEntries(
+    userId: string,
+    filters: { start: Date; end: Date; taskId?: string },
+  ) {
+    return this.prisma.timeEntry.findMany({
+      where: {
+        userId,
+        taskId: filters.taskId || undefined,
+        startTime: {
+          gte: filters.start,
+          lte: filters.end,
+        },
+      },
+      orderBy: {
+        startTime: 'desc',
+      },
+      include: timeEntryInclude,
+      take: 200,
+    });
+  }
+
   async getCurrentEntry(userId: string) {
     return this.prisma.timeEntry.findFirst({
       where: {

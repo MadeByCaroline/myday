@@ -6,6 +6,7 @@ describe('TimeTrackingService', () => {
     task: { findFirst: jest.Mock };
     timeEntry: {
       findFirst: jest.Mock;
+      findMany: jest.Mock;
       create: jest.Mock;
       update: jest.Mock;
     };
@@ -19,6 +20,7 @@ describe('TimeTrackingService', () => {
       },
       timeEntry: {
         findFirst: jest.fn(),
+        findMany: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
       },
@@ -45,6 +47,7 @@ describe('TimeTrackingService', () => {
       id: 'task-1',
       title: 'Write tests',
     });
+
     prisma.timeEntry.findFirst.mockResolvedValue(null);
     prisma.timeEntry.create.mockResolvedValue(createdEntry);
 
@@ -70,6 +73,41 @@ describe('TimeTrackingService', () => {
       }),
     );
     expect(result).toEqual(createdEntry);
+  });
+
+  it('returns time entries filtered by date range and task id', async () => {
+    const entries = [{ id: 'entry-1', taskId: 'task-1' }];
+    prisma.timeEntry.findMany.mockResolvedValue(entries);
+
+    const result = await service.getTimeEntries('user-1', {
+      start: new Date('2026-06-01T00:00:00.000Z'),
+      end: new Date('2026-06-30T23:59:59.000Z'),
+      taskId: 'task-1',
+    });
+
+    expect(prisma.timeEntry.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        taskId: 'task-1',
+        startTime: {
+          gte: new Date('2026-06-01T00:00:00.000Z'),
+          lte: new Date('2026-06-30T23:59:59.000Z'),
+        },
+      },
+      orderBy: {
+        startTime: 'desc',
+      },
+      include: {
+        task: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+      take: 200,
+    });
+    expect(result).toEqual(entries);
   });
 
   it('returns the active entry when starting the same task twice', async () => {

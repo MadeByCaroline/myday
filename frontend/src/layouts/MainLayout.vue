@@ -70,6 +70,8 @@
     <main class="flex-1 min-w-0">
       <RouterView />
     </main>
+
+    <AIChat />
   </div>
 </template>
 
@@ -77,6 +79,7 @@
 import axios from 'axios'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
+import AIChat from '../components/AIChat.vue'
 import { useAuthStore } from '../stores/auth'
 import { useTimerStore } from '../stores/timer.store'
 

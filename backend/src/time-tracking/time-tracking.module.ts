@@ -5,5 +5,6 @@ import { TimeTrackingService } from './time-tracking.service';
 @Module({
   providers: [TimeTrackingService],
   controllers: [TimeTrackingController],
+  exports: [TimeTrackingService],
 })
 export class TimeTrackingModule {}
