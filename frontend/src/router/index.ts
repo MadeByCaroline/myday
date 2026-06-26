@@ -5,10 +5,6 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
-      redirect: '/login',
-    },
-    {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
@@ -20,28 +16,35 @@ const router = createRouter({
       component: () => import('../views/AuthCallbackView.vue'),
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('../views/DashboardView.vue'),
+      path: '/',
+      component: () => import('../layouts/MainLayout.vue'),
       meta: { requiresAuth: true },
-    },
-    {
-      path: '/calendar',
-      name: 'calendar',
-      component: () => import('../views/CalendarView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/tasks',
-      name: 'tasks',
-      component: () => import('../views/TasksView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/integrations',
-      name: 'integrations',
-      component: () => import('../views/IntegrationsView.vue'),
-      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          redirect: { name: 'dashboard' },
+        },
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: () => import('../views/DashboardView.vue'),
+        },
+        {
+          path: 'calendar',
+          name: 'calendar',
+          component: () => import('../views/CalendarView.vue'),
+        },
+        {
+          path: 'tasks',
+          name: 'tasks',
+          component: () => import('../views/TasksView.vue'),
+        },
+        {
+          path: 'integrations',
+          name: 'integrations',
+          component: () => import('../views/IntegrationsView.vue'),
+        },
+      ],
     },
   ],
 })
