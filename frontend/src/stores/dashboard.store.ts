@@ -21,11 +21,11 @@ export interface CategorizedEmailSummary {
   category: EmailCategory
 }
 
-export const useSummaryStore = defineStore('summary', () => {
+export const useDashboardStore = defineStore('dashboard', () => {
   const summary = ref('')
+  const emails = ref<CategorizedEmailSummary[]>([])
   const events = ref<CalendarEvent[]>([])
-  const emailSummaries = ref<CategorizedEmailSummary[]>([])
-  const loading = ref(false)
+  const isLoading = ref(false)
   const error = ref<string | null>(null)
   const generated = ref(false)
 
@@ -34,9 +34,21 @@ export const useSummaryStore = defineStore('summary', () => {
     return authStore.token ? { Authorization: 'Bearer ' + authStore.token } : {}
   }
 
+  async function fetchDashboardData() {
+    if (generated.value) {
+      return
+    }
+
+    await _loadData()
+  }
+
   async function generateSummary() {
+    await _loadData()
+  }
+
+  async function _loadData() {
     const tasksStore = useTasksStore()
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
@@ -50,7 +62,7 @@ export const useSummaryStore = defineStore('summary', () => {
 
       summary.value = data.summary || ''
       events.value = data.events || []
-      emailSummaries.value = data.email_summaries || []
+      emails.value = data.email_summaries || []
       tasksStore.setSuggestedTasks(data.suggested_tasks || [])
       generated.value = true
     } catch (caughtError: unknown) {
@@ -60,17 +72,17 @@ export const useSummaryStore = defineStore('summary', () => {
         error.value = 'Failed to generate summary'
       }
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
   function reset() {
     summary.value = ''
+    emails.value = []
     events.value = []
-    emailSummaries.value = []
     generated.value = false
     error.value = null
   }
 
-  return { summary, events, emailSummaries, loading, error, generated, generateSummary, reset }
+  return { summary, emails, events, isLoading, error, generated, fetchDashboardData, generateSummary, reset }
 })
