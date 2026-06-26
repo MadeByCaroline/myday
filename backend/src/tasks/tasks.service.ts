@@ -14,7 +14,7 @@ export class TasksService {
         userId,
         title: data.title,
         description: data.description,
-        source: data.source || 'ai',
+        source: data.source || 'MANUAL',
         status: 'accepted',
       },
     });
@@ -36,7 +36,7 @@ export class TasksService {
   async updateTask(
     taskId: string,
     userId: string,
-    data: { status?: string; title?: string },
+    data: { isCompleted?: boolean; status?: string; title?: string },
   ) {
     return this.prisma.task.updateMany({
       where: { id: taskId, userId },
