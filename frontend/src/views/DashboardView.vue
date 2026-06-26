@@ -8,18 +8,18 @@
         </div>
         <button
           @click="generateSummary"
-          :disabled="dashboardStore.isLoading"
+          :disabled="summaryStore.loading"
           class="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
-          <i class="pi pi-spin pi-spinner" v-if="dashboardStore.isLoading"></i>
+          <i class="pi pi-spin pi-spinner" v-if="summaryStore.loading"></i>
           <i class="pi pi-sparkles" v-else></i>
-          {{ dashboardStore.isLoading ? 'Generating...' : 'Generate My Summary' }}
+          {{ summaryStore.loading ? 'Generating...' : 'Generate My Summary' }}
         </button>
       </header>
 
       <!-- Content area -->
       <div class="flex-1 overflow-auto p-8">
-        <div v-if="!dashboardStore.generated && !dashboardStore.isLoading" class="text-center py-16">
+        <div v-if="!summaryStore.generated && !summaryStore.loading" class="text-center py-16">
           <div class="w-24 h-24 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
             <i class="pi pi-sparkles text-indigo-400 text-4xl"></i>
           </div>
@@ -29,15 +29,15 @@
           </p>
         </div>
 
-        <div v-if="dashboardStore.error" class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700">
+        <div v-if="summaryStore.error" class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700">
           <i class="pi pi-exclamation-circle mr-2"></i>
-          {{ dashboardStore.error }}
+          {{ summaryStore.error }}
         </div>
 
-        <div v-if="dashboardStore.generated" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div v-if="summaryStore.generated" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <!-- Summary Card -->
           <div class="xl:col-span-2">
-            <SummaryCard :summary="dashboardStore.summary" />
+            <SummaryCard :summary="summaryStore.summary" />
           </div>
 
           <!-- Tasks Column -->
@@ -47,7 +47,7 @@
 
           <!-- Agenda - full width -->
           <div class="xl:col-span-3">
-            <DailyAgenda :events="dashboardStore.events" />
+            <DailyAgenda :events="summaryStore.events" />
           </div>
 
           <!-- Email summaries - full width -->
@@ -58,9 +58,9 @@
               </div>
               <h3 class="text-lg font-semibold text-gray-900">Email Highlights</h3>
             </div>
-            <ul v-if="dashboardStore.emails.length > 0" class="space-y-3">
+            <ul v-if="summaryStore.emailSummaries.length > 0" class="space-y-3">
               <li
-                v-for="email in dashboardStore.emails"
+                v-for="email in summaryStore.emailSummaries"
                 :key="email.emailId"
                 class="border border-gray-100 rounded-xl p-3 flex items-start gap-3"
               >
@@ -87,7 +87,7 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
-import { useDashboardStore } from '../stores/dashboard.store'
+import { useSummaryStore } from '../stores/summary'
 import { useTasksStore } from '../stores/tasks'
 import SummaryCard from '../components/SummaryCard.vue'
 import DailyAgenda from '../components/DailyAgenda.vue'
@@ -96,7 +96,7 @@ import TaskListView from '../components/TaskListView.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const dashboardStore = useDashboardStore()
+const summaryStore = useSummaryStore()
 const tasksStore = useTasksStore()
 
 const now = new Date()
@@ -134,7 +134,7 @@ function categoryBadgeClass(category: string) {
 }
 
 async function generateSummary() {
-  await dashboardStore.generateSummary()
+  await summaryStore.generateSummary()
 }
 
 onMounted(async () => {
@@ -151,6 +151,5 @@ onMounted(async () => {
     }
   }
   await tasksStore.fetchSavedTasks()
-  await dashboardStore.fetchDashboardData()
 })
 </script>
