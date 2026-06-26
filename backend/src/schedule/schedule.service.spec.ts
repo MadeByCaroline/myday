@@ -72,6 +72,29 @@ describe('ScheduleService', () => {
     expect(service.validateTimeBlocks(timeBlocks, tasks)).toEqual([]);
   });
 
+  it('rejects cross-workspace switches without a 15-minute buffer', () => {
+    const timeBlocks = [
+      {
+        taskId: 'task-1',
+        suggestedStartTime: '09:00',
+        suggestedEndTime: '09:30',
+        title: 'Write report',
+      },
+      {
+        taskId: 'task-2',
+        suggestedStartTime: '09:40',
+        suggestedEndTime: '10:10',
+        title: 'School pickup prep',
+      },
+    ];
+    const tasks = [
+      { id: 'task-1', title: 'Write report', workspaceId: 'work' },
+      { id: 'task-2', title: 'School pickup prep', workspaceId: 'family' },
+    ];
+
+    expect(service.validateTimeBlocks(timeBlocks, tasks)).toEqual([]);
+  });
+
   it('rejects malformed or unresolvable time blocks', () => {
     expect(
       service.validateTimeBlocks(

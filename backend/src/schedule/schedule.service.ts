@@ -27,7 +27,7 @@ export class ScheduleService {
         block,
         startMinutes,
         endMinutes,
-        workspaceId: task.workspaceId ?? null,
+        workspaceId: task.workspaceId,
       };
     });
 
@@ -42,8 +42,10 @@ export class ScheduleService {
       block: TimeBlock;
       startMinutes: number;
       endMinutes: number;
-      workspaceId: string | null;
+      workspaceId?: string | null;
     }>;
+
+    validBlocks.sort((left, right) => left.startMinutes - right.startMinutes);
 
     for (let index = 0; index < validBlocks.length; index += 1) {
       const currentBlock = validBlocks[index];
@@ -58,19 +60,25 @@ export class ScheduleService {
           currentBlock.startMinutes < comparisonBlock.endMinutes &&
           comparisonBlock.startMinutes < currentBlock.endMinutes;
 
-        if (!overlaps) {
-          continue;
-        }
-
         if (
           currentBlock.workspaceId &&
           comparisonBlock.workspaceId &&
           currentBlock.workspaceId !== comparisonBlock.workspaceId
         ) {
-          this.logger.warn(
-            `Rejecting AI time blocks because ${currentBlock.block.taskId} and ${comparisonBlock.block.taskId} overlap across workspaces.`,
-          );
-          return [];
+          if (overlaps) {
+            this.logger.warn(
+              `Rejecting AI time blocks because ${currentBlock.block.taskId} and ${comparisonBlock.block.taskId} overlap across workspaces.`,
+            );
+            return [];
+          }
+
+          const gapMinutes = comparisonBlock.startMinutes - currentBlock.endMinutes;
+          if (gapMinutes >= 0 && gapMinutes < 15) {
+            this.logger.warn(
+              `Rejecting AI time blocks because ${currentBlock.block.taskId} and ${comparisonBlock.block.taskId} switch workspaces without a 15-minute buffer.`,
+            );
+            return [];
+          }
         }
       }
     }
