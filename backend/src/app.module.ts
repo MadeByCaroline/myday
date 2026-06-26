@@ -8,6 +8,7 @@ import { MailModule } from './mail/mail.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { AiModule } from './ai/ai.module';
 import { TasksModule } from './tasks/tasks.module';
+import { TimeTrackingModule } from './time-tracking/time-tracking.module';
 import { SummaryModule } from './summary/summary.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { SummaryModule } from './summary/summary.module';
     CalendarModule,
     AiModule,
     TasksModule,
+    TimeTrackingModule,
     SummaryModule,
   ],
 })
