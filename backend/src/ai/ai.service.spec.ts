@@ -224,6 +224,126 @@ describe('AiService', () => {
     expect(body.prompt).toContain('Return ONLY raw JSON');
   });
 
+  describe('generateMorningBriefing', () => {
+    it('builds and caches the daily briefing for a user', async () => {
+      mockGenerateContent.mockResolvedValue({
+        response: {
+          text: () =>
+            JSON.stringify({
+              greeting: 'Good morning, Caroline!',
+              emailSummary: '2 unread emails need quick attention.',
+              scheduleOverview: 'You have 3 meetings today.',
+              recommendedFocus: 'Start with launch follow-ups.',
+            }),
+        },
+      });
+
+      const prisma = {
+        oAuthToken: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              provider: 'GOOGLE',
+              accessToken: 'token',
+              refreshToken: 'refresh-token',
+              updatedAt: new Date().toISOString(),
+            },
+          ]),
+        },
+      };
+      const mailService = {
+        getUnreadEmailsSince: jest.fn().mockResolvedValue([]),
+      };
+      const calendarService = {
+        getTodayEvents: jest.fn().mockResolvedValue([]),
+      };
+      const tasksService = {
+        getUserTasks: jest.fn().mockResolvedValue([
+          {
+            id: 'task-1',
+            title: 'High priority launch review',
+            description: null,
+            status: 'TODO',
+          },
+        ]),
+      };
+      const microsoftService = {
+        getUnreadEmails: jest.fn().mockResolvedValue([]),
+        getTodayEvents: jest.fn().mockResolvedValue([]),
+      };
+
+      const service = new AiService(
+        configService,
+        prisma as any,
+        mailService as any,
+        calendarService as any,
+        tasksService as any,
+        microsoftService as any,
+      );
+
+      const firstResult = await service.generateMorningBriefing('user-1');
+      const secondResult = await service.generateMorningBriefing('user-1');
+
+      expect(firstResult).toEqual({
+        greeting: 'Good morning, Caroline!',
+        emailSummary: '2 unread emails need quick attention.',
+        scheduleOverview: 'You have 3 meetings today.',
+        recommendedFocus: 'Start with launch follow-ups.',
+      });
+      expect(secondResult).toEqual(firstResult);
+      expect(prisma.oAuthToken.findMany).toHaveBeenCalledTimes(1);
+      expect(mockGetGenerativeModel).toHaveBeenCalledWith({
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
+      });
+    });
+
+    it('returns fallback briefing when AI fails', async () => {
+      mockGenerateContent.mockRejectedValue(new Error('quota exceeded'));
+      jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValue(new Error('Local provider unavailable'));
+
+      const prisma = {
+        oAuthToken: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+      };
+      const mailService = {
+        getUnreadEmailsSince: jest.fn().mockResolvedValue([]),
+      };
+      const calendarService = {
+        getTodayEvents: jest.fn().mockResolvedValue([]),
+      };
+      const tasksService = {
+        getUserTasks: jest.fn().mockResolvedValue([]),
+      };
+      const microsoftService = {
+        getUnreadEmails: jest.fn().mockResolvedValue([]),
+        getTodayEvents: jest.fn().mockResolvedValue([]),
+      };
+
+      const service = new AiService(
+        configService,
+        prisma as any,
+        mailService as any,
+        calendarService as any,
+        tasksService as any,
+        microsoftService as any,
+      );
+
+      await expect(service.generateMorningBriefing('user-1')).resolves.toEqual({
+        greeting: 'Good morning! You’re set up for a strong start.',
+        emailSummary: 'No unread emails from the last 12 hours.',
+        scheduleOverview:
+          'Your calendar is open today, so you can create focused time blocks.',
+        recommendedFocus:
+          'Prioritize your top TODO task first, then batch email follow-ups.',
+      });
+    });
+  });
+
   describe('generateContent', () => {
     afterEach(() => {
       jest.restoreAllMocks();
