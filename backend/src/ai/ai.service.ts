@@ -142,7 +142,7 @@ Please analyze and return the JSON response.`;
           return null;
         }
         return {
-          emailId: emailId || emails[index]?.id || String(index + 1),
+          emailId: emailId || `email-${index + 1}`,
           summary,
           category,
         };
@@ -194,7 +194,7 @@ Please analyze and return the JSON response.`;
     emails: EmailSummary[],
   ): CategorizedEmailSummary[] {
     return emails.map((email, index) => ({
-      emailId: email.id || String(index + 1),
+      emailId: email.id || `fallback-email-${index + 1}`,
       summary: email.snippet || email.subject || 'No summary available.',
       category: 'INFO',
     }));
