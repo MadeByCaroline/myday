@@ -1,4 +1,7 @@
 import { CalendarController } from './calendar.controller';
+import type { GoogleService } from '../integrations/google.service';
+import type { MicrosoftService } from '../integrations/microsoft.service';
+import type { UsersService } from '../users/users.service';
 
 describe('CalendarController', () => {
   it('merges and sorts today events across connected providers', async () => {
@@ -39,9 +42,9 @@ describe('CalendarController', () => {
     };
 
     const controller = new CalendarController(
-      usersService as any,
-      googleService as any,
-      microsoftService as any,
+      usersService as unknown as UsersService,
+      googleService as unknown as GoogleService,
+      microsoftService as unknown as MicrosoftService,
     );
 
     await expect(

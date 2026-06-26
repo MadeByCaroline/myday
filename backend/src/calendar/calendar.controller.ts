@@ -5,6 +5,12 @@ import { MicrosoftService } from '../integrations/microsoft.service';
 import type { UnifiedEvent } from './unified-event.interface';
 import { UsersService } from '../users/users.service';
 
+interface CalendarRequest {
+  user: {
+    id: string;
+  };
+}
+
 @Controller('calendar')
 @UseGuards(JwtAuthGuard)
 export class CalendarController {
@@ -15,7 +21,7 @@ export class CalendarController {
   ) {}
 
   @Get('today')
-  async getTodayCalendar(@Req() req: any): Promise<UnifiedEvent[]> {
+  async getTodayCalendar(@Req() req: CalendarRequest): Promise<UnifiedEvent[]> {
     const oauthTokens = await this.usersService.getOAuthTokens(req.user.id);
 
     const eventResults = await Promise.allSettled(

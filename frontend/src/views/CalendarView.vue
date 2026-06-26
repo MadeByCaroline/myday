@@ -95,18 +95,20 @@ const error = ref<string | null>(null)
 const events = ref<UnifiedEvent[]>([])
 const hours = Array.from({ length: 13 }, (_, index) => index + 8)
 
-const todayLabel = new Date().toLocaleDateString('en-US', {
-  weekday: 'long',
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-})
+const todayLabel = computed(() =>
+  new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }),
+)
 
 const visibleEvents = computed(() =>
   events.value
     .filter((event) => {
       const startHour = new Date(event.start).getHours()
-      return Number.isFinite(startHour) && startHour >= 8 && startHour <= 20
+      return Number.isFinite(startHour) && startHour >= 8 && startHour < 20
     })
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()),
 )

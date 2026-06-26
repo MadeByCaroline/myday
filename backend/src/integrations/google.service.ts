@@ -55,8 +55,8 @@ export class GoogleService {
           maxResults: 50,
         }),
       ]);
-
-      const eventColorMap = colorsData.event || {};
+      const colorCount = Object.keys(colorsData.event || {}).length;
+      this.logger.debug(`Loaded ${colorCount} Google event colors`);
 
       return (eventsData.items || []).map((event) => {
         const defaultLink =
@@ -64,11 +64,6 @@ export class GoogleService {
           event.htmlLink ||
           event.conferenceData?.entryPoints?.find((entryPoint) => entryPoint.uri)
             ?.uri;
-        if (event.colorId && !eventColorMap[event.colorId]) {
-          this.logger.debug(
-            `Google event color ${event.colorId} was not found in /colors response`,
-          );
-        }
 
         return {
           id: event.id || '',

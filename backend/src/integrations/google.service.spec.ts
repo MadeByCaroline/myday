@@ -15,6 +15,7 @@ jest.mock('googleapis', () => ({
   },
 }));
 
+import type { ConfigService } from '@nestjs/config';
 import { GoogleService } from './google.service';
 
 describe('GoogleService', () => {
@@ -49,7 +50,6 @@ describe('GoogleService', () => {
             end: { dateTime: '2026-06-26T09:15:00Z' },
             location: 'Room A',
             htmlLink: 'https://calendar.google.com/event?eid=1',
-            colorId: '1',
           },
         ],
       },
@@ -58,7 +58,7 @@ describe('GoogleService', () => {
     const configService = {
       getOrThrow: jest.fn((key: string) => key),
     };
-    const service = new GoogleService(configService as any);
+    const service = new GoogleService(configService as unknown as ConfigService);
 
     await expect(
       service.getTodayEvents('access-token', 'refresh-token'),
