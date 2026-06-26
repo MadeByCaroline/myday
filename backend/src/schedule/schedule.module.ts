@@ -1,14 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ScheduleController } from './schedule.controller';
 import { AiModule } from '../ai/ai.module';
+import { CalendarModule } from '../calendar/calendar.module';
 import { TasksModule } from '../tasks/tasks.module';
-import { UsersModule } from '../users/users.module';
-import { GoogleService } from '../integrations/google.service';
-import { MicrosoftService } from '../integrations/microsoft.service';
+import { ScheduleService } from './schedule.service';
 
 @Module({
-  imports: [AiModule, TasksModule, UsersModule],
+  imports: [AiModule, CalendarModule, TasksModule],
   controllers: [ScheduleController],
-  providers: [GoogleService, MicrosoftService],
+  providers: [ScheduleService],
 })
 export class ScheduleOptimizeModule {}

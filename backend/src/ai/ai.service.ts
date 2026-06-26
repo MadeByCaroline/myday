@@ -63,6 +63,14 @@ export interface TimeBlock {
   title: string;
 }
 
+export interface TimeBlockingTaskInput {
+  id: string;
+  title: string;
+  description?: string | null;
+  workspaceId?: string | null;
+  workspaceName?: string | null;
+}
+
 export interface WorkspaceDateRange {
   start: string;
   end: string;
@@ -370,10 +378,35 @@ Génère maintenant la réponse JSON.`;
   }
 
   async generateTimeBlocking(
-    tasks: Array<{ id: string; title: string; description?: string | null }>,
+    tasks: TimeBlockingTaskInput[],
     calendarEvents: CalendarEvent[],
   ): Promise<TimeBlock[]> {
-const systemPrompt = `Tu es un assistant exécutif expert en gestion du temps.
+    const unifiedAgenda = [
+      ...tasks.map((task) => ({
+        kind: 'task' as const,
+        id: task.id,
+        title: task.title,
+        description: task.description ?? null,
+        workspaceId: task.workspaceId ?? null,
+        workspaceName: task.workspaceName ?? null,
+      })),
+      ...calendarEvents.map((event) => ({
+        kind: 'event' as const,
+        id: event.id,
+        title: event.title,
+        start: event.start,
+        end: event.end,
+        provider: event.provider ?? null,
+        location: event.location ?? null,
+        workspaceId: event.workspaceId ?? null,
+        workspaceName: event.workspaceName ?? null,
+      })),
+    ];
+
+    const systemPrompt = `You are an executive life coach. You must schedule the user's day across multiple workspaces.
+Strict Rule: Never overlap tasks from different workspaces.
+Respect hard-coded personal events (e.g., Family, Health) as absolute priority over flexible Work tasks.
+Leave a 15-minute buffer between context switches (e.g., switching from Work to Family).
 Analyse les tâches ouvertes et les événements du calendrier pour aujourd'hui.
 Trouve les créneaux libres dans la journée (heures de travail : 9h00-18h00, pause déjeuner : 12h30-13h30).
 Attribue chaque tâche à un créneau disponible, en estimant 30 minutes par tâche sauf indication contraire.
@@ -394,6 +427,9 @@ ${JSON.stringify(tasks, null, 2)}
 
 Événements déjà présents dans le calendrier d'aujourd'hui :
 ${calendarEvents.length > 0 ? JSON.stringify(calendarEvents, null, 2) : "Aucun événement pour aujourd'hui."}
+
+Vue unifiée tâches + événements avec métadonnées d'espace de travail :
+${JSON.stringify(unifiedAgenda, null, 2)}
 
 Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
 

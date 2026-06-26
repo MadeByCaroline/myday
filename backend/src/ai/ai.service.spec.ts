@@ -597,8 +597,20 @@ describe('AiService', () => {
 
   describe('generateTimeBlocking', () => {
     const tasks = [
-      { id: 'task-1', title: 'Write report', description: 'Q2 report' },
-      { id: 'task-2', title: 'Review PR', description: null },
+      {
+        id: 'task-1',
+        title: 'Write report',
+        description: 'Q2 report',
+        workspaceId: 'work',
+        workspaceName: 'Work',
+      },
+      {
+        id: 'task-2',
+        title: 'Review PR',
+        description: null,
+        workspaceId: 'family',
+        workspaceName: 'Family',
+      },
     ];
     const calendarEvents = [
       {
@@ -606,6 +618,8 @@ describe('AiService', () => {
         title: 'Standup',
         start: '2026-06-26T09:00:00.000Z',
         end: '2026-06-26T09:15:00.000Z',
+        workspaceId: 'work',
+        workspaceName: 'Work',
       },
     ];
 
@@ -632,6 +646,17 @@ describe('AiService', () => {
       const result = await service.generateTimeBlocking(tasks, calendarEvents);
 
       expect(result).toEqual(aiBlocks);
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        'You are an executive life coach.',
+      );
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        'Never overlap tasks from different workspaces.',
+      );
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        'Vue unifiée tâches + événements avec métadonnées d\'espace de travail',
+      );
+      expect(mockGenerateContent.mock.calls[0][0]).toContain('"workspaceName": "Work"');
+      expect(mockGenerateContent.mock.calls[0][0]).toContain('"kind": "event"');
     });
 
     it('filters out malformed entries from the AI response', async () => {
