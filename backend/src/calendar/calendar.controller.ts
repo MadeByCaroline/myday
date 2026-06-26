@@ -45,12 +45,12 @@ export class CalendarController {
 
     return eventResults
       .filter(
-        (result): result is PromiseFulfilledResult<UnifiedEvent[]> =>
+        (
+          result,
+        ): result is PromiseFulfilledResult<UnifiedEvent[]> =>
           result.status === 'fulfilled',
       )
       .flatMap((result) => result.value)
-      .sort(
-        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime(),
-      );
+      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   }
 }

@@ -137,9 +137,7 @@ Please analyze and return the JSON response.`;
       .map((item, index) => {
         const emailId = this.getStringValue(item, 'emailId');
         const summary = this.getStringValue(item, 'summary');
-        const category = this.normalizeCategory(
-          this.getStringValue(item, 'category'),
-        );
+        const category = this.normalizeCategory(this.getStringValue(item, 'category'));
         if (!summary) {
           return null;
         }
@@ -156,9 +154,7 @@ Please analyze and return the JSON response.`;
       : this.buildFallbackEmailSummaries(emails);
   }
 
-  private parseEmailSummariesValue(
-    value: unknown,
-  ): Array<Record<string, unknown>> | null {
+  private parseEmailSummariesValue(value: unknown): Array<Record<string, unknown>> | null {
     if (Array.isArray(value)) {
       return value.filter(
         (item): item is Record<string, unknown> =>

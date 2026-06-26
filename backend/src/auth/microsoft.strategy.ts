@@ -39,14 +39,7 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       clientSecret: configService.getOrThrow<string>('MICROSOFT_CLIENT_SECRET'),
       callbackURL: configService.getOrThrow<string>('MICROSOFT_CALLBACK_URL'),
       tenant: 'common',
-      scope: [
-        'openid',
-        'profile',
-        'email',
-        'user.read',
-        'mail.read',
-        'offline_access',
-      ],
+      scope: ['openid', 'profile', 'email', 'user.read', 'mail.read', 'offline_access'],
       passReqToCallback: true,
     };
 
@@ -108,10 +101,7 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     // Extract token params for expiresAt and scope
     const params = args.find(
       (arg) =>
-        arg &&
-        typeof arg === 'object' &&
-        'expires_in' in arg &&
-        !('query' in arg),
+        arg && typeof arg === 'object' && 'expires_in' in arg && !('query' in arg),
     ) as MicrosoftTokenParams | undefined;
     const expiresInSeconds = Number(params?.expires_in);
 

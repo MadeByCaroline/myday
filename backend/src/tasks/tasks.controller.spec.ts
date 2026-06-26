@@ -26,14 +26,9 @@ describe('TasksController', () => {
       const service = { createTask: jest.fn().mockResolvedValue(created) };
       const controller = makeController(service);
 
-      const result = await controller.createTask(
-        { user: mockUser },
-        { title: 'Walk dog' },
-      );
+      const result = await controller.createTask({ user: mockUser }, { title: 'Walk dog' });
 
-      expect(service.createTask).toHaveBeenCalledWith('user-1', {
-        title: 'Walk dog',
-      });
+      expect(service.createTask).toHaveBeenCalledWith('user-1', { title: 'Walk dog' });
       expect(result).toEqual(created);
     });
   });
@@ -43,13 +38,9 @@ describe('TasksController', () => {
       const service = { updateTask: jest.fn().mockResolvedValue({ count: 1 }) };
       const controller = makeController(service);
 
-      await controller.updateTask({ user: mockUser }, 't3', {
-        status: 'IN_PROGRESS',
-      });
+      await controller.updateTask({ user: mockUser }, 't3', { status: 'IN_PROGRESS' });
 
-      expect(service.updateTask).toHaveBeenCalledWith('t3', 'user-1', {
-        status: 'IN_PROGRESS',
-      });
+      expect(service.updateTask).toHaveBeenCalledWith('t3', 'user-1', { status: 'IN_PROGRESS' });
     });
   });
 

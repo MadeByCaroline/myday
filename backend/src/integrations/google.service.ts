@@ -62,9 +62,8 @@ export class GoogleService {
         const defaultLink =
           event.hangoutLink ||
           event.htmlLink ||
-          event.conferenceData?.entryPoints?.find(
-            (entryPoint) => entryPoint.uri,
-          )?.uri;
+          event.conferenceData?.entryPoints?.find((entryPoint) => entryPoint.uri)
+            ?.uri;
 
         return {
           id: event.id || '',
@@ -78,9 +77,7 @@ export class GoogleService {
       });
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : 'Unknown Google Calendar error';
+        error instanceof Error ? error.message : 'Unknown Google Calendar error';
       this.logger.error('Failed to fetch Google calendar events', message);
       return [];
     }
