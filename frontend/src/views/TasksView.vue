@@ -369,8 +369,22 @@ function workspaceBadgeStyle(task: SavedTask) {
   return {
     borderColor: workspace.color,
     color: workspace.color,
-    backgroundColor: `${workspace.color}12`,
+    backgroundColor: workspaceBackgroundColor(workspace.color),
   }
+}
+
+function workspaceBackgroundColor(color: string) {
+  const hex = color.trim()
+  if (/^#([0-9a-fA-F]{6})$/.test(hex)) {
+    return `${hex}12`
+  }
+
+  if (/^#([0-9a-fA-F]{3})$/.test(hex)) {
+    const [r, g, b] = hex.slice(1).split('')
+    return `#${r}${r}${g}${g}${b}${b}12`
+  }
+
+  return color
 }
 
 function onColumnChange(

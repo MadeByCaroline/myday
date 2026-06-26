@@ -176,8 +176,35 @@ export class WorkspacesService {
 
     return {
       ...(normalizedName ? { name: normalizedName } : {}),
-      ...(normalizedColor ? { color: normalizedColor } : partial ? {} : { color: DEFAULT_WORKSPACE.color }),
-      ...(normalizedIcon ? { icon: normalizedIcon } : partial ? {} : { icon: DEFAULT_WORKSPACE.icon }),
+      ...this.normalizeOptionalWorkspaceField(
+        'color',
+        normalizedColor,
+        DEFAULT_WORKSPACE.color,
+        partial,
+      ),
+      ...this.normalizeOptionalWorkspaceField(
+        'icon',
+        normalizedIcon,
+        DEFAULT_WORKSPACE.icon,
+        partial,
+      ),
     };
+  }
+
+  private normalizeOptionalWorkspaceField(
+    field: 'color' | 'icon',
+    value: string | undefined,
+    fallback: string,
+    partial: boolean,
+  ) {
+    if (value) {
+      return { [field]: value };
+    }
+
+    if (partial) {
+      return {};
+    }
+
+    return { [field]: fallback };
   }
 }
