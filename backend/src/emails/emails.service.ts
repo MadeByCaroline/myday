@@ -227,8 +227,9 @@ export class EmailsService {
       if (matchingDayIndex >= 0) {
         targetDate = new Date(now);
         const currentDay = now.getDay();
-        // Named weekdays default to the next occurrence; explicit "today" is
-        // handled earlier and keeps the current date.
+        // Named weekdays default to the next occurrence. If the action says the
+        // current weekday by name (for example "Monday" on a Monday), we treat
+        // it as next week's occurrence; explicit "today" is handled earlier.
         const dayOffset =
           matchingDayIndex === currentDay
             ? 7

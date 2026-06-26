@@ -187,11 +187,14 @@ ${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun év
 
     const normalizedItems = rawItems
       .map((item, index) => {
-        const matchingEmail =
-          emails.find(
-            (email) => email.id === this.getStringValue(item, 'emailId'),
-          ) || emails[index];
         const emailId = this.getStringValue(item, 'emailId');
+        const directMatch = emails.find((email) => email.id === emailId);
+        const matchingEmail = directMatch || emails[index];
+        if (!directMatch && matchingEmail) {
+          this.logger.warn(
+            `Falling back to positional email matching for summary item ${emailId || index + 1}`,
+          );
+        }
         const summary = this.getStringValue(item, 'summary');
         const category = this.normalizeCategory(
           this.getStringValue(item, 'category'),

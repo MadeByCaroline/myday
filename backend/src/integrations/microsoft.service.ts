@@ -208,6 +208,7 @@ export class MicrosoftService {
         try {
           return JSON.stringify(data);
         } catch {
+          this.logger.warn('Unable to serialize Microsoft error payload');
           return '[unserializable error payload]';
         }
       }
