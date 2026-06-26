@@ -58,9 +58,7 @@ describe('GoogleService', () => {
     const configService = {
       getOrThrow: jest.fn((key: string) => key),
     };
-    const service = new GoogleService(
-      configService as unknown as ConfigService,
-    );
+    const service = new GoogleService(configService as unknown as ConfigService);
 
     await expect(
       service.getTodayEvents('access-token', 'refresh-token'),
