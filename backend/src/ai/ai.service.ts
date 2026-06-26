@@ -190,7 +190,11 @@ Please analyze and return the JSON response.`;
     }
   }
 
-  async generateDraftReply(params: {
+  async generateDraftReply({
+    email,
+    action,
+    events,
+  }: {
     email: {
       from: string;
       subject: string;
@@ -205,28 +209,28 @@ Ne produis ni objet, ni signature fictive, ni markdown, ni explication.
 Tiens compte de l'action demandée et des disponibilités du calendrier pour proposer une réponse cohérente et concise.`;
 
     const userContent = `Email d'origine :
-De : ${params.email.from}
-Sujet : ${params.email.subject}
-Extrait : ${params.email.snippet}
+De : ${email.from}
+Sujet : ${email.subject}
+Extrait : ${email.snippet}
 Contenu :
-${params.email.body}
+${email.body}
 
 Action choisie :
-${params.action}
+${action}
 
 Contexte calendrier :
-${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun événement pertinent trouvé.'}`;
+${events.length > 0 ? JSON.stringify(events, null, 2) : 'Aucun événement pertinent trouvé.'}`;
 
     try {
       const content = await this.resolveAIRequest(
         `${systemPrompt}\n\n${userContent}`,
       );
-      return content || this.buildFallbackDraftReply(params.action);
+      return content || this.buildFallbackDraftReply(action);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown Gemini API error';
-      this.logger.error('Gemini draft generation error', message);
-      return this.buildFallbackDraftReply(params.action);
+      this.logger.error('AI draft generation error', message);
+      return this.buildFallbackDraftReply(action);
     }
   }
 
@@ -250,10 +254,8 @@ ${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun év
       return text || 'I was unable to formulate a response at this time.';
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : 'Unknown Gemini tool-calling error';
-      this.logger.error('Gemini workspace chat error', message);
+        error instanceof Error ? error.message : 'Unknown AI provider error';
+      this.logger.error('AI workspace chat error', message);
       return "I'm experiencing a temporary issue responding to your question.";
     }
   }
@@ -310,8 +312,8 @@ Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unknown Gemini API error';
-      this.logger.error('Gemini time-blocking error', message);
+        error instanceof Error ? error.message : 'Unknown AI provider error';
+      this.logger.error('AI time-blocking error', message);
       return this.buildFallbackTimeBlocks(tasks);
     }
   }
@@ -389,7 +391,7 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
   ): Promise<string> {
     const tools = options.tools;
     if (!tools) {
-      return '';
+      throw new Error('Workspace tools are required for Gemini chat requests.');
     }
 
     const model = this.genAI.getGenerativeModel({
@@ -516,7 +518,7 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
         }),
       );
 
-      result = await chat.sendMessage(responses as never);
+      result = await chat.sendMessage(responses as any);
       remainingTurns -= 1;
     }
 
