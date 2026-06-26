@@ -21,6 +21,7 @@ describe('AiService', () => {
 
   const emails = [
     {
+      id: 'mail-1',
       from: 'alice@example.com',
       subject: 'Need follow-up',
       snippet: 'Can you send the notes?',
@@ -62,7 +63,50 @@ describe('AiService', () => {
       summary: 'Today looks busy.',
       events,
       suggested_tasks: [],
+      email_summaries: [
+        {
+          emailId: 'mail-1',
+          summary: 'Can you send the notes?',
+          category: 'INFO',
+        },
+      ],
     });
+  });
+
+  it('parses categorized email summaries when AI returns them as a JSON string', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () =>
+          JSON.stringify({
+            summary: 'Voici votre journée.',
+            events,
+            suggested_tasks: [],
+            email_summaries:
+              '[{"emailId":"mail-1","summary":"Demande d\\u2019envoyer un compte rendu","category":"ACTION_REQUIRED"},{"emailId":"mail-2","summary":"Mise \\u00e0 jour hebdomadaire","category":"newsletter"},{"emailId":"mail-3","summary":"Notification d\\u2019information","category":"UNKNOWN"}]',
+          }),
+      },
+    });
+
+    const service = new AiService(configService);
+    const result = await service.analyzeProductivityData(emails, events);
+
+    expect(result.email_summaries).toEqual([
+      {
+        emailId: 'mail-1',
+        summary: 'Demande d’envoyer un compte rendu',
+        category: 'ACTION_REQUIRED',
+      },
+      {
+        emailId: 'mail-2',
+        summary: 'Mise à jour hebdomadaire',
+        category: 'NEWSLETTER',
+      },
+      {
+        emailId: 'mail-3',
+        summary: 'Notification d’information',
+        category: 'INFO',
+      },
+    ]);
   });
 
   it('returns a safe fallback when Gemini fails', async () => {
@@ -76,6 +120,13 @@ describe('AiService', () => {
         'Unable to generate AI summary at this time. Please check your Gemini configuration.',
       events,
       suggested_tasks: [],
+      email_summaries: [
+        {
+          emailId: 'mail-1',
+          summary: 'Can you send the notes?',
+          category: 'INFO',
+        },
+      ],
     });
   });
 });
