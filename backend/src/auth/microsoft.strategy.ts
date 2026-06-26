@@ -45,14 +45,15 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     super(options);
   }
 
-  validate(
+  // NestJS Passport strategies return the user payload from validate().
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async validate(
     req: Request,
     accessToken: string,
     refreshToken: string,
     params: MicrosoftTokenParams,
     profile: MicrosoftProfile,
-    done: (error: Error | null, user?: OAuthCallbackUser | false) => void,
-  ): void {
+  ): Promise<OAuthCallbackUser> {
     const email =
       profile.emails?.[0]?.value ??
       profile._json?.mail ??
@@ -60,19 +61,15 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       '';
 
     if (!email) {
-      done(
-        new Error(
-          'Microsoft account email was not provided. Please ensure your Microsoft account has a valid email address and try again.',
-        ),
-        false,
+      throw new Error(
+        'Microsoft account email was not provided. Please ensure your Microsoft account has a valid email address and try again.',
       );
-      return;
     }
 
     const state =
       typeof req.query.state === 'string' ? req.query.state : undefined;
     const expiresInSeconds = Number(params.expires_in);
-    done(null, {
+    return {
       email,
       name: profile.displayName || email,
       accessToken,
@@ -82,6 +79,6 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
         : undefined,
       scope: params.scope,
       state,
-    });
+    };
   }
 }

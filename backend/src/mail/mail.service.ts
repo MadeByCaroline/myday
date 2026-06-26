@@ -15,7 +15,10 @@ export class MailService {
 
   constructor(private configService: ConfigService) {}
 
-  async getRecentEmails(accessToken: string, refreshToken?: string): Promise<EmailSummary[]> {
+  async getRecentEmails(
+    accessToken: string,
+    refreshToken?: string,
+  ): Promise<EmailSummary[]> {
     try {
       const oauth2Client = new google.auth.OAuth2(
         this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
@@ -55,21 +58,29 @@ export class MailService {
           });
 
           const headers = detail.data.payload?.headers || [];
-          const from = headers.find((header) => header.name === 'From')?.value || '';
-          const subject = headers.find((header) => header.name === 'Subject')?.value || '(no subject)';
-          const date = headers.find((header) => header.name === 'Date')?.value || '';
+          const from =
+            headers.find((header) => header.name === 'From')?.value || '';
+          const subject =
+            headers.find((header) => header.name === 'Subject')?.value ||
+            '(no subject)';
+          const date =
+            headers.find((header) => header.name === 'Date')?.value || '';
           const snippet = detail.data.snippet || '';
 
           emails.push({ from, subject, snippet, receivedAt: date });
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown Gmail message error';
+          const message =
+            error instanceof Error
+              ? error.message
+              : 'Unknown Gmail message error';
           this.logger.warn(`Failed to fetch message ${msg.id}: ${message}`);
         }
       }
 
       return emails;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Gmail API error';
+      const message =
+        error instanceof Error ? error.message : 'Unknown Gmail API error';
       this.logger.error('Failed to fetch emails', message);
       return [];
     }
