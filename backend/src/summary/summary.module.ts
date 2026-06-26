@@ -5,10 +5,11 @@ import { MicrosoftService } from '../integrations/microsoft.service';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { SummaryController } from './summary.controller';
+import { SummaryService } from './summary.service';
 
 @Module({
   imports: [MailModule, CalendarModule, AiModule, UsersModule],
-  providers: [MicrosoftService],
+  providers: [MicrosoftService, SummaryService],
   controllers: [SummaryController],
 })
 export class SummaryModule {}

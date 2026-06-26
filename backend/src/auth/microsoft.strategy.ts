@@ -39,7 +39,15 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       clientSecret: configService.getOrThrow<string>('MICROSOFT_CLIENT_SECRET'),
       callbackURL: configService.getOrThrow<string>('MICROSOFT_CALLBACK_URL'),
       tenant: 'common',
-      scope: ['openid', 'profile', 'email', 'user.read', 'mail.read', 'offline_access'],
+      scope: [
+        'openid',
+        'profile',
+        'email',
+        'user.read',
+        'mail.read',
+        'Calendars.Read',
+        'offline_access',
+      ],
       passReqToCallback: true,
     };
 
