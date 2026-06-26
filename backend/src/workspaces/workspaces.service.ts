@@ -80,7 +80,7 @@ export class WorkspacesService {
 
     const fallbackWorkspace = workspaces.find((entry) => entry.id !== workspaceId);
     if (!fallbackWorkspace) {
-      throw new BadRequestException('A fallback workspace is required to delete this workspace.');
+      throw new Error('Workspace deletion fallback invariant violated.');
     }
 
     await this.prisma.$transaction([

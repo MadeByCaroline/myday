@@ -374,17 +374,34 @@ function workspaceBadgeStyle(task: SavedTask) {
 }
 
 function workspaceBackgroundColor(color: string) {
-  const hex = color.trim()
-  if (/^#([0-9a-fA-F]{6})$/.test(hex)) {
-    return `${hex}1A`
-  }
-
-  if (/^#([0-9a-fA-F]{3})$/.test(hex)) {
-    const [r, g, b] = hex.slice(1).split('')
-    return `#${r}${r}${g}${g}${b}${b}1A`
+  const normalizedColor = color.trim()
+  const rgb = parseWorkspaceColor(normalizedColor)
+  if (rgb) {
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`
   }
 
   return color
+}
+
+function parseWorkspaceColor(color: string) {
+  if (/^#([0-9a-fA-F]{6})$/.test(color)) {
+    return {
+      r: Number.parseInt(color.slice(1, 3), 16),
+      g: Number.parseInt(color.slice(3, 5), 16),
+      b: Number.parseInt(color.slice(5, 7), 16),
+    }
+  }
+
+  if (/^#([0-9a-fA-F]{3})$/.test(color)) {
+    const [r, g, b] = color.slice(1).split('')
+    return {
+      r: Number.parseInt(`${r}${r}`, 16),
+      g: Number.parseInt(`${g}${g}`, 16),
+      b: Number.parseInt(`${b}${b}`, 16),
+    }
+  }
+
+  return null
 }
 
 function onColumnChange(
