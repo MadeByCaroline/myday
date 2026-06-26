@@ -32,6 +32,10 @@
       </div>
 
       <nav class="p-4 flex-1">
+        <RouterLink :to="{ name: 'my-day' }" :class="navLinkClass">
+          <i class="pi pi-sun"></i>
+          <span>My Day</span>
+        </RouterLink>
         <RouterLink :to="{ name: 'dashboard' }" :class="navLinkClass">
           <i class="pi pi-home"></i>
           <span>Tableau de bord</span>

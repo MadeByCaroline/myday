@@ -27,13 +27,22 @@ const router = createRouter({
       component: () => import('../views/PricingView.vue'),
     },
     {
+      path: '/my-day',
+      redirect: { name: 'my-day' },
+    },
+    {
       path: '/app',
       component: () => import('../layouts/MainLayout.vue'),
       meta: { requiresAuth: true },
       children: [
         {
           path: '',
-          redirect: { name: 'dashboard' },
+          redirect: { name: 'my-day' },
+        },
+        {
+          path: 'my-day',
+          name: 'my-day',
+          component: () => import('../views/MyDayView.vue'),
         },
         {
           path: 'dashboard',
@@ -78,7 +87,7 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    return { name: 'dashboard' }
+    return { name: 'my-day' }
   }
 
   if (
