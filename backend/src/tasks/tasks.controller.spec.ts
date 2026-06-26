@@ -38,9 +38,9 @@ describe('TasksController', () => {
       const service = { updateTask: jest.fn().mockResolvedValue({ count: 1 }) };
       const controller = makeController(service);
 
-      await controller.updateTask({ user: mockUser }, 't3', { isCompleted: true });
+      await controller.updateTask({ user: mockUser }, 't3', { status: 'IN_PROGRESS' });
 
-      expect(service.updateTask).toHaveBeenCalledWith('t3', 'user-1', { isCompleted: true });
+      expect(service.updateTask).toHaveBeenCalledWith('t3', 'user-1', { status: 'IN_PROGRESS' });
     });
   });
 

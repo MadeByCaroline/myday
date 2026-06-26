@@ -34,7 +34,7 @@ export class TasksController {
   async updateTask(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body: { isCompleted?: boolean; title?: string; status?: string },
+    @Body() body: { status?: string; title?: string },
   ) {
     return this.tasksService.updateTask(id, req.user.id, body);
   }
