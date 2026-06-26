@@ -653,7 +653,7 @@ describe('AiService', () => {
         'Never overlap tasks from different workspaces.',
       );
       expect(mockGenerateContent.mock.calls[0][0]).toContain(
-        'Vue unifiée tâches + événements avec métadonnées d\'espace de travail',
+        'Unified tasks and events with workspace metadata',
       );
       expect(mockGenerateContent.mock.calls[0][0]).toContain('"workspaceName": "Work"');
       expect(mockGenerateContent.mock.calls[0][0]).toContain('"kind": "event"');
