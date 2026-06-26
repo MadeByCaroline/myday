@@ -2,9 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface UserSettings {
+  theme: string;
   aiSummaryInstructions: string | null;
   excludedSenders: string[];
 }
+
+const SUPPORTED_THEMES = new Set(['light', 'dark', 'zen']);
 
 @Injectable()
 export class SettingsService {
@@ -13,10 +16,11 @@ export class SettingsService {
   async getSettings(userId: string): Promise<UserSettings> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { aiSummaryInstructions: true, excludedSenders: true },
+      select: { theme: true, aiSummaryInstructions: true, excludedSenders: true },
     });
 
     return {
+      theme: this.normalizeTheme(user.theme),
       aiSummaryInstructions: user.aiSummaryInstructions,
       excludedSenders: this.parseExcludedSenders(user.excludedSenders),
     };
@@ -29,6 +33,9 @@ export class SettingsService {
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
+        ...(data.theme !== undefined && {
+          theme: this.normalizeTheme(data.theme),
+        }),
         ...(data.aiSummaryInstructions !== undefined && {
           aiSummaryInstructions: data.aiSummaryInstructions,
         }),
@@ -36,10 +43,11 @@ export class SettingsService {
           excludedSenders: JSON.stringify(data.excludedSenders),
         }),
       },
-      select: { aiSummaryInstructions: true, excludedSenders: true },
+      select: { theme: true, aiSummaryInstructions: true, excludedSenders: true },
     });
 
     return {
+      theme: this.normalizeTheme(updated.theme),
       aiSummaryInstructions: updated.aiSummaryInstructions,
       excludedSenders: this.parseExcludedSenders(updated.excludedSenders),
     };
@@ -55,5 +63,9 @@ export class SettingsService {
       // ignore parse errors, return empty array
     }
     return [];
+  }
+
+  private normalizeTheme(theme: string | null | undefined): string {
+    return theme && SUPPORTED_THEMES.has(theme) ? theme : 'light';
   }
 }
