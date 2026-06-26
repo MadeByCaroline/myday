@@ -7,10 +7,11 @@
           remporter 2 mois d'abonnement gratuit.
         </p>
 
-        <form class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center" @submit.prevent>
+        <form class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center" @submit.prevent="submitWhitelist">
           <input
             type="email"
             placeholder="Votre email"
+            v-model="email"
             class="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 sm:max-w-sm"
             required
           />
@@ -24,6 +25,9 @@
 
         <p class="mt-3 text-sm text-gray-600">
           🔒 Empreinte de carte bancaire requise pour validation. 0€ débité aujourd'hui. Annulation en un clic.
+        </p>
+        <p v-if="giveawaySubmitted" class="mt-2 text-sm font-medium text-emerald-700">
+          Merci ! Votre demande de whitelist a bien été enregistrée.
         </p>
       </section>
 
@@ -65,6 +69,7 @@
           <button
             type="button"
             class="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            @click="startSubscription('monthly')"
           >
             Démarrer mon essai gratuit (CB requise)
           </button>
@@ -97,6 +102,7 @@
           <button
             type="button"
             class="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black"
+            @click="startSubscription('annual')"
           >
             S'abonner à l'année
           </button>
@@ -112,7 +118,20 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const isAnnual = ref(false)
+const email = ref('')
+const giveawaySubmitted = ref(false)
+
 const annualDisplayedPrice = computed(() => (isAnnual.value ? '20,25€ / mois' : '243€ / an'))
+
+function submitWhitelist() {
+  giveawaySubmitted.value = true
+}
+
+function startSubscription(plan: 'monthly' | 'annual') {
+  router.push({ name: 'login', query: { plan } })
+}
 </script>
