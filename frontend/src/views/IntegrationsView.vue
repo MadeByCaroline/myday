@@ -221,7 +221,7 @@ onMounted(async () => {
       })
       authStore.setUser(data)
       noticeMessage.value = 'Integration connected successfully.'
-      window.history.replaceState({}, '', '/integrations')
+      window.history.replaceState({}, '', '/app/integrations')
     } catch {
       authStore.logout()
       router.push('/login')

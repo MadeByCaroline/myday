@@ -5,6 +5,12 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/',
+      name: 'landing',
+      component: () => import('../views/LandingView.vue'),
+      meta: { requiresGuest: true },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
@@ -21,7 +27,7 @@ const router = createRouter({
       component: () => import('../views/PricingView.vue'),
     },
     {
-      path: '/',
+      path: '/app',
       component: () => import('../layouts/MainLayout.vue'),
       meta: { requiresAuth: true },
       children: [

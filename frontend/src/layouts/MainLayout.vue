@@ -11,19 +11,19 @@
       </div>
 
       <nav class="p-4 flex-1">
-        <RouterLink to="/dashboard" :class="navLinkClass">
+        <RouterLink :to="{ name: 'dashboard' }" :class="navLinkClass">
           <i class="pi pi-home"></i>
           <span>Dashboard</span>
         </RouterLink>
-        <RouterLink to="/tasks" :class="navLinkClass">
+        <RouterLink :to="{ name: 'tasks' }" :class="navLinkClass">
           <i class="pi pi-check-square"></i>
           <span>Tasks</span>
         </RouterLink>
-        <RouterLink to="/calendar" :class="navLinkClass">
+        <RouterLink :to="{ name: 'calendar' }" :class="navLinkClass">
           <i class="pi pi-calendar"></i>
           <span>Calendar</span>
         </RouterLink>
-        <RouterLink to="/integrations" :class="navLinkClass">
+        <RouterLink :to="{ name: 'integrations' }" :class="navLinkClass">
           <i class="pi pi-plug"></i>
           <span>Integrations</span>
         </RouterLink>
