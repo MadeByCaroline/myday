@@ -150,14 +150,6 @@ export class AuthService {
   }
 
   private getProviderVariants(provider: string) {
-    if (provider === 'GOOGLE') {
-      return ['google', 'GOOGLE'];
-    }
-
-    if (provider === 'MICROSOFT') {
-      return ['MICROSOFT', 'microsoft'];
-    }
-
-    return [provider, provider.toLowerCase()];
+    return [...new Set([provider.toLowerCase(), provider.toUpperCase()])];
   }
 }

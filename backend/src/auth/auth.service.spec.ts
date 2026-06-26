@@ -7,7 +7,7 @@ describe('AuthService', () => {
     verifyAsync: jest.fn(),
   };
 
-  function makeService(usersService: Partial<any>) {
+  function createAuthService(usersService: Partial<any>) {
     return new AuthService(usersService as any, mockJwtService as any);
   }
 
@@ -18,7 +18,7 @@ describe('AuthService', () => {
         { provider: 'MICROSOFT', email: 'user@outlook.com' },
       ]),
     };
-    const service = makeService(usersService);
+    const service = createAuthService(usersService);
 
     await expect(service.getConnections('user-1')).resolves.toEqual([
       { provider: 'GOOGLE', email: 'user@gmail.com' },
@@ -30,7 +30,7 @@ describe('AuthService', () => {
     const usersService = {
       deleteOAuthTokens: jest.fn().mockResolvedValue({ count: 1 }),
     };
-    const service = makeService(usersService);
+    const service = createAuthService(usersService);
 
     await service.disconnectConnection('user-1', 'GOOGLE');
 
@@ -44,13 +44,13 @@ describe('AuthService', () => {
     const usersService = {
       deleteOAuthTokens: jest.fn().mockResolvedValue({ count: 1 }),
     };
-    const service = makeService(usersService);
+    const service = createAuthService(usersService);
 
     await service.disconnectConnection('user-1', 'microsoft');
 
     expect(usersService.deleteOAuthTokens).toHaveBeenCalledWith('user-1', [
-      'MICROSOFT',
       'microsoft',
+      'MICROSOFT',
     ]);
   });
 });

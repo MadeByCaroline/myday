@@ -134,7 +134,7 @@
 <script setup lang="ts">
 import axios from 'axios'
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 type AppProvider = 'GOOGLE' | 'MICROSOFT' | 'GITHUB' | 'NOTION'
@@ -179,6 +179,7 @@ const apps: Array<{ provider: AppProvider; label: string; icon: string; descript
 ]
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const loading = ref(false)
 const connections = ref<Connection[]>([])
@@ -265,9 +266,8 @@ function handleLogout() {
 }
 
 onMounted(async () => {
-  const params = new URLSearchParams(window.location.search)
-  const hasLinkError = params.get('linkError') === '1'
-  const refreshProfile = params.get('refreshProfile') === '1'
+  const hasLinkError = route.query.linkError === '1'
+  const refreshProfile = route.query.refreshProfile === '1'
 
   if (hasLinkError) {
     errorMessage.value = 'Account linking failed. Please verify account permissions and try again.'
