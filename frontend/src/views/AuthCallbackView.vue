@@ -49,7 +49,7 @@ onMounted(async () => {
       { headers: { Authorization: 'Bearer ' + token } },
     )
     authStore.setUser(data)
-    router.push({ name: 'dashboard' })
+    router.push({ name: 'my-day' })
   } catch {
     error.value = 'Impossible de récupérer le profil.'
     authStore.logout()

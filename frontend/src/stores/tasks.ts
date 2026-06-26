@@ -25,6 +25,8 @@ export interface SavedTask {
   status: string
   source: string
   createdAt: string
+  scheduledStartTime?: string | null
+  scheduledEndTime?: string | null
   workspaceId?: string | null
   workspace?: TaskWorkspace | null
 }
@@ -165,9 +167,16 @@ export const useTasksStore = defineStore('tasks', () => {
         : []
 
       if (blocks.length > 0) {
-        const scheduledIds = new Set(blocks.map((b) => b.taskId))
+        const scheduledBlocks = new Map(blocks.map((block) => [block.taskId, block]))
         savedTasks.value = (savedTasks.value || []).map((task) =>
-          scheduledIds.has(task.id) ? { ...task, status: 'SCHEDULED' } : task,
+          scheduledBlocks.has(task.id)
+            ? {
+                ...task,
+                status: 'SCHEDULED',
+                scheduledStartTime: scheduledBlocks.get(task.id)?.suggestedStartTime,
+                scheduledEndTime: scheduledBlocks.get(task.id)?.suggestedEndTime,
+              }
+            : task,
         )
       }
 
