@@ -42,6 +42,7 @@
             Stop
           </button>
         </div>
+        <p v-if="timerErrorMessage" class="mt-2 text-xs text-red-600">{{ timerErrorMessage }}</p>
       </div>
 
       <div class="p-4 border-t border-gray-200">
@@ -73,7 +74,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import axios from 'axios'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useTimerStore } from '../stores/timer.store'
@@ -84,6 +86,7 @@ const navLinkClass =
 const authStore = useAuthStore()
 const router = useRouter()
 const timerStore = useTimerStore()
+const timerErrorMessage = ref<string | null>(null)
 
 const formattedElapsedTime = computed(() => {
   const hours = String(Math.floor(timerStore.elapsedSeconds / 3600)).padStart(2, '0')
@@ -94,7 +97,18 @@ const formattedElapsedTime = computed(() => {
 })
 
 async function handleStopTimer() {
-  await timerStore.stopTimer()
+  timerErrorMessage.value = null
+
+  try {
+    await timerStore.stopTimer()
+  } catch (caughtError: unknown) {
+    if (axios.isAxiosError(caughtError)) {
+      timerErrorMessage.value = caughtError.response?.data?.message || 'Unable to stop the running timer.'
+      return
+    }
+
+    timerErrorMessage.value = 'Unable to stop the running timer.'
+  }
 }
 
 function handleLogout() {

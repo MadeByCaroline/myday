@@ -59,9 +59,8 @@
                     <div class="flex items-center gap-1 flex-shrink-0">
                       <button
                         @click="handleStartTimer(element.id)"
-                        :disabled="!timerStore.canStartTask(element.id) || timerStore.loading"
-                        class="transition-colors"
-                        :class="timerStore.isTaskActive(element.id) ? 'text-green-600' : 'text-gray-300 hover:text-indigo-600 disabled:text-gray-200'"
+                        :disabled="isStartDisabled(element.id)"
+                        :class="startButtonClass(element.id)"
                         :title="timerStore.isTaskActive(element.id) ? 'Chrono en cours' : 'Démarrer le suivi du temps'"
                       >
                         <i class="pi pi-play text-xs"></i>
@@ -109,9 +108,8 @@
                     <div class="flex items-center gap-1 flex-shrink-0">
                       <button
                         @click="handleStartTimer(element.id)"
-                        :disabled="!timerStore.canStartTask(element.id) || timerStore.loading"
-                        class="transition-colors"
-                        :class="timerStore.isTaskActive(element.id) ? 'text-green-600' : 'text-gray-300 hover:text-indigo-600 disabled:text-gray-200'"
+                        :disabled="isStartDisabled(element.id)"
+                        :class="startButtonClass(element.id)"
                         :title="timerStore.isTaskActive(element.id) ? 'Chrono en cours' : 'Démarrer le suivi du temps'"
                       >
                         <i class="pi pi-play text-xs"></i>
@@ -159,9 +157,8 @@
                     <div class="flex items-center gap-1 flex-shrink-0">
                       <button
                         @click="handleStartTimer(element.id)"
-                        :disabled="!timerStore.canStartTask(element.id) || timerStore.loading"
-                        class="transition-colors"
-                        :class="timerStore.isTaskActive(element.id) ? 'text-green-600' : 'text-gray-300 hover:text-indigo-600 disabled:text-gray-200'"
+                        :disabled="isStartDisabled(element.id)"
+                        :class="startButtonClass(element.id)"
                         :title="timerStore.isTaskActive(element.id) ? 'Chrono en cours' : 'Démarrer le suivi du temps'"
                       >
                         <i class="pi pi-play text-xs"></i>
@@ -218,6 +215,19 @@ function onColumnChange(
   if (event.added) {
     tasksStore.updateTaskStatus(event.added.element.id, columnStatus)
   }
+}
+
+function isStartDisabled(taskId: string) {
+  return !timerStore.canStartTask(taskId) || timerStore.loading
+}
+
+function startButtonClass(taskId: string) {
+  return [
+    'transition-colors',
+    timerStore.isTaskActive(taskId)
+      ? 'text-green-600'
+      : 'text-gray-300 hover:text-indigo-600 disabled:text-gray-200',
+  ]
 }
 
 async function handleAddTask() {
