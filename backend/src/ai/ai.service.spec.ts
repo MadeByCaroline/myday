@@ -230,10 +230,12 @@ describe('AiService', () => {
         response: {
           text: () =>
             JSON.stringify({
-              greeting: 'Good morning, Caroline!',
-              emailSummary: '2 unread emails need quick attention.',
-              scheduleOverview: 'You have 3 meetings today.',
-              recommendedFocus: 'Start with launch follow-ups.',
+              greeting: 'Bonjour, Caroline !',
+              emailSummary:
+                'Vous avez 2 e-mails non lus qui demandent une attention rapide.',
+              scheduleOverview: "Vous avez 3 réunions aujourd'hui.",
+              recommendedFocus:
+                'Commencez par les suivis de lancement en priorité.',
             }),
         },
       });
@@ -284,12 +286,27 @@ describe('AiService', () => {
       const secondResult = await service.generateMorningBriefing('user-1');
 
       expect(firstResult).toEqual({
-        greeting: 'Good morning, Caroline!',
-        emailSummary: '2 unread emails need quick attention.',
-        scheduleOverview: 'You have 3 meetings today.',
-        recommendedFocus: 'Start with launch follow-ups.',
+        greeting: 'Bonjour, Caroline !',
+        emailSummary:
+          'Vous avez 2 e-mails non lus qui demandent une attention rapide.',
+        scheduleOverview: "Vous avez 3 réunions aujourd'hui.",
+        recommendedFocus: 'Commencez par les suivis de lancement en priorité.',
       });
       expect(secondResult).toEqual(firstResult);
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        'Rédige TOUT le contenu en FRANÇAIS.',
+      );
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        'Retourne UNIQUEMENT un objet JSON valide avec EXACTEMENT cette structure',
+      );
+      expect(mockGenerateContent.mock.calls[0][0]).toContain('"greeting"');
+      expect(mockGenerateContent.mock.calls[0][0]).toContain('"emailSummary"');
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        '"scheduleOverview"',
+      );
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        '"recommendedFocus"',
+      );
       expect(prisma.oAuthToken.findMany).toHaveBeenCalledTimes(1);
       expect(mockGetGenerativeModel).toHaveBeenCalledWith({
         model: 'gemini-2.5-flash',
@@ -334,12 +351,12 @@ describe('AiService', () => {
       );
 
       await expect(service.generateMorningBriefing('user-1')).resolves.toEqual({
-        greeting: 'Good morning! You’re set up for a strong start.',
-        emailSummary: 'No unread emails from the last 12 hours.',
+        greeting: 'Bonjour ! Tout est prêt pour bien démarrer.',
+        emailSummary: 'Aucun e-mail non lu au cours des 12 dernières heures.',
         scheduleOverview:
-          'Your calendar is open today, so you can create focused time blocks.',
+          "Votre calendrier est dégagé aujourd'hui, vous pouvez donc créer des plages de concentration.",
         recommendedFocus:
-          'Prioritize your top TODO task first, then batch email follow-ups.',
+          "Donnez la priorité à votre tâche TODO prioritaire d'abord, puis traitez vos suivis e-mail par lot.",
       });
     });
   });

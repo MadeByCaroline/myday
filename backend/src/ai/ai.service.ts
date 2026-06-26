@@ -276,14 +276,16 @@ ${events.length > 0 ? JSON.stringify(events, null, 2) : 'Aucun événement perti
 
     const context = await this.getMorningBriefingContext(userId);
 
-    const systemPrompt = `You are an executive assistant preparing a short morning briefing.
-Use an encouraging, concise tone.
-Return ONLY valid JSON with exactly this structure:
+    const systemPrompt = `Tu es un assistant exécutif préparant un court briefing matinal pour l'utilisateur.
+Utilise un ton encourageant, bienveillant et concis.
+Rédige TOUT le contenu en FRANÇAIS.
+
+Retourne UNIQUEMENT un objet JSON valide avec EXACTEMENT cette structure, sans aucune autre explication ou texte en dehors du bloc JSON :
 {
-  "greeting": "short encouraging greeting",
-  "emailSummary": "summary of unread emails from the last 12 hours",
-  "scheduleOverview": "overview of today's schedule",
-  "recommendedFocus": "1 clear recommended focus for today"
+  "greeting": "Un court message d'accueil encourageant en français",
+  "emailSummary": "Résumé synthétique des emails non lus des dernières 12 heures en français",
+  "scheduleOverview": "Vue d'ensemble concise du planning de la journée en français",
+  "recommendedFocus": "Un objectif clair de concentration prioritaire pour aujourd'hui en français"
 }`;
 
     const userPrompt = `Context for user ${userId}:
@@ -855,19 +857,19 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
     return {
       greeting: this.safeString(
         data.greeting,
-        'Good morning! Here is your plan for the day.',
+        'Bonjour ! Voici votre plan pour la journée.',
       ),
       emailSummary: this.safeString(
         data.emailSummary,
-        'No unread emails from the last 12 hours.',
+        "Aucun e-mail non lu au cours des 12 dernières heures.",
       ),
       scheduleOverview: this.safeString(
         data.scheduleOverview,
-        "You don't have calendar events for today.",
+        "Vous n'avez pas d'événements au calendrier aujourd'hui.",
       ),
       recommendedFocus: this.safeString(
         data.recommendedFocus,
-        'Start with your top TODO task to build momentum.',
+        'Commencez par votre tâche TODO prioritaire pour prendre de l’élan.',
       ),
     };
   }
@@ -878,19 +880,19 @@ IMPORTANT: Return ONLY raw JSON. Do not wrap it in markdown fences, labels, or e
     highPriorityTodoTasks: Array<{ title: string }>;
   }): MorningBriefingResult {
     const topTask =
-      context.highPriorityTodoTasks[0]?.title || 'your top TODO task';
+      context.highPriorityTodoTasks[0]?.title || 'votre tâche TODO prioritaire';
 
     return {
-      greeting: 'Good morning! You’re set up for a strong start.',
+      greeting: 'Bonjour ! Tout est prêt pour bien démarrer.',
       emailSummary:
         context.unreadEmails.length > 0
-          ? `You have ${context.unreadEmails.length} unread email(s) from the last 12 hours.`
-          : 'No unread emails from the last 12 hours.',
+          ? `Vous avez ${context.unreadEmails.length} e-mail(s) non lu(s) au cours des 12 dernières heures.`
+          : "Aucun e-mail non lu au cours des 12 dernières heures.",
       scheduleOverview:
         context.todayEvents.length > 0
-          ? `You have ${context.todayEvents.length} event(s) on your calendar today.`
-          : "Your calendar is open today, so you can create focused time blocks.",
-      recommendedFocus: `Prioritize ${topTask} first, then batch email follow-ups.`,
+          ? `Vous avez ${context.todayEvents.length} événement(s) à votre calendrier aujourd'hui.`
+          : "Votre calendrier est dégagé aujourd'hui, vous pouvez donc créer des plages de concentration.",
+      recommendedFocus: `Donnez la priorité à ${topTask} d'abord, puis traitez vos suivis e-mail par lot.`,
     };
   }
 
