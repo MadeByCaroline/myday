@@ -12,6 +12,7 @@ model User {
   email       String       @unique
   name        String?
   picture     String?
+  role        String       @default("USER")
   dailySummary String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
