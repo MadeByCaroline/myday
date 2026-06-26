@@ -27,7 +27,7 @@ export class ScheduleService {
         block,
         startMinutes,
         endMinutes,
-        workspaceKey: task.workspaceId ?? null,
+        workspaceId: task.workspaceId ?? null,
       };
     });
 
@@ -42,7 +42,7 @@ export class ScheduleService {
       block: TimeBlock;
       startMinutes: number;
       endMinutes: number;
-      workspaceKey: string | null;
+      workspaceId: string | null;
     }>;
 
     for (let index = 0; index < validBlocks.length; index += 1) {
@@ -63,9 +63,9 @@ export class ScheduleService {
         }
 
         if (
-          currentBlock.workspaceKey &&
-          comparisonBlock.workspaceKey &&
-          currentBlock.workspaceKey !== comparisonBlock.workspaceKey
+          currentBlock.workspaceId &&
+          comparisonBlock.workspaceId &&
+          currentBlock.workspaceId !== comparisonBlock.workspaceId
         ) {
           this.logger.warn(
             `Rejecting AI time blocks because ${currentBlock.block.taskId} and ${comparisonBlock.block.taskId} overlap across workspaces.`,
