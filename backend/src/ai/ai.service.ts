@@ -32,6 +32,13 @@ export interface AiAnalysisResult {
   email_summaries: CategorizedEmailSummary[];
 }
 
+export interface TimeBlock {
+  taskId: string;
+  suggestedStartTime: string;
+  suggestedEndTime: string;
+  title: string;
+}
+
 export interface WorkspaceDateRange {
   start: string;
   end: string;
@@ -332,6 +339,88 @@ ${params.events.length > 0 ? JSON.stringify(params.events, null, 2) : 'Aucun év
       this.logger.error('Gemini workspace chat error', message);
       return "I'm experiencing a temporary issue responding to your question.";
     }
+  }
+
+  async generateTimeBlocking(
+    tasks: Array<{ id: string; title: string; description?: string | null }>,
+    calendarEvents: CalendarEvent[],
+  ): Promise<TimeBlock[]> {
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const systemPrompt = `Tu es un assistant exécutif expert en gestion du temps. 
+Analyse les tâches ouvertes et les événements du calendrier pour aujourd'hui.
+Trouve les créneaux libres dans la journée (heures de travail : 9h00-18h00, pause déjeuner : 12h30-13h30).
+Attribue chaque tâche à un créneau disponible, en estimant 30 minutes par tâche sauf indication contraire.
+Ne chevauche pas les événements existants.
+Rédige les titres en FRANÇAIS.
+Retourne UNIQUEMENT un tableau JSON avec EXACTEMENT cette structure, rien d'autre :
+[
+  {
+    "taskId": "id exact de la tâche",
+    "suggestedStartTime": "HH:MM",
+    "suggestedEndTime": "HH:MM",
+    "title": "titre de la tâche"
+  }
+]`;
+
+    const userContent = `Tâches ouvertes à planifier :
+${JSON.stringify(tasks, null, 2)}
+
+Événements déjà présents dans le calendrier d'aujourd'hui :
+${calendarEvents.length > 0 ? JSON.stringify(calendarEvents, null, 2) : "Aucun événement pour aujourd'hui."}
+
+Planifie les tâches dans les créneaux libres et retourne le tableau JSON.`;
+
+    try {
+      const result = await model.generateContent([
+        { text: systemPrompt },
+        { text: userContent },
+      ]);
+
+      const content = result.response.text() || '[]';
+      const parsed = JSON.parse(content) as unknown;
+
+      if (!Array.isArray(parsed)) {
+        return this.buildFallbackTimeBlocks(tasks);
+      }
+
+      return (parsed as unknown[]).filter(
+        (item): item is TimeBlock => {
+          const o = item as Record<string, unknown>;
+          return (
+            typeof o === 'object' &&
+            o !== null &&
+            typeof o.taskId === 'string' &&
+            typeof o.suggestedStartTime === 'string' &&
+            typeof o.suggestedEndTime === 'string' &&
+            typeof o.title === 'string'
+          );
+        },
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown Gemini API error';
+      this.logger.error('Gemini time-blocking error', message);
+      return this.buildFallbackTimeBlocks(tasks);
+    }
+  }
+
+  private buildFallbackTimeBlocks(
+    tasks: Array<{ id: string; title: string }>,
+  ): TimeBlock[] {
+    let hour = 9;
+    return tasks.map((task) => {
+      const start = `${String(hour).padStart(2, '0')}:00`;
+      const end = `${String(hour).padStart(2, '0')}:30`;
+      hour += 1;
+      if (hour === 12) hour = 13;
+      return { taskId: task.id, suggestedStartTime: start, suggestedEndTime: end, title: task.title };
+    });
   }
 
   private normalizeEmailSummaries(

@@ -135,6 +135,54 @@
             </draggable>
           </div>
 
+          <!-- Column: Planifié (SCHEDULED) -->
+          <div class="w-80 flex flex-col bg-violet-50 rounded-2xl p-4">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="w-3 h-3 rounded-full bg-violet-400 inline-block"></span>
+              <h3 class="text-sm font-semibold text-gray-700 flex-1">Planifié ✨</h3>
+              <span class="text-xs bg-violet-100 text-violet-600 font-semibold px-2 py-0.5 rounded-full">{{ scheduledTasks.length }}</span>
+            </div>
+
+            <draggable
+              :list="scheduledTasks"
+              group="tasks"
+              item-key="id"
+              class="flex-1 space-y-2 min-h-16"
+              @change="onColumnChange($event, 'SCHEDULED')"
+            >
+              <template #item="{ element }">
+                <div class="bg-white rounded-xl p-3 shadow-sm border border-violet-100 cursor-grab active:cursor-grabbing">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm font-medium text-gray-900 flex-1">{{ element.title }}</p>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        @click="handleStartTimer(element.id)"
+                        :disabled="isStartDisabled(element.id)"
+                        :class="startButtonClass(element.id)"
+                        :title="timerStore.isTaskActive(element.id) ? 'Chrono en cours' : 'Démarrer le suivi du temps'"
+                      >
+                        <i class="pi pi-play text-xs"></i>
+                      </button>
+                      <button
+                        @click="handleDeleteTask(element.id)"
+                        class="text-gray-300 hover:text-red-500 transition-colors"
+                        title="Supprimer"
+                      >
+                        <i class="pi pi-trash text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <p v-if="element.description" class="text-xs text-gray-500 mt-1">{{ element.description }}</p>
+                  <span
+                    class="mt-2 inline-flex text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-600"
+                  >
+                    IA Planifié
+                  </span>
+                </div>
+              </template>
+            </draggable>
+          </div>
+
           <!-- Column: Terminé (DONE) -->
           <div class="w-80 flex flex-col bg-green-50 rounded-2xl p-4">
             <div class="flex items-center gap-2 mb-4">
@@ -196,7 +244,7 @@ import { useTasksStore } from '../stores/tasks'
 import { useTimerStore } from '../stores/timer.store'
 import type { SavedTask } from '../stores/tasks'
 
-type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE'
+type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'SCHEDULED'
 
 const tasksStore = useTasksStore()
 const timerStore = useTimerStore()
@@ -206,6 +254,7 @@ const errorMessage = ref<string | null>(null)
 
 const todoTasks = computed<SavedTask[]>(() => tasksStore.savedTasks.filter((t) => t.status === 'TODO'))
 const inProgressTasks = computed<SavedTask[]>(() => tasksStore.savedTasks.filter((t) => t.status === 'IN_PROGRESS'))
+const scheduledTasks = computed<SavedTask[]>(() => tasksStore.savedTasks.filter((t) => t.status === 'SCHEDULED'))
 const doneTasks = computed<SavedTask[]>(() => tasksStore.savedTasks.filter((t) => t.status === 'DONE'))
 
 function onColumnChange(

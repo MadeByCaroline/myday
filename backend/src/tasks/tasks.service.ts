@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-const VALID_STATUSES = ['TODO', 'IN_PROGRESS', 'DONE'] as const;
+const VALID_STATUSES = ['TODO', 'IN_PROGRESS', 'DONE', 'SCHEDULED'] as const;
 type TaskStatus = (typeof VALID_STATUSES)[number];
 
 @Injectable()
@@ -20,6 +20,13 @@ export class TasksService {
         source: data.source || 'MANUAL',
         status: VALID_STATUSES[0],
       },
+    });
+  }
+
+  async getOpenTasks(userId: string) {
+    return this.prisma.task.findMany({
+      where: { userId, status: { in: ['TODO', 'IN_PROGRESS'] } },
+      orderBy: { createdAt: 'asc' },
     });
   }
 
