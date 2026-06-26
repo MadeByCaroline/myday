@@ -61,6 +61,35 @@ describe('WorkspacesService', () => {
     expect(result).toEqual([defaultWorkspace]);
   });
 
+  it('creates a workspace with normalized values', async () => {
+    const { prisma, service } = createService();
+    const createdWorkspace = {
+      id: 'ws-2',
+      userId: 'user-1',
+      name: 'Work',
+      color: '#123456',
+      icon: 'pi pi-briefcase',
+    };
+
+    prisma.workspace.create.mockResolvedValue(createdWorkspace);
+
+    const result = await service.createWorkspace('user-1', {
+      name: '  Work  ',
+      color: '  #123456  ',
+      icon: '  pi pi-briefcase  ',
+    });
+
+    expect(prisma.workspace.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'user-1',
+        name: 'Work',
+        color: '#123456',
+        icon: 'pi pi-briefcase',
+      },
+    });
+    expect(result).toEqual(createdWorkspace);
+  });
+
   it('resolves an explicit workspace owned by the user', async () => {
     const { prisma, service } = createService();
     prisma.workspace.findFirst.mockResolvedValue({ id: 'ws-2' });
