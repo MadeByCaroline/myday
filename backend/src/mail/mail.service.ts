@@ -160,14 +160,14 @@ export class MailService {
       )
         .toString('base64')
         .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/u, '');
+        .replace(/\//g, '_');
+      const normalizedRawMessage = this.trimTrailingEquals(rawMessage);
 
       const response = await gmail.users.drafts.create({
         userId: 'me',
         requestBody: {
           message: {
-            raw: rawMessage,
+            raw: normalizedRawMessage,
           },
         },
       });
@@ -223,5 +223,13 @@ export class MailService {
     return Buffer.from(value.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
       .toString('utf8')
       .trim();
+  }
+
+  private trimTrailingEquals(value: string): string {
+    let end = value.length;
+    while (end > 0 && value[end - 1] === '=') {
+      end -= 1;
+    }
+    return value.slice(0, end);
   }
 }

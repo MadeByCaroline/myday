@@ -225,7 +225,10 @@ export class EmailsService {
       if (matchingDayIndex >= 0) {
         targetDate = new Date(now);
         const currentDay = now.getDay();
-        const dayOffset = (matchingDayIndex - currentDay + 7) % 7 || 7;
+        const dayOffset =
+          matchingDayIndex === currentDay
+            ? 0
+            : (matchingDayIndex - currentDay + 7) % 7;
         targetDate.setDate(now.getDate() + dayOffset);
       }
     }

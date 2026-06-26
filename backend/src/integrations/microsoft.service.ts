@@ -126,6 +126,7 @@ export class MicrosoftService {
     messageId: string,
   ): Promise<EmailDetail | null> {
     try {
+      const safeMessageId = encodeURIComponent(messageId);
       const response = await axios.get<{
         id?: string;
         bodyPreview?: string;
@@ -133,7 +134,7 @@ export class MicrosoftService {
         from?: { emailAddress?: { address?: string } };
         receivedDateTime?: string;
         subject?: string;
-      }>(`https://graph.microsoft.com/v1.0/me/messages/${messageId}`, {
+      }>(`https://graph.microsoft.com/v1.0/me/messages/${safeMessageId}`, {
         headers: {
           Authorization: 'Bearer ' + accessToken,
         },
