@@ -82,7 +82,7 @@ describe('AiService', () => {
             events,
             suggested_tasks: [],
             email_summaries:
-              '[{"emailId":"mail-1","summary":"Demande d\\u2019envoyer un compte rendu","category":"ACTION_REQUIRED"},{"emailId":"mail-2","summary":"Mise \\u00e0 jour hebdomadaire","category":"newsletter"}]',
+              '[{"emailId":"mail-1","summary":"Demande d\\u2019envoyer un compte rendu","category":"ACTION_REQUIRED"},{"emailId":"mail-2","summary":"Mise \\u00e0 jour hebdomadaire","category":"newsletter"},{"emailId":"mail-3","summary":"Notification d\\u2019information","category":"UNKNOWN"}]',
           }),
       },
     });
@@ -100,6 +100,11 @@ describe('AiService', () => {
         emailId: 'mail-2',
         summary: 'Mise à jour hebdomadaire',
         category: 'NEWSLETTER',
+      },
+      {
+        emailId: 'mail-3',
+        summary: 'Notification d’information',
+        category: 'INFO',
       },
     ]);
   });
