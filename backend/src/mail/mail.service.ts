@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
 
 export interface EmailSummary {
+  id?: string;
   from: string;
   subject: string;
   snippet: string;
@@ -67,7 +68,7 @@ export class MailService {
             headers.find((header) => header.name === 'Date')?.value || '';
           const snippet = detail.data.snippet || '';
 
-          emails.push({ from, subject, snippet, receivedAt: date });
+          emails.push({ id: msg.id, from, subject, snippet, receivedAt: date });
         } catch (error) {
           const message =
             error instanceof Error

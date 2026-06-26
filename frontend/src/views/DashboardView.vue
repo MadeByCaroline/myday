@@ -103,6 +103,34 @@
           <div class="xl:col-span-3">
             <DailyAgenda :events="summaryStore.events" />
           </div>
+
+          <!-- Email summaries - full width -->
+          <div class="xl:col-span-3 bg-white rounded-2xl border border-gray-200 p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
+                <i class="pi pi-envelope text-indigo-600"></i>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-900">Email Highlights</h3>
+            </div>
+            <ul v-if="summaryStore.emailSummaries.length > 0" class="space-y-3">
+              <li
+                v-for="email in summaryStore.emailSummaries"
+                :key="email.emailId"
+                class="border border-gray-100 rounded-xl p-3 flex items-start gap-3"
+              >
+                <span
+                  class="text-xs font-medium px-2.5 py-1 rounded-full border"
+                  :class="categoryBadgeClass(email.category)"
+                >
+                  {{ email.category }}
+                </span>
+                <p class="text-sm text-gray-700 leading-relaxed flex-1">
+                  {{ email.summary }}
+                </p>
+              </li>
+            </ul>
+            <p v-else class="text-sm text-gray-500">No email summaries available.</p>
+          </div>
         </div>
       </div>
     </main>
@@ -145,6 +173,22 @@ const firstName = computed(() => {
 const currentDate = computed(() =>
   now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
 )
+
+function categoryBadgeClass(category: string) {
+  switch (category) {
+    case 'URGENT':
+      return 'bg-red-100 text-red-700 border-red-200'
+    case 'ACTION_REQUIRED':
+      return 'bg-amber-100 text-amber-700 border-amber-200'
+    case 'INVOICE':
+      return 'bg-purple-100 text-purple-700 border-purple-200'
+    case 'NEWSLETTER':
+      return 'bg-gray-100 text-gray-700 border-gray-200'
+    case 'INFO':
+    default:
+      return 'bg-blue-100 text-blue-700 border-blue-200'
+  }
+}
 
 async function generateSummary() {
   await summaryStore.generateSummary()

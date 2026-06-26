@@ -4,6 +4,22 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { CalendarEvent } from '../calendar/calendar.service';
 import { EmailSummary } from '../mail/mail.service';
 
+const EMAIL_CATEGORIES = [
+  'URGENT',
+  'NEWSLETTER',
+  'INVOICE',
+  'ACTION_REQUIRED',
+  'INFO',
+] as const;
+
+export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
+
+export interface CategorizedEmailSummary {
+  emailId: string;
+  summary: string;
+  category: EmailCategory;
+}
+
 export interface AiAnalysisResult {
   summary: string;
   events: CalendarEvent[];
@@ -12,6 +28,7 @@ export interface AiAnalysisResult {
     description: string;
     source: string;
   }>;
+  email_summaries: CategorizedEmailSummary[];
 }
 
 @Injectable()
@@ -48,6 +65,13 @@ export class AiService {
           "description": "Pourquoi cette tâche est suggérée (en français)",
           "source": "email ou calendrier"
         }
+      ],
+      "email_summaries": [
+        {
+          "emailId": "id exact de l'email fourni en entrée",
+          "summary": "Résumé en 1 phrase de l'email (en français)",
+          "category": "URGENT | NEWSLETTER | INVOICE | ACTION_REQUIRED | INFO"
+        }
       ]
     }`;
 
@@ -76,6 +100,11 @@ Please analyze and return the JSON response.`;
         parsedResult.suggested_tasks = [];
       }
 
+      parsedResult.email_summaries = this.normalizeEmailSummaries(
+        parsedResult.email_summaries,
+        emails,
+      );
+
       if (!parsedResult.summary) {
         parsedResult.summary = 'No summary was generated.';
       }
@@ -90,7 +119,84 @@ Please analyze and return the JSON response.`;
           'Unable to generate AI summary at this time. Please check your Gemini configuration.',
         events,
         suggested_tasks: [],
+        email_summaries: this.buildFallbackEmailSummaries(emails),
       };
     }
+  }
+
+  private normalizeEmailSummaries(
+    value: unknown,
+    emails: EmailSummary[],
+  ): CategorizedEmailSummary[] {
+    const rawItems = this.parseEmailSummariesValue(value);
+    if (!rawItems) {
+      return this.buildFallbackEmailSummaries(emails);
+    }
+
+    const normalizedItems = rawItems
+      .map((item, index) => {
+        const emailId = this.getStringValue(item, 'emailId');
+        const summary = this.getStringValue(item, 'summary');
+        const category = this.normalizeCategory(this.getStringValue(item, 'category'));
+        if (!summary) {
+          return null;
+        }
+        return {
+          emailId: emailId || emails[index]?.id || String(index + 1),
+          summary,
+          category,
+        };
+      })
+      .filter((item): item is CategorizedEmailSummary => item !== null);
+
+    return normalizedItems.length > 0
+      ? normalizedItems
+      : this.buildFallbackEmailSummaries(emails);
+  }
+
+  private parseEmailSummariesValue(value: unknown): Array<Record<string, unknown>> | null {
+    if (Array.isArray(value)) {
+      return value.filter(
+        (item): item is Record<string, unknown> =>
+          typeof item === 'object' && item !== null,
+      );
+    }
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value) as unknown;
+        if (!Array.isArray(parsed)) {
+          return null;
+        }
+        return parsed.filter(
+          (item): item is Record<string, unknown> =>
+            typeof item === 'object' && item !== null,
+        );
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  private getStringValue(item: Record<string, unknown>, key: string): string {
+    const value = item[key];
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private normalizeCategory(value: string): EmailCategory {
+    const upperValue = value.toUpperCase();
+    return EMAIL_CATEGORIES.includes(upperValue as EmailCategory)
+      ? (upperValue as EmailCategory)
+      : 'INFO';
+  }
+
+  private buildFallbackEmailSummaries(
+    emails: EmailSummary[],
+  ): CategorizedEmailSummary[] {
+    return emails.map((email, index) => ({
+      emailId: email.id || String(index + 1),
+      summary: email.snippet || email.subject || 'No summary available.',
+      category: 'INFO',
+    }));
   }
 }

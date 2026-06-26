@@ -5,6 +5,7 @@ import type { EmailSummary } from '../mail/mail.service';
 
 interface MicrosoftMessageResponse {
   value?: Array<{
+    id?: string;
     bodyPreview?: string;
     from?: {
       emailAddress?: {
@@ -53,6 +54,7 @@ export class MicrosoftService {
       );
 
       return (response.data.value || []).map((message) => ({
+        id: message.id || '',
         from: message.from?.emailAddress?.address || '',
         subject: message.subject || '(no subject)',
         snippet: message.bodyPreview || '',
