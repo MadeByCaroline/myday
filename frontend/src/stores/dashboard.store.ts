@@ -20,6 +20,10 @@ export interface CategorizedEmailSummary {
   summary: string
   category: EmailCategory
   suggestedActions: string[]
+  senderName: string
+  senderEmail: string
+  subject: string
+  link: string
 }
 
 export const useDashboardStore = defineStore('dashboard', () => {
@@ -69,6 +73,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
         summary: email.summary || '',
         category: (email.category as EmailCategory) || 'INFO',
         suggestedActions: Array.isArray(email.suggestedActions) ? email.suggestedActions : [],
+        senderName: email.senderName || '',
+        senderEmail: email.senderEmail || '',
+        subject: email.subject || '',
+        link: email.link || '',
       }))
       tasksStore.setSuggestedTasks(data.suggested_tasks || [])
       generated.value = true

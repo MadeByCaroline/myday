@@ -8,17 +8,19 @@ datasource db {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  name         String?
-  picture      String?
-  role         Role         @default(USER)
-  dailySummary String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  oauthTokens  OAuthToken[]
-  tasks        Task[]
-  timeEntries  TimeEntry[]
+  id                    String       @id @default(cuid())
+  email                 String       @unique
+  name                  String?
+  picture               String?
+  role                  Role         @default(USER)
+  dailySummary          String?
+  aiSummaryInstructions String?
+  excludedSenders       String       @default("[]")
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  oauthTokens           OAuthToken[]
+  tasks                 Task[]
+  timeEntries           TimeEntry[]
 }
 
 enum Role {

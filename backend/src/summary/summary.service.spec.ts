@@ -26,6 +26,13 @@ describe('SummaryService', () => {
     getOrThrow: jest.fn(),
   };
 
+  const settingsService = {
+    getSettings: jest.fn().mockResolvedValue({
+      aiSummaryInstructions: null,
+      excludedSenders: [],
+    }),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     configService.getOrThrow.mockReset();
@@ -34,6 +41,10 @@ describe('SummaryService', () => {
     prisma.oAuthToken.findMany.mockReset();
     prisma.oAuthToken.update.mockReset();
     getAxiosPostMock().mockReset();
+    settingsService.getSettings.mockResolvedValue({
+      aiSummaryInstructions: null,
+      excludedSenders: [],
+    });
   });
 
   function createService() {
@@ -44,6 +55,7 @@ describe('SummaryService', () => {
       { getUnreadEmails: jest.fn(), getTodayEvents: jest.fn() } as any,
       { analyzeProductivityData: jest.fn() } as any,
       configService as any,
+      settingsService as any,
     );
   }
 
@@ -103,6 +115,7 @@ describe('SummaryService', () => {
       microsoftService as any,
       aiService as any,
       configService as any,
+      settingsService as any,
     );
 
     await expect(
@@ -137,6 +150,7 @@ describe('SummaryService', () => {
           location: 'Teams',
         },
       ],
+      null,
     );
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 'user-1' },
@@ -194,6 +208,7 @@ describe('SummaryService', () => {
       microsoftService as any,
       aiService as any,
       configService as any,
+      settingsService as any,
     );
 
     await service.generateSummaryForUser('user-1');
