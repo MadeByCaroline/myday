@@ -41,10 +41,7 @@ describe('AI content generation integration', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'myday-ai-'));
   const databaseUrl = `file:${join(tempDir, 'integration.db')}`;
 
-  const mockAiProvider: IAiProvider & { generate: jest.Mock } = {
-    name: 'gemini',
-    generate: jest.fn(),
-  };
+  let mockAiProvider: IAiProvider & { generate: jest.Mock };
 
   let app: INestApplication;
   let httpServer: Server;
@@ -61,6 +58,11 @@ describe('AI content generation integration', () => {
       },
       stdio: 'inherit',
     });
+
+    mockAiProvider = {
+      name: 'gemini',
+      generate: jest.fn(),
+    };
 
     const builder = Test.createTestingModule({
       controllers: [AiController, TasksController],
