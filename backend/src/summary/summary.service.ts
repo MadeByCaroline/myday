@@ -1,4 +1,3 @@
-import type { OAuthToken } from '@prisma/client';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -8,11 +7,16 @@ import { AiService } from '../ai/ai.service';
 import type { CalendarEvent } from '../calendar/calendar.service';
 import { CalendarService } from '../calendar/calendar.service';
 import type { UnifiedEvent } from '../calendar/unified-event.interface';
+import {
+  IntegrationProviderError,
+  isIntegrationProviderError,
+} from '../integrations/integration-provider.error';
 import { MicrosoftService } from '../integrations/microsoft.service';
 import type { EmailSummary } from '../mail/mail.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { TokenRefreshQueueService } from './token-refresh.queue.service';
 
 interface RefreshedOAuthToken {
   accessToken: string;
@@ -23,6 +27,17 @@ interface MicrosoftRefreshResponse {
   access_token?: string;
   refresh_token?: string;
   expires_in?: number | string;
+}
+
+type OAuthTokenRecord = Awaited<
+  ReturnType<PrismaService['oAuthToken']['findMany']>
+>[number];
+
+interface IntegrationStatus {
+  provider: string;
+  status: 'ready' | 'error';
+  code?: 'needs_reauth' | 'provider_unavailable';
+  message?: string;
 }
 
 @Injectable()
@@ -47,6 +62,7 @@ export class SummaryService {
     private readonly aiService: AiService,
     private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
+    private readonly tokenRefreshQueue: TokenRefreshQueueService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_6AM)
@@ -70,15 +86,23 @@ export class SummaryService {
   }
 
   async generateSummaryForUser(userId: string) {
-    const oauthTokens = await this.prisma.oAuthToken.findMany({
-      where: { userId },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const [oauthTokens, userSettings, user] = await Promise.all([
+      this.prisma.oAuthToken.findMany({
+        where: { userId },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.settingsService.getSettings(userId),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { dailySummary: true },
+      }),
+    ]);
 
     if (oauthTokens.length === 0) {
       return {
         error:
           'No OAuth token found. Please connect a Google or Outlook account.',
+        integrations: [],
       };
     }
 
@@ -87,12 +111,10 @@ export class SummaryService {
         oauthTokens.map((token) => token.provider).join(', '),
     );
 
-    const [accountData, userSettings] = await Promise.all([
-      Promise.allSettled(
-        oauthTokens.map((oauthToken) => this.fetchAccountData(oauthToken)),
-      ),
-      this.settingsService.getSettings(userId),
-    ]);
+    const accountData = await Promise.allSettled(
+      oauthTokens.map((oauthToken) => this.fetchAccountData(oauthToken)),
+    );
+    const integrations = this.buildIntegrationStatuses(oauthTokens, accountData);
 
     const successfulData = accountData
       .filter(
@@ -112,10 +134,25 @@ export class SummaryService {
           result.status === 'rejected',
       )
       .forEach((result) => {
+        const reason = this.normalizeIntegrationError('UNKNOWN', result.reason);
         this.logger.warn(
-          `Skipping an OAuth account due to fetch failure: ${String(result.reason)}`,
+          `Skipping an OAuth account due to fetch failure: ${reason.provider} ${reason.code}`,
         );
       });
+
+    if (successfulData.length === 0) {
+      return {
+        summary: user?.dailySummary || '',
+        events: [],
+        suggested_tasks: [],
+        email_summaries: [],
+        integrations,
+        usedCachedSummary: Boolean(user?.dailySummary),
+        error: user?.dailySummary
+          ? 'Les données de vos intégrations sont temporairement indisponibles. Affichage du dernier résumé enregistré.'
+          : 'Les données de vos intégrations sont temporairement indisponibles. Reconnectez vos comptes puis réessayez.',
+      };
+    }
 
     const allEmails = successfulData.flatMap((data) => data.emails);
     const filteredEmails = this.filterExcludedSenders(
@@ -145,7 +182,10 @@ export class SummaryService {
       data: { dailySummary: analysis.summary },
     });
 
-    return analysis;
+    return {
+      ...analysis,
+      integrations,
+    };
   }
 
   private filterExcludedSenders(
@@ -184,7 +224,7 @@ export class SummaryService {
     return senderEmail === excludedSender;
   }
 
-  private async fetchAccountData(oauthToken: OAuthToken) {
+  private async fetchAccountData(oauthToken: OAuthTokenRecord) {
     const provider = oauthToken.provider.toUpperCase();
 
     if (provider === 'GOOGLE') {
@@ -221,15 +261,54 @@ export class SummaryService {
   }
 
   private async getUsableGoogleToken(
-    oauthToken: OAuthToken,
+    oauthToken: OAuthTokenRecord,
   ): Promise<RefreshedOAuthToken> {
-    if (!this.shouldRefreshToken(oauthToken) || !oauthToken.refreshToken) {
+    if (!this.shouldRefreshToken(oauthToken)) {
       return {
         accessToken: oauthToken.accessToken,
         refreshToken: oauthToken.refreshToken || undefined,
       };
     }
 
+    if (!oauthToken.refreshToken || this.isTokenTooOld(oauthToken)) {
+      throw IntegrationProviderError.needsReauth('GOOGLE');
+    }
+
+    this.tokenRefreshQueue.enqueue(`google:${oauthToken.id}`, async () => {
+      await this.refreshGoogleToken(oauthToken);
+    });
+
+    return {
+      accessToken: oauthToken.accessToken,
+      refreshToken: oauthToken.refreshToken || undefined,
+    };
+  }
+
+  private async getUsableMicrosoftToken(
+    oauthToken: OAuthTokenRecord,
+  ): Promise<RefreshedOAuthToken> {
+    if (!this.shouldRefreshToken(oauthToken)) {
+      return {
+        accessToken: oauthToken.accessToken,
+        refreshToken: oauthToken.refreshToken || undefined,
+      };
+    }
+
+    if (!oauthToken.refreshToken || this.isTokenTooOld(oauthToken)) {
+      throw IntegrationProviderError.needsReauth('MICROSOFT');
+    }
+
+    this.tokenRefreshQueue.enqueue(`microsoft:${oauthToken.id}`, async () => {
+      await this.refreshMicrosoftToken(oauthToken);
+    });
+
+    return {
+      accessToken: oauthToken.accessToken,
+      refreshToken: oauthToken.refreshToken || undefined,
+    };
+  }
+
+  private async refreshGoogleToken(oauthToken: OAuthTokenRecord) {
     const oauth2Client = new google.auth.OAuth2(
       this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
       this.configService.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
@@ -255,20 +334,9 @@ export class SummaryService {
         expiresAt,
       },
     });
-
-    return { accessToken, refreshToken: refreshToken || undefined };
   }
 
-  private async getUsableMicrosoftToken(
-    oauthToken: OAuthToken,
-  ): Promise<RefreshedOAuthToken> {
-    if (!this.shouldRefreshToken(oauthToken) || !oauthToken.refreshToken) {
-      return {
-        accessToken: oauthToken.accessToken,
-        refreshToken: oauthToken.refreshToken || undefined,
-      };
-    }
-
+  private async refreshMicrosoftToken(oauthToken: OAuthTokenRecord) {
     const response = await axios.post<MicrosoftRefreshResponse>(
       'https://login.microsoftonline.com/common/oauth2/v2.0/token',
       new URLSearchParams({
@@ -303,15 +371,88 @@ export class SummaryService {
       },
     });
 
-    return { accessToken, refreshToken: refreshToken || undefined };
   }
 
-  private shouldRefreshToken(oauthToken: OAuthToken) {
+  private isTokenTooOld(oauthToken: OAuthTokenRecord) {
+    if (!oauthToken.expiresAt) {
+      return false;
+    }
+
+    return oauthToken.expiresAt.getTime() <= Date.now();
+  }
+
+  private shouldRefreshToken(oauthToken: OAuthTokenRecord) {
     if (!oauthToken.expiresAt) {
       return false;
     }
 
     return oauthToken.expiresAt.getTime() <= Date.now() + 60_000;
+  }
+
+  private buildIntegrationStatuses(
+    oauthTokens: OAuthTokenRecord[],
+    accountData: PromiseSettledResult<{
+      provider: string;
+      emails: EmailSummary[];
+      events: CalendarEvent[];
+    }>[],
+  ): IntegrationStatus[] {
+    const statuses = new Map<string, IntegrationStatus>();
+
+    for (const oauthToken of oauthTokens) {
+      const provider = oauthToken.provider.toUpperCase();
+      if (!statuses.has(provider)) {
+        statuses.set(provider, {
+          provider,
+          status: 'error',
+          code: 'provider_unavailable',
+          message: IntegrationProviderError.unavailable(provider).message,
+        });
+      }
+    }
+
+    accountData.forEach((result, index) => {
+      const provider = oauthTokens[index]?.provider?.toUpperCase() || 'UNKNOWN';
+      const currentStatus = statuses.get(provider);
+      if (!currentStatus) {
+        return;
+      }
+
+      if (result.status === 'fulfilled') {
+        statuses.set(provider, {
+          provider,
+          status: 'ready',
+        });
+        return;
+      }
+
+      if (currentStatus.status === 'ready') {
+        return;
+      }
+
+      const error = this.normalizeIntegrationError(provider, result.reason);
+      if (
+        error.code === 'needs_reauth' ||
+        currentStatus.code !== 'needs_reauth'
+      ) {
+        statuses.set(provider, {
+          provider,
+          status: 'error',
+          code: error.code,
+          message: error.message,
+        });
+      }
+    });
+
+    return [...statuses.values()];
+  }
+
+  private normalizeIntegrationError(provider: string, error: unknown) {
+    if (isIntegrationProviderError(error)) {
+      return error;
+    }
+
+    return IntegrationProviderError.unavailable(provider);
   }
 
   private mapUnifiedEventToCalendarEvent(event: UnifiedEvent): CalendarEvent {

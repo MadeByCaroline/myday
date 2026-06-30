@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios, { isAxiosError } from 'axios';
 import type { UnifiedEvent } from '../calendar/unified-event.interface';
 import type { EmailDetail, EmailSummary } from '../mail/mail.service';
+import { IntegrationProviderError } from './integration-provider.error';
 
 interface MicrosoftMessageResponse {
   value?: Array<{
@@ -66,7 +67,7 @@ export class MicrosoftService {
     } catch (error) {
       const detail = this.getErrorDetail(error);
       this.logger.error('Microsoft Graph Error:', detail);
-      return [];
+      throw IntegrationProviderError.unavailable('MICROSOFT');
     }
   }
 
@@ -117,7 +118,7 @@ export class MicrosoftService {
     } catch (error) {
       const detail = this.getErrorDetail(error);
       this.logger.error('Microsoft Graph Calendar Error:', detail);
-      return [];
+      throw IntegrationProviderError.unavailable('MICROSOFT');
     }
   }
 

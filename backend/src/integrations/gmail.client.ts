@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
+import { IntegrationProviderError } from './integration-provider.error';
 
 export interface EmailSummary {
   id?: string;
@@ -99,7 +100,7 @@ export class GmailClient {
       const message =
         error instanceof Error ? error.message : 'Unknown Gmail API error';
       this.logger.error('Failed to fetch messages', message);
-      return [];
+      throw IntegrationProviderError.unavailable('GOOGLE');
     }
   }
 

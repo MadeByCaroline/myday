@@ -1,4 +1,3 @@
-import type { OAuthToken } from '@prisma/client';
 import {
   BadRequestException,
   Injectable,
@@ -32,6 +31,10 @@ interface AccountContext {
   accessToken: string;
   refreshToken?: string;
 }
+
+type OAuthTokenRecord = Awaited<
+  ReturnType<PrismaService['oAuthToken']['findMany']>
+>[number];
 
 @Injectable()
 export class EmailsService {
@@ -266,7 +269,7 @@ export class EmailsService {
   }
 
   private async getAccountContext(
-    oauthToken: OAuthToken,
+    oauthToken: OAuthTokenRecord,
   ): Promise<AccountContext> {
     const provider = oauthToken.provider.toUpperCase();
 
@@ -304,7 +307,7 @@ export class EmailsService {
   }
 
   private async getUsableGoogleToken(
-    oauthToken: OAuthToken,
+    oauthToken: OAuthTokenRecord,
   ): Promise<RefreshedOAuthToken> {
     if (!this.shouldRefreshToken(oauthToken) || !oauthToken.refreshToken) {
       return {
@@ -343,7 +346,7 @@ export class EmailsService {
   }
 
   private async getUsableMicrosoftToken(
-    oauthToken: OAuthToken,
+    oauthToken: OAuthTokenRecord,
   ): Promise<RefreshedOAuthToken> {
     if (!this.shouldRefreshToken(oauthToken) || !oauthToken.refreshToken) {
       return {
@@ -389,7 +392,7 @@ export class EmailsService {
     return { accessToken, refreshToken: refreshToken || undefined };
   }
 
-  private shouldRefreshToken(oauthToken: OAuthToken) {
+  private shouldRefreshToken(oauthToken: OAuthTokenRecord) {
     if (!oauthToken.expiresAt) {
       return false;
     }

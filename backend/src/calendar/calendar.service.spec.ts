@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { CalendarService } from './calendar.service';
+import { IntegrationProviderError } from '../integrations/integration-provider.error';
 import type { GoogleService } from '../integrations/google.service';
 import type { MicrosoftService } from '../integrations/microsoft.service';
 import type { UsersService } from '../users/users.service';
@@ -93,5 +94,24 @@ describe('CalendarService', () => {
     expect(microsoftService.getTodayEvents).toHaveBeenCalledWith(
       'microsoft-token',
     );
+  });
+
+  it('throws an explicit provider error when the Google Calendar API fails', async () => {
+    const service = new CalendarService(
+      configService,
+      {} as UsersService,
+      {} as GoogleService,
+      {} as MicrosoftService,
+      {} as WorkspacesService,
+    );
+
+    await expect(
+      service.getEventsForRange(
+        'access-token',
+        'refresh-token',
+        new Date('2026-06-26T00:00:00.000Z'),
+        new Date('2026-06-26T23:59:59.000Z'),
+      ),
+    ).rejects.toEqual(IntegrationProviderError.unavailable('GOOGLE'));
   });
 });

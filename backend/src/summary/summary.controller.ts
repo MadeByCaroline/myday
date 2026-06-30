@@ -14,7 +14,7 @@ export class SummaryController {
   constructor(private readonly summaryService: SummaryService) {}
 
   @Post('generate')
-  async generateSummary(@Req() req: SummaryRequest) {
+  async generateSummary(@Req() req: SummaryRequest): Promise<unknown> {
     return this.summaryService.generateSummaryForUser(req.user.id);
   }
 }

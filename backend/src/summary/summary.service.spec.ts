@@ -1,5 +1,7 @@
 import axios from 'axios';
+import { IntegrationProviderError } from '../integrations/integration-provider.error';
 import { SummaryService } from './summary.service';
+import { TokenRefreshQueueService } from './token-refresh.queue.service';
 
 jest.mock('axios', () => ({
   __esModule: true,
@@ -15,6 +17,7 @@ describe('SummaryService', () => {
   const prisma = {
     user: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
       update: jest.fn(),
     },
     oAuthToken: {
@@ -37,6 +40,7 @@ describe('SummaryService', () => {
     jest.clearAllMocks();
     configService.getOrThrow.mockReset();
     prisma.user.findMany.mockReset();
+    prisma.user.findUnique.mockReset();
     prisma.user.update.mockReset();
     prisma.oAuthToken.findMany.mockReset();
     prisma.oAuthToken.update.mockReset();
@@ -45,6 +49,7 @@ describe('SummaryService', () => {
       aiSummaryInstructions: null,
       excludedSenders: [],
     });
+    prisma.user.findUnique.mockResolvedValue({ dailySummary: null });
   });
 
   function createService() {
@@ -56,6 +61,7 @@ describe('SummaryService', () => {
       { analyzeProductivityData: jest.fn() } as any,
       configService as any,
       settingsService as any,
+      new TokenRefreshQueueService(),
     );
   }
 
@@ -116,6 +122,7 @@ describe('SummaryService', () => {
       aiService as any,
       configService as any,
       settingsService as any,
+      new TokenRefreshQueueService(),
     );
 
     await expect(
@@ -165,19 +172,21 @@ describe('SummaryService', () => {
     await expect(service.generateSummaryForUser('user-1')).resolves.toEqual({
       error:
         'No OAuth token found. Please connect a Google or Outlook account.',
+      integrations: [],
     });
 
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
-  it('refreshes expired Microsoft tokens before fetching account data', async () => {
+  it('uses the cached Microsoft token immediately and refreshes it asynchronously when it is close to expiring', async () => {
+    jest.useFakeTimers();
     prisma.oAuthToken.findMany.mockResolvedValue([
       {
         id: 'ms-token',
         provider: 'MICROSOFT',
         accessToken: 'stale-access',
         refreshToken: 'stale-refresh',
-        expiresAt: new Date(Date.now() - 60_000),
+        expiresAt: new Date(Date.now() + 30_000),
       },
     ]);
     configService.getOrThrow.mockImplementation((key: string) => key);
@@ -209,9 +218,16 @@ describe('SummaryService', () => {
       aiService as any,
       configService as any,
       settingsService as any,
+      new TokenRefreshQueueService(),
     );
 
     await service.generateSummaryForUser('user-1');
+
+    expect(getAxiosPostMock()).not.toHaveBeenCalled();
+    expect(microsoftService.getUnreadEmails).toHaveBeenCalledWith('stale-access');
+    expect(microsoftService.getTodayEvents).toHaveBeenCalledWith('stale-access');
+
+    await jest.runAllTimersAsync();
 
     expect(getAxiosPostMock()).toHaveBeenCalledTimes(1);
     expect(prisma.oAuthToken.update).toHaveBeenCalledWith({
@@ -222,12 +238,103 @@ describe('SummaryService', () => {
         expiresAt: expect.any(Date) as Date,
       },
     });
-    expect(microsoftService.getUnreadEmails).toHaveBeenCalledWith(
-      'fresh-access',
+    jest.useRealTimers();
+  });
+
+  it('returns a reconnect status instead of blocking on an expired token', async () => {
+    prisma.user.findUnique.mockResolvedValue({ dailySummary: 'Cached summary' });
+    prisma.oAuthToken.findMany.mockResolvedValue([
+      {
+        id: 'ms-token',
+        provider: 'MICROSOFT',
+        accessToken: 'expired-access',
+        refreshToken: 'stale-refresh',
+        expiresAt: new Date(Date.now() - 60_000),
+      },
+    ]);
+    const microsoftService = {
+      getUnreadEmails: jest.fn(),
+      getTodayEvents: jest.fn(),
+    };
+    const service = new SummaryService(
+      prisma as any,
+      { getRecentEmails: jest.fn() } as any,
+      { getTodayEvents: jest.fn() } as any,
+      microsoftService as any,
+      { analyzeProductivityData: jest.fn() } as any,
+      configService as any,
+      settingsService as any,
+      new TokenRefreshQueueService(),
     );
-    expect(microsoftService.getTodayEvents).toHaveBeenCalledWith(
-      'fresh-access',
+
+    await expect(service.generateSummaryForUser('user-1')).resolves.toEqual({
+      summary: 'Cached summary',
+      events: [],
+      suggested_tasks: [],
+      email_summaries: [],
+      integrations: [
+        {
+          provider: 'MICROSOFT',
+          status: 'error',
+          code: 'needs_reauth',
+          message:
+            'La connexion Microsoft a expiré. Reconnectez votre compte pour continuer.',
+        },
+      ],
+      usedCachedSummary: true,
+      error:
+        'Les données de vos intégrations sont temporairement indisponibles. Affichage du dernier résumé enregistré.',
+    });
+
+    expect(microsoftService.getUnreadEmails).not.toHaveBeenCalled();
+    expect(microsoftService.getTodayEvents).not.toHaveBeenCalled();
+  });
+
+  it('returns explicit integration errors instead of silently behaving like there is no data', async () => {
+    prisma.user.findUnique.mockResolvedValue({ dailySummary: 'Cached summary' });
+    prisma.oAuthToken.findMany.mockResolvedValue([
+      {
+        id: 'google-token',
+        provider: 'google',
+        accessToken: 'google-access',
+        refreshToken: 'google-refresh',
+        expiresAt: null,
+      },
+    ]);
+
+    const service = new SummaryService(
+      prisma as any,
+      {
+        getRecentEmails: jest
+          .fn()
+          .mockRejectedValue(IntegrationProviderError.unavailable('GOOGLE')),
+      } as any,
+      { getTodayEvents: jest.fn().mockResolvedValue([]) } as any,
+      { getUnreadEmails: jest.fn(), getTodayEvents: jest.fn() } as any,
+      { analyzeProductivityData: jest.fn() } as any,
+      configService as any,
+      settingsService as any,
+      new TokenRefreshQueueService(),
     );
+
+    await expect(service.generateSummaryForUser('user-1')).resolves.toEqual({
+      summary: 'Cached summary',
+      events: [],
+      suggested_tasks: [],
+      email_summaries: [],
+      integrations: [
+        {
+          provider: 'GOOGLE',
+          status: 'error',
+          code: 'provider_unavailable',
+          message:
+            'Les données Google sont temporairement indisponibles.',
+        },
+      ],
+      usedCachedSummary: true,
+      error:
+        'Les données de vos intégrations sont temporairement indisponibles. Affichage du dernier résumé enregistré.',
+    });
   });
 
   it('matches excluded sender domains precisely without filtering broader lookalikes', async () => {
@@ -285,6 +392,7 @@ describe('SummaryService', () => {
       aiService as any,
       configService as any,
       settingsService as any,
+      new TokenRefreshQueueService(),
     );
 
     await service.generateSummaryForUser('user-1');
