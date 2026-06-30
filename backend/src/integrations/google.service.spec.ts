@@ -3,6 +3,7 @@ let mockEventsList: jest.Mock;
 let mockEventsInsert: jest.Mock;
 let mockEventsDelete: jest.Mock;
 let mockSetCredentials: jest.Mock;
+let mockRefreshAccessToken: jest.Mock;
 let mockOAuth2: jest.Mock;
 let mockCalendar: jest.Mock;
 
@@ -27,8 +28,10 @@ describe('GoogleService', () => {
     mockEventsInsert = jest.fn();
     mockEventsDelete = jest.fn();
     mockSetCredentials = jest.fn();
+    mockRefreshAccessToken = jest.fn();
     mockOAuth2 = jest.fn().mockImplementation(() => ({
       setCredentials: mockSetCredentials,
+      refreshAccessToken: mockRefreshAccessToken,
     }));
     mockCalendar = jest.fn().mockReturnValue({
       colors: { get: mockColorsGet },
@@ -150,5 +153,58 @@ describe('GoogleService', () => {
       calendarId: 'primary',
       eventId: 'deep-work-event',
     });
+  });
+
+  it('refreshes the Google token and retries when Calendar returns 401', async () => {
+    mockColorsGet.mockResolvedValue({
+      data: {
+        event: {},
+      },
+    });
+    mockEventsList
+      .mockRejectedValueOnce({ response: { status: 401 } })
+      .mockResolvedValueOnce({
+        data: {
+          items: [],
+        },
+      });
+    mockRefreshAccessToken.mockResolvedValue({
+      credentials: { access_token: 'fresh-access' },
+    });
+    const configService = {
+      getOrThrow: jest.fn((key: string) => key),
+    };
+    const service = new GoogleService(configService as unknown as ConfigService);
+
+    await expect(
+      service.getTodayEvents('stale-access', 'refresh-token'),
+    ).resolves.toEqual([]);
+
+    expect(mockRefreshAccessToken).toHaveBeenCalledTimes(1);
+    expect(mockOAuth2).toHaveBeenCalledTimes(3);
+    expect(mockSetCredentials).toHaveBeenCalledWith({
+      access_token: 'fresh-access',
+      refresh_token: 'refresh-token',
+    });
+  });
+
+  it('throws a reauth error when Calendar returns 401 without a refresh token', async () => {
+    mockColorsGet.mockResolvedValue({
+      data: {
+        event: {},
+      },
+    });
+    mockEventsList.mockRejectedValue({ response: { status: 401 } });
+    const configService = {
+      getOrThrow: jest.fn((key: string) => key),
+    };
+    const service = new GoogleService(configService as unknown as ConfigService);
+
+    await expect(service.getTodayEvents('stale-access')).rejects.toEqual(
+      expect.objectContaining({
+        code: 'needs_reauth',
+        provider: 'GOOGLE',
+      }),
+    );
   });
 });

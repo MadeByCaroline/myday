@@ -2,12 +2,14 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { IntegrationProviderExceptionFilter } from './integrations/integration-provider-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const configService = app.get(ConfigService);
 
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
+  app.useGlobalFilters(new IntegrationProviderExceptionFilter());
 
   const frontendUrl =
     configService.get<string>('FRONTEND_URL') || 'http://127.0.0.1:5173';

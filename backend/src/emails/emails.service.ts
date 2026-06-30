@@ -171,6 +171,7 @@ export class EmailsService {
         if (account.provider === 'MICROSOFT') {
           const events = await this.microsoftService.getEventsForRange(
             account.accessToken,
+            account.refreshToken,
             start,
             end,
           );
