@@ -189,4 +189,54 @@ describe('useTasksStore', () => {
       expect(store.suggestedTasks).toHaveLength(0)
     })
   })
+
+  describe('bulkCreate', () => {
+    it('creates multiple tasks and prepends them to savedTasks', async () => {
+      const task1 = makeTask({ id: 'new-1', title: 'Préparer la présentation' })
+      const task2 = makeTask({ id: 'new-2', title: 'Envoyer le compte-rendu' })
+      const postSpy = vi
+        .spyOn(axios, 'post')
+        .mockResolvedValueOnce({ data: task1 })
+        .mockResolvedValueOnce({ data: task2 })
+
+      const store = useTasksStore()
+      store.savedTasks = [makeTask({ id: 'existing-1' })]
+
+      const result = await store.bulkCreate([
+        { title: 'Préparer la présentation', dueDate: '2026-07-01', status: 'TODO' },
+        { title: 'Envoyer le compte-rendu', dueDate: null, status: 'TODO' },
+      ])
+
+      expect(result).toHaveLength(2)
+      expect(store.savedTasks).toHaveLength(3)
+      expect(store.savedTasks[0]).toEqual(task1)
+      expect(store.savedTasks[1]).toEqual(task2)
+      expect(postSpy).toHaveBeenCalledTimes(2)
+      expect(store.loading).toBe(false)
+    })
+
+    it('sends source as AI_GENERATED for each task', async () => {
+      const task1 = makeTask({ id: 'new-1', title: 'Task AI' })
+      const postSpy = vi.spyOn(axios, 'post').mockResolvedValue({ data: task1 })
+
+      const store = useTasksStore()
+      await store.bulkCreate([{ title: 'Task AI', dueDate: null, status: 'TODO' }])
+
+      expect(postSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/tasks'),
+        expect.objectContaining({ source: 'AI_GENERATED' }),
+        expect.objectContaining({ headers: expect.any(Object) }),
+      )
+    })
+
+    it('resets loading to false even if a request fails', async () => {
+      vi.spyOn(axios, 'post').mockRejectedValue(new Error('Server error'))
+
+      const store = useTasksStore()
+      await expect(
+        store.bulkCreate([{ title: 'Failing task', dueDate: null, status: 'TODO' }]),
+      ).rejects.toThrow()
+      expect(store.loading).toBe(false)
+    })
+  })
 })
