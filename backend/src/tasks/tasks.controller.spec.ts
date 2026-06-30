@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { TasksController } from './tasks.controller';
 
 describe('TasksController', () => {
@@ -30,6 +31,48 @@ describe('TasksController', () => {
 
       expect(service.createTask).toHaveBeenCalledWith('user-1', { title: 'Walk dog' });
       expect(result).toEqual(created);
+    });
+  });
+
+  describe('bulkUpdateTasks', () => {
+    it('delegates bulk update to the service with userId, taskIds, and status', async () => {
+      const service = { bulkUpdateTasks: jest.fn().mockResolvedValue({ count: 2 }) };
+      const controller = makeController(service);
+
+      const result = await controller.bulkUpdateTasks(
+        { user: mockUser },
+        { taskIds: ['t1', 't2'], status: 'DONE' },
+      );
+
+      expect(service.bulkUpdateTasks).toHaveBeenCalledWith('user-1', ['t1', 't2'], 'DONE');
+      expect(result).toEqual({ count: 2 });
+    });
+
+    it('throws BadRequestException when taskIds is empty', async () => {
+      const service = { bulkUpdateTasks: jest.fn() };
+      const controller = makeController(service);
+
+      await expect(
+        controller.bulkUpdateTasks({ user: mockUser }, { taskIds: [], status: 'DONE' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('throws BadRequestException when taskIds is not an array', async () => {
+      const service = { bulkUpdateTasks: jest.fn() };
+      const controller = makeController(service);
+
+      await expect(
+        controller.bulkUpdateTasks({ user: mockUser }, { taskIds: null as any, status: 'DONE' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('throws BadRequestException when status is missing', async () => {
+      const service = { bulkUpdateTasks: jest.fn() };
+      const controller = makeController(service);
+
+      await expect(
+        controller.bulkUpdateTasks({ user: mockUser }, { taskIds: ['t1'], status: '' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 

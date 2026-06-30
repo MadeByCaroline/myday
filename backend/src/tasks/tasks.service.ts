@@ -97,4 +97,21 @@ export class TasksService {
       data,
     });
   }
+
+  async bulkUpdateTasks(
+    userId: string,
+    taskIds: string[],
+    status: string,
+  ) {
+    if (!VALID_STATUSES.includes(status as TaskStatus)) {
+      throw new BadRequestException(
+        `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
+      );
+    }
+
+    return this.prisma.task.updateMany({
+      where: { id: { in: taskIds }, userId },
+      data: { status },
+    });
+  }
 }
