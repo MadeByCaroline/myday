@@ -208,3 +208,55 @@ cd backend && npm run test:e2e -- --runInBand
 - Set a strong random `JWT_SECRET`.
 - Store OAuth tokens encrypted at rest if required by your compliance policy.
 - Set `FRONTEND_URL` to your production frontend domain for CORS and redirect.
+
+---
+
+## 🧭 Codebase Analysis & Next Priorities (Issue #95)
+
+### Current baseline
+
+- ✅ `cd frontend && npm run build`
+- ✅ `cd backend && npm run test -- --runInBand`
+- ❌ `cd backend && npm run build`
+  - `backend/src/emails/emails.service.ts:1` and `backend/src/summary/summary.service.ts:1` import `OAuthToken` from `@prisma/client`, which currently fails to resolve during the TypeScript build.
+  - `backend/src/payments/create-checkout-session.dto.ts:5` declares `planType` without an initializer, which breaks the TypeScript build.
+
+### Major technical debt observed
+
+- **Backend build is currently broken**, which should be treated as the first unblocker before adding more features.
+- **`backend/src/ai/ai.service.ts` is very large (1176 lines)** and mixes prompt generation, response parsing, workspace chat, morning briefing, and scheduling logic in one service.
+- **`backend/src/mail/mail.service.ts` duplicates Gmail-fetching logic** across `getRecentEmails()` and `getUnreadEmailsSince()`, including OAuth client setup, message listing, header parsing, and per-message fetch loops.
+- **`frontend/src/views/DashboardView.vue` is large (357 lines)** and combines data loading, toast flows, filtering actions, and presentation in a single view.
+- **There are currently no frontend test files** under `frontend/`, which increases regression risk for stores and views.
+
+### Performance watchpoints
+
+- `backend/src/mail/mail.service.ts` requests `maxResults: 20` and then keeps only `messages.slice(0, 10)`, which fetches more Gmail message IDs than the UI currently uses.
+- The same service fetches message details sequentially inside a `for ... of` loop, so summary generation latency grows with inbox volume.
+- `backend/src/summary/summary.service.ts` fans out to every connected OAuth account and refreshes expired tokens inline during summary generation, which couples user-facing latency to external provider response time.
+
+### User needs / pain points inferred from the current product
+
+> No separate feedback repository artifacts were found, so these points are inferred from the current code paths and UX behavior.
+
+- **Clearer failure feedback:** several backend integrations log an error and return empty arrays (`mail.service.ts`, `calendar.service.ts`, `integrations/google.service.ts`, `integrations/microsoft.service.ts`), which can make the dashboard look “empty” without enough explanation.
+- **Faster multi-task workflows:** `frontend/src/stores/tasks.ts` accepts suggested tasks one at a time and updates task status one request at a time, which may feel slow when users process many tasks.
+- **Safer frontend iteration:** missing frontend tests make UI refactors riskier even when backend tests stay green.
+
+### Prioritization matrix
+
+| Task | Impact (1-5) | Complexity (1-5) | Priority |
+| --- | --- | --- | --- |
+| Restore backend TypeScript build | 5 | 1 | High |
+| Split AI and summary responsibilities into smaller services | 4 | 3 | High |
+| Reduce Gmail fetch overhead and sequential processing | 4 | 2 | High |
+| Improve integration error feedback in dashboard flows | 4 | 2 | High |
+| Add frontend tests for stores and core views | 3 | 3 | Medium |
+| Add bulk task actions for accept/status updates | 3 | 2 | Medium |
+
+### Recommended order for the next iterations
+
+1. **Stabilize the baseline:** restore the backend build so new work starts from a deployable state.
+2. **Pay down high-leverage backend debt:** split `AiService` / email-summary responsibilities and remove duplicated Gmail-fetching code.
+3. **Improve perceived speed and clarity:** reduce unnecessary provider calls and surface partial-failure states more explicitly in the UI.
+4. **Protect future feature work:** introduce frontend test coverage around stores and dashboard/task flows before larger UI additions.
