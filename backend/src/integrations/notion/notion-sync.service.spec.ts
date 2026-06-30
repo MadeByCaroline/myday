@@ -109,7 +109,10 @@ describe('NotionSyncService', () => {
 
       await service.syncLinkById('link-1');
 
-      expect(notionOAuth.queryDatabase).toHaveBeenCalledWith('notion-token', 'db-abc');
+      expect(notionOAuth.queryDatabase).toHaveBeenCalledWith(
+        'notion-token',
+        'db-abc',
+      );
       expect(tasksService.upsertTask).toHaveBeenCalledTimes(2);
       expect(tasksService.upsertTask).toHaveBeenCalledWith(
         'user-1',

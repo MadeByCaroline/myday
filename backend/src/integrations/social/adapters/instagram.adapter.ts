@@ -12,7 +12,8 @@ export class InstagramAdapter implements SocialAdapter {
   constructor(private readonly configService: ConfigService) {}
 
   async fetchMetrics(account: SocialAccount) {
-    const version = this.configService.get<string>('META_GRAPH_API_VERSION') || 'v22.0';
+    const version =
+      this.configService.get<string>('META_GRAPH_API_VERSION') || 'v22.0';
     const baseUrl = `https://graph.facebook.com/${version}`;
 
     const [{ data: insights }, { data: profile }] = await Promise.all([
@@ -30,8 +31,10 @@ export class InstagramAdapter implements SocialAdapter {
       }),
     ]);
 
-    const rows: Array<{ name?: string; values?: Array<{ value?: number | string }> }> =
-      Array.isArray(insights?.data) ? insights.data : [];
+    const rows: Array<{
+      name?: string;
+      values?: Array<{ value?: number | string }>;
+    }> = Array.isArray(insights?.data) ? insights.data : [];
 
     const metricByName = new Map<string, number>();
     for (const row of rows) {

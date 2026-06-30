@@ -45,8 +45,7 @@ export class GithubWebhookService {
     }
 
     const expected =
-      'sha256=' +
-      createHmac('sha256', secret).update(rawBody).digest('hex');
+      'sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex');
 
     const expectedBuf = Buffer.from(expected, 'utf8');
     const signatureBuf = Buffer.from(signature, 'utf8');
@@ -103,10 +102,7 @@ export class GithubWebhookService {
     }
 
     const externalId = `github_issue_${repoFullName.replace('/', '_')}_${payload.issue.number}`;
-    const description = [
-      payload.issue.html_url,
-      payload.issue.body,
-    ]
+    const description = [payload.issue.html_url, payload.issue.body]
       .filter(Boolean)
       .join('\n\n');
 

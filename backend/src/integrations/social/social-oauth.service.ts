@@ -12,7 +12,10 @@ interface SocialLinkState {
 
 @Injectable()
 export class SocialOAuthService {
-  private static readonly PROVIDER_SCOPES: Record<SocialProvider, readonly string[]> = {
+  private static readonly PROVIDER_SCOPES: Record<
+    SocialProvider,
+    readonly string[]
+  > = {
     INSTAGRAM: [
       'instagram_manage_insights',
       'pages_read_engagement',
@@ -64,7 +67,8 @@ export class SocialOAuthService {
     const scopes = this.getScopes(provider).join(',');
 
     if (provider === 'TIKTOK') {
-      const clientKey = this.configService.get<string>('TIKTOK_CLIENT_KEY') || '';
+      const clientKey =
+        this.configService.get<string>('TIKTOK_CLIENT_KEY') || '';
       const params = new URLSearchParams({
         client_key: clientKey,
         response_type: 'code',
@@ -93,7 +97,8 @@ export class SocialOAuthService {
     redirectUri: string,
   ) {
     if (provider === 'TIKTOK') {
-      const clientKey = this.configService.get<string>('TIKTOK_CLIENT_KEY') || '';
+      const clientKey =
+        this.configService.get<string>('TIKTOK_CLIENT_KEY') || '';
       const clientSecret =
         this.configService.get<string>('TIKTOK_CLIENT_SECRET') || '';
       const { data } = await axios.post(
@@ -117,16 +122,20 @@ export class SocialOAuthService {
     }
 
     const clientId = this.configService.get<string>('META_APP_ID') || '';
-    const clientSecret = this.configService.get<string>('META_APP_SECRET') || '';
+    const clientSecret =
+      this.configService.get<string>('META_APP_SECRET') || '';
 
-    const { data } = await axios.get('https://graph.facebook.com/v22.0/oauth/access_token', {
-      params: {
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        code,
+    const { data } = await axios.get(
+      'https://graph.facebook.com/v22.0/oauth/access_token',
+      {
+        params: {
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          code,
+        },
       },
-    });
+    );
 
     return {
       accessToken: data.access_token as string,
@@ -137,7 +146,10 @@ export class SocialOAuthService {
     };
   }
 
-  async resolveExternalAccountId(provider: SocialProvider, accessToken: string) {
+  async resolveExternalAccountId(
+    provider: SocialProvider,
+    accessToken: string,
+  ) {
     if (provider === 'TIKTOK') {
       const { data } = await axios.get(
         'https://business-api.tiktok.com/open_api/v1.3/user/info/',
@@ -175,12 +187,16 @@ export class SocialOAuthService {
       .filter((scope) => scope.length > 0);
 
     if (scopes.length === 0) {
-      throw new BadRequestException('No scopes were provided by OAuth provider.');
+      throw new BadRequestException(
+        'No scopes were provided by OAuth provider.',
+      );
     }
 
     const invalid = scopes.find((scope) => !allowed.has(scope));
     if (invalid) {
-      throw new BadRequestException(`Scope ${invalid} is not allowed for ${provider}.`);
+      throw new BadRequestException(
+        `Scope ${invalid} is not allowed for ${provider}.`,
+      );
     }
 
     const required = this.getScopes(provider);

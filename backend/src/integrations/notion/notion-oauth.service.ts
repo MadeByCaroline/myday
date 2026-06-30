@@ -65,8 +65,9 @@ export class NotionOAuthService {
     redirectUri: string,
   ): Promise<NotionTokenResponse> {
     const clientId = this.configService.getOrThrow<string>('NOTION_CLIENT_ID');
-    const clientSecret =
-      this.configService.getOrThrow<string>('NOTION_CLIENT_SECRET');
+    const clientSecret = this.configService.getOrThrow<string>(
+      'NOTION_CLIENT_SECRET',
+    );
 
     const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
       'base64',
@@ -93,9 +94,9 @@ export class NotionOAuthService {
   decodeState(state: string | undefined): { userId: string } | null {
     if (!state) return null;
     try {
-      return JSON.parse(
-        Buffer.from(state, 'base64url').toString('utf8'),
-      ) as { userId: string };
+      return JSON.parse(Buffer.from(state, 'base64url').toString('utf8')) as {
+        userId: string;
+      };
     } catch {
       this.logger.warn('Failed to decode Notion OAuth state');
       return null;

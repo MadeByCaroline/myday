@@ -63,8 +63,7 @@ export class TasksService {
       update: {
         title: data.title,
         description: data.description,
-        ...(data.status &&
-        VALID_STATUSES.includes(data.status as TaskStatus)
+        ...(data.status && VALID_STATUSES.includes(data.status as TaskStatus)
           ? { status: data.status }
           : {}),
       },

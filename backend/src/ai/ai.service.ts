@@ -135,7 +135,9 @@ export class AiService {
     );
 
     try {
-      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const rawAiResponse = await this.resolveAIRequest(prompt, {
+        isJson: true,
+      });
       const parsedResult = this.parseJsonResponse<AiAnalysisResult>(
         rawAiResponse,
         'AI analysis',
@@ -256,27 +258,27 @@ export class AiService {
 
     const [linkedin, emailText, rawTasks] = await Promise.all([
       this.resolveAIRequest(linkedinPrompt).catch((error) => {
-        const message =
-          error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
         this.logger.error('LinkedIn post generation error', message);
         return '';
       }),
       this.resolveAIRequest(emailPrompt).catch((error) => {
-        const message =
-          error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
         this.logger.error('Follow-up email generation error', message);
         return '';
       }),
       this.resolveAIRequest(taskListPrompt, { isJson: true }).catch((error) => {
-        const message =
-          error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
         this.logger.error('Task list generation error', message);
         return '{"tasks":[]}';
       }),
     ]);
 
-    let tasks: Array<{ title: string; dueDate: string | null; status: string }> =
-      [];
+    let tasks: Array<{
+      title: string;
+      dueDate: string | null;
+      status: string;
+    }> = [];
     try {
       const parsed = this.parseJsonResponse<{
         tasks?: Array<{
@@ -289,7 +291,9 @@ export class AiService {
         tasks = parsed.tasks
           .filter(
             (t): t is { title: string; dueDate?: unknown; status?: unknown } =>
-              typeof t === 'object' && t !== null && typeof t.title === 'string',
+              typeof t === 'object' &&
+              t !== null &&
+              typeof t.title === 'string',
           )
           .map((t) => ({
             title: t.title,
@@ -313,7 +317,8 @@ export class AiService {
     actionItems: MeetingActionItem[];
     decisionSummary: string;
   }> {
-    const prompt = this.promptService.buildMeetingSummarizerPrompt(transcriptText);
+    const prompt =
+      this.promptService.buildMeetingSummarizerPrompt(transcriptText);
     const rawResponse = await this.resolveAIRequest(prompt, { isJson: true });
 
     try {
@@ -395,17 +400,18 @@ export class AiService {
       calendarEvents,
     );
     try {
-      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
-      const parsed = this.parseJsonResponse<unknown[] | Record<string, unknown>>(
-        rawAiResponse,
-        'AI time-blocking',
-      );
+      const rawAiResponse = await this.resolveAIRequest(prompt, {
+        isJson: true,
+      });
+      const parsed = this.parseJsonResponse<
+        unknown[] | Record<string, unknown>
+      >(rawAiResponse, 'AI time-blocking');
 
       if (!Array.isArray(parsed)) {
         return this.buildFallbackTimeBlocks(tasks);
       }
 
-      return (parsed as unknown[]).filter((item): item is TimeBlock => {
+      return parsed.filter((item): item is TimeBlock => {
         const o = item as Record<string, unknown>;
         return (
           typeof o === 'object' &&
@@ -441,7 +447,9 @@ export class AiService {
     const prompt = this.promptService.buildTimeAuditPrompt(statsData);
 
     try {
-      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const rawAiResponse = await this.resolveAIRequest(prompt, {
+        isJson: true,
+      });
       const parsed = this.parseJsonResponse<{
         analysis?: unknown;
         recommendations?: unknown;
@@ -695,7 +703,7 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
     const lowered = raw.toLowerCase();
     const now = new Date();
 
-    if (lowered === 'today' || lowered === 'aujourd\'hui') {
+    if (lowered === 'today' || lowered === "aujourd'hui") {
       return now.toISOString().slice(0, 10);
     }
     if (lowered === 'tomorrow' || lowered === 'demain') {
@@ -728,7 +736,7 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
     if (relativeDayMatch) {
       const dayValue = weekdayMap[relativeDayMatch[1]];
       const date = new Date(now);
-      const delta = ((dayValue - now.getDay() + 7) % 7) || 7;
+      const delta = (dayValue - now.getDay() + 7) % 7 || 7;
       date.setDate(now.getDate() + delta);
       return date.toISOString().slice(0, 10);
     }

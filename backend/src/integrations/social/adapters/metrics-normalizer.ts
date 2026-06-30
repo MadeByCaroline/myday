@@ -23,7 +23,8 @@ export function normalizeMetrics(input: {
   const followerCount = Math.max(0, Math.floor(asNumber(input.followers)));
   const likes = Math.max(0, Math.floor(asNumber(input.likes)));
   const comments = Math.max(0, Math.floor(asNumber(input.comments)));
-  const engagementRate = totalViews > 0 ? Number(((likes + comments) / totalViews).toFixed(4)) : 0;
+  const engagementRate =
+    totalViews > 0 ? Number(((likes + comments) / totalViews).toFixed(4)) : 0;
 
   return {
     totalViews,

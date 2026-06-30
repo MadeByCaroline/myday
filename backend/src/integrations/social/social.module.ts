@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { SocialController, SocialOAuthCallbackController } from './social.controller';
+import {
+  SocialController,
+  SocialOAuthCallbackController,
+} from './social.controller';
 import { SocialOAuthService } from './social-oauth.service';
 import { SocialSyncService } from './social-sync.service';
 import { InstagramAdapter } from './adapters/instagram.adapter';
