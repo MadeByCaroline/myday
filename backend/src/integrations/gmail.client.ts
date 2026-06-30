@@ -63,7 +63,7 @@ export class GmailClient {
       );
 
       const results = await Promise.all(
-        messageIds.map(async (msg) => {
+        messageIds.map(async (msg): Promise<EmailSummary | null> => {
           try {
             const detail = await gmail.users.messages.get({
               userId: 'me',
