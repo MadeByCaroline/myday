@@ -53,6 +53,16 @@ axios.interceptors.response.use(
           }
         }
       }
+      if (status === 503 && code === 'INTEGRATION_PROVIDER_UNAVAILABLE') {
+        const provider = providerLabel(error.response?.data?.provider)
+        ToastEventBus.emit('add', {
+          severity: 'warn',
+          summary: 'Service temporairement indisponible',
+          detail: `Le service ${provider} est momentanément indisponible. Nous réessayons automatiquement dès qu'il est rétabli.`,
+          life: 5000,
+        })
+        return Promise.reject(error)
+      }
       if (!error.response || (typeof status === 'number' && status >= 500)) {
         ToastEventBus.emit('add', {
           severity: 'error',

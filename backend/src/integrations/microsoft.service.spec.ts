@@ -50,6 +50,7 @@ describe('MicrosoftService', () => {
           $filter: 'isRead eq false',
           $top: 15,
         },
+        timeout: expect.any(Number),
       },
     );
   });
@@ -147,6 +148,7 @@ describe('MicrosoftService', () => {
           Authorization: 'Bearer ' + 'access-token',
           'Content-Type': 'application/json',
         },
+        timeout: expect.any(Number),
       },
     );
   });
@@ -166,6 +168,7 @@ describe('MicrosoftService', () => {
         headers: {
           Authorization: 'Bearer ' + 'access-token',
         },
+        timeout: expect.any(Number),
       },
     );
   });

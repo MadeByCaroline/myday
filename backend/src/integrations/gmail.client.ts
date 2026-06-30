@@ -2,6 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
 import { IntegrationProviderError } from './integration-provider.error';
+import {
+  getProviderCircuitBreaker,
+  resolveIntegrationTimeoutMs,
+  withTimeout,
+} from './resilience';
 
 export interface EmailSummary {
   id?: string;
@@ -25,6 +30,7 @@ interface GmailMessagePart {
 @Injectable()
 export class GmailClient {
   private readonly logger = new Logger(GmailClient.name);
+  private readonly circuitBreaker = getProviderCircuitBreaker('GOOGLE');
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -52,11 +58,25 @@ export class GmailClient {
     try {
       const gmail = this.createClient(accessToken, refreshToken);
 
-      const listResponse = await gmail.users.messages.list({
-        userId: 'me',
-        q: query,
-        maxResults: limit,
-      });
+      const listResponse = await this.circuitBreaker.execute(
+        () =>
+          withTimeout(
+            () =>
+              gmail.users.messages.list({
+                userId: 'me',
+                q: query,
+                maxResults: limit,
+              }),
+            resolveIntegrationTimeoutMs(),
+            'Gmail messages list',
+          ),
+        {
+          onOpen: () => IntegrationProviderError.unavailable('GOOGLE'),
+          // A single user's expired/invalid token (401) must not trip the
+          // shared provider circuit for everyone else.
+          isFailure: (error) => !this.isUnauthorizedError(error),
+        },
+      );
 
       const messageIds = (listResponse.data.messages || []).filter(
         (msg): msg is { id: string } => !!msg.id,
@@ -95,7 +115,9 @@ export class GmailClient {
         }),
       );
 
-      return results.filter((e): e is NonNullable<typeof e> & EmailSummary => e !== null);
+      return results.filter(
+        (e): e is NonNullable<typeof e> & EmailSummary => e !== null,
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown Gmail API error';
@@ -214,5 +236,23 @@ export class GmailClient {
       end -= 1;
     }
     return value.slice(0, end);
+  }
+
+  private isUnauthorizedError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const gaxiosLike = error as {
+      code?: number;
+      status?: number;
+      response?: { status?: number };
+    };
+
+    return (
+      gaxiosLike.code === 401 ||
+      gaxiosLike.status === 401 ||
+      gaxiosLike.response?.status === 401
+    );
   }
 }

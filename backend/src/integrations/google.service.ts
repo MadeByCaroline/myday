@@ -3,10 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
 import type { UnifiedEvent } from '../calendar/unified-event.interface';
 import { IntegrationProviderError } from './integration-provider.error';
+import {
+  getProviderCircuitBreaker,
+  resolveIntegrationTimeoutMs,
+  withTimeout,
+} from './resilience';
 
 @Injectable()
 export class GoogleService {
   private readonly logger = new Logger(GoogleService.name);
+  private readonly circuitBreaker = getProviderCircuitBreaker('GOOGLE');
 
   constructor(private configService: ConfigService) {}
 
@@ -37,10 +43,23 @@ export class GoogleService {
         59,
       );
 
-      const [{ data: colorsData }, { data: eventsData }] = await calendarData(
-        startOfDay,
-        endOfDay,
-      );
+      const [{ data: colorsData }, { data: eventsData }] =
+        await this.circuitBreaker.execute(
+          () =>
+            withTimeout(
+              () => calendarData(startOfDay, endOfDay),
+              resolveIntegrationTimeoutMs(),
+              'Google calendar',
+            ),
+          {
+            onOpen: () => IntegrationProviderError.unavailable('GOOGLE'),
+            isFailure: (error) =>
+              !(
+                error instanceof IntegrationProviderError &&
+                error.code === 'needs_reauth'
+              ),
+          },
+        );
       const colorCount = Object.keys(colorsData.event || {}).length;
       this.logger.debug(`Loaded ${colorCount} Google event colors`);
 
