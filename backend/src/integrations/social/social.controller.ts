@@ -35,7 +35,11 @@ interface LinkSocialBody {
 
 function parseProvider(provider: string): SocialProvider {
   const normalized = provider.trim().toUpperCase();
-  if (normalized === 'INSTAGRAM' || normalized === 'FACEBOOK' || normalized === 'TIKTOK') {
+  if (
+    normalized === 'INSTAGRAM' ||
+    normalized === 'FACEBOOK' ||
+    normalized === 'TIKTOK'
+  ) {
     return normalized;
   }
   throw new BadRequestException(`Unsupported provider: ${provider}`);
@@ -123,7 +127,11 @@ export class SocialController {
     return {
       provider,
       scopes: this.oauthService.getScopes(provider),
-      url: this.oauthService.getAuthorizationUrl(provider, req.user.id, apiOrigin),
+      url: this.oauthService.getAuthorizationUrl(
+        provider,
+        req.user.id,
+        apiOrigin,
+      ),
     };
   }
 
@@ -139,7 +147,10 @@ export class SocialController {
       throw new BadRequestException('Missing social account fields.');
     }
 
-    const scope = this.oauthService.validateReadOnlyScopes(provider, body.scopes);
+    const scope = this.oauthService.validateReadOnlyScopes(
+      provider,
+      body.scopes,
+    );
 
     const account = await saveLinkedAccount(
       this.prisma,
@@ -174,7 +185,9 @@ export class SocialController {
       const now = Date.now();
       const expiry = account.tokenExpiry?.getTime() ?? null;
       const expiresInDays =
-        expiry === null ? null : Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+        expiry === null
+          ? null
+          : Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
       const status =
         expiry !== null && expiry <= now
           ? 'EXPIRED'
@@ -263,10 +276,11 @@ export class SocialOAuthCallbackController {
         code,
         redirectUri,
       );
-      const externalAccountId = await this.oauthService.resolveExternalAccountId(
-        provider,
-        exchanged.accessToken,
-      );
+      const externalAccountId =
+        await this.oauthService.resolveExternalAccountId(
+          provider,
+          exchanged.accessToken,
+        );
       const scope = this.oauthService.validateReadOnlyScopes(
         provider,
         scopeParam || this.oauthService.getScopes(provider).join(','),

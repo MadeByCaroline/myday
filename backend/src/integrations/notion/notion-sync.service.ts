@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import type { Job, Queue, Worker } from 'bullmq';
@@ -12,15 +17,15 @@ interface NotionSyncJobData {
 
 const STATUS_MAP: Record<string, string> = {
   'not started': 'TODO',
-  'todo': 'TODO',
+  todo: 'TODO',
   'to-do': 'TODO',
   'to do': 'TODO',
   'in progress': 'IN_PROGRESS',
   'in-progress': 'IN_PROGRESS',
-  'doing': 'IN_PROGRESS',
-  'done': 'DONE',
-  'complete': 'DONE',
-  'completed': 'DONE',
+  doing: 'IN_PROGRESS',
+  done: 'DONE',
+  complete: 'DONE',
+  completed: 'DONE',
 };
 
 @Injectable()
@@ -234,9 +239,7 @@ export class NotionSyncService implements OnModuleInit, OnModuleDestroy {
       port: Number(parsed.port || '6379'),
       username: parsed.username || undefined,
       password: parsed.password || undefined,
-      db: parsed.pathname
-        ? Number(parsed.pathname.replace('/', '') || '0')
-        : 0,
+      db: parsed.pathname ? Number(parsed.pathname.replace('/', '') || '0') : 0,
       tls: parsed.protocol === 'rediss:' ? {} : undefined,
       maxRetriesPerRequest: null,
     };

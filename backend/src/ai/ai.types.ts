@@ -87,3 +87,9 @@ export interface MorningBriefingContext {
     description: string | null;
   }>;
 }
+
+export interface MeetingActionItem {
+  title: string;
+  dueDate: string | null;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+}

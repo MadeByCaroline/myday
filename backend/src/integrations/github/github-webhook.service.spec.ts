@@ -28,9 +28,7 @@ describe('GithubWebhookService', () => {
   }
 
   function makeSignature(body: Buffer, secret: string) {
-    return (
-      'sha256=' + createHmac('sha256', secret).update(body).digest('hex')
-    );
+    return 'sha256=' + createHmac('sha256', secret).update(body).digest('hex');
   }
 
   describe('verifySignature', () => {
@@ -54,7 +52,9 @@ describe('GithubWebhookService', () => {
       const { service } = createService();
       const body = Buffer.from('{"action":"assigned"}');
       const sig = makeSignature(body, 'mysecret');
-      expect(() => service.verifySignature(body, sig, 'mysecret')).not.toThrow();
+      expect(() =>
+        service.verifySignature(body, sig, 'mysecret'),
+      ).not.toThrow();
     });
   });
 

@@ -27,10 +27,7 @@ export class IntegrationLinksController {
   ) {}
 
   @Get()
-  listLinks(
-    @Req() req: AuthenticatedRequest,
-    @Query('type') type?: string,
-  ) {
+  listLinks(@Req() req: AuthenticatedRequest, @Query('type') type?: string) {
     return this.integrationLinksService.listLinks(req.user.id, type);
   }
 

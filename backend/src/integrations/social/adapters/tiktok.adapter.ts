@@ -9,15 +9,18 @@ export class TikTokAdapter implements SocialAdapter {
   readonly provider = 'TIKTOK' as const;
 
   async fetchMetrics(account: SocialAccount) {
-    const { data } = await axios.get('https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/', {
-      params: {
-        advertiser_id: account.externalAccountId,
-        fields: 'show_cnt,click_cnt,like_cnt,comment_cnt,follower_count',
+    const { data } = await axios.get(
+      'https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/',
+      {
+        params: {
+          advertiser_id: account.externalAccountId,
+          fields: 'show_cnt,click_cnt,like_cnt,comment_cnt,follower_count',
+        },
+        headers: {
+          Authorization: 'Bearer ' + account.accessToken,
+        },
       },
-      headers: {
-        Authorization: 'Bearer ' + account.accessToken,
-      },
-    });
+    );
 
     const report = data?.data?.list?.[0] || {};
 

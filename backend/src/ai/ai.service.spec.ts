@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AiService } from './ai.service';
+import type { IAiProvider } from './core/ai-provider.interface';
 
 const mockGenerateContent = jest.fn();
 const mockGetGenerativeModel = jest.fn(() => ({
@@ -100,6 +101,36 @@ describe('AiService', () => {
         },
       ],
     });
+  });
+
+  it('can run with injected AI providers only', async () => {
+    const geminiProvider: IAiProvider = {
+      name: 'gemini',
+      generate: jest.fn().mockResolvedValue('Injected answer'),
+    };
+    const localProvider: IAiProvider = {
+      name: 'local',
+      generate: jest.fn().mockResolvedValue('Local answer'),
+    };
+
+    const service = new AiService(
+      configService,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [geminiProvider, localProvider],
+    );
+    const result = await service.generateContent('hello');
+
+    expect(result).toBe('Injected answer');
+    expect(geminiProvider.generate).toHaveBeenCalledWith('hello', {});
+    expect(localProvider.generate).not.toHaveBeenCalled();
+    expect(GoogleGenerativeAI).not.toHaveBeenCalled();
   });
 
   it('parses analysis JSON wrapped in markdown fences', async () => {
@@ -282,7 +313,10 @@ describe('AiService', () => {
     const service = new AiService(configService);
     const logger = (
       service as unknown as {
-        logger: { error: (...args: unknown[]) => void; debug: (msg: string) => void };
+        logger: {
+          error: (...args: unknown[]) => void;
+          debug: (msg: string) => void;
+        };
       }
     ).logger;
     const errorSpy = jest.spyOn(logger, 'error');
@@ -860,31 +894,51 @@ describe('AiService', () => {
     it('returns linkedin, email and tasks from AI responses', async () => {
       const tasksJson = JSON.stringify({
         tasks: [
-          { title: 'Préparer la présentation', dueDate: '2026-07-01', status: 'TODO' },
+          {
+            title: 'Préparer la présentation',
+            dueDate: '2026-07-01',
+            status: 'TODO',
+          },
           { title: 'Envoyer le compte-rendu', dueDate: null, status: 'TODO' },
         ],
       });
       mockGenerateContent
-        .mockResolvedValueOnce({ response: { text: () => 'LinkedIn post content' } })
-        .mockResolvedValueOnce({ response: { text: () => 'Follow-up email content' } })
+        .mockResolvedValueOnce({
+          response: { text: () => 'LinkedIn post content' },
+        })
+        .mockResolvedValueOnce({
+          response: { text: () => 'Follow-up email content' },
+        })
         .mockResolvedValueOnce({ response: { text: () => tasksJson } });
 
       const service = new AiService(configService);
-      const result = await service.processMeetingNotes('Notes de réunion importantes');
+      const result = await service.processMeetingNotes(
+        'Notes de réunion importantes',
+      );
 
       expect(result.linkedin).toBe('LinkedIn post content');
       expect(result.email).toBe('Follow-up email content');
       expect(result.tasks).toEqual([
-        { title: 'Préparer la présentation', dueDate: '2026-07-01', status: 'TODO' },
+        {
+          title: 'Préparer la présentation',
+          dueDate: '2026-07-01',
+          status: 'TODO',
+        },
         { title: 'Envoyer le compte-rendu', dueDate: null, status: 'TODO' },
       ]);
     });
 
     it('returns empty tasks array when task list JSON is malformed', async () => {
       mockGenerateContent
-        .mockResolvedValueOnce({ response: { text: () => 'LinkedIn post content' } })
-        .mockResolvedValueOnce({ response: { text: () => 'Follow-up email content' } })
-        .mockResolvedValueOnce({ response: { text: () => 'not valid json at all' } });
+        .mockResolvedValueOnce({
+          response: { text: () => 'LinkedIn post content' },
+        })
+        .mockResolvedValueOnce({
+          response: { text: () => 'Follow-up email content' },
+        })
+        .mockResolvedValueOnce({
+          response: { text: () => 'not valid json at all' },
+        });
 
       const service = new AiService(configService);
       const result = await service.processMeetingNotes('Meeting notes');

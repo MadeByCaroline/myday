@@ -1,6 +1,5 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { CalendarService } from '../calendar/calendar.service';
 import { MicrosoftService } from '../integrations/microsoft.service';
 import type { EmailSummary } from '../integrations/gmail.client';
@@ -12,6 +11,7 @@ import {
   type AiAnalysisResult,
   type CategorizedEmailSummary,
   type EmailCategory,
+  type MeetingActionItem,
   type MorningBriefingResult,
   type TimeBlock,
   type TimeBlockingTaskInput,
@@ -21,12 +21,20 @@ import {
 } from './ai.types';
 import { BriefingService } from './briefing.service';
 import { AiChatService } from './chat.service';
+import { AI_PROVIDERS, type IAiProvider } from './core/ai-provider.interface';
+import type {
+  AiProviderName,
+  ResolveAIRequestOptions,
+} from './core/ai-provider.types';
+import { GeminiAiProvider } from './core/providers/gemini-ai.provider';
+import { LocalAiProvider } from './core/providers/local-ai.provider';
 import { PromptService } from './prompt.service';
 
 export type {
   AiAnalysisResult,
   CategorizedEmailSummary,
   EmailCategory,
+  MeetingActionItem,
   MorningBriefingResult,
   TimeBlock,
   TimeBlockingTaskInput,
@@ -36,20 +44,6 @@ export type {
 } from './ai.types';
 
 const GMAIL_INBOX_URL_PREFIX = 'https://mail.google.com/mail/u/0/#inbox/';
-
-type AiProvider = 'local' | 'gemini';
-
-interface ResolveAIRequestOptions {
-  isJson?: boolean;
-  history?: WorkspaceChatHistoryMessage[];
-  tools?: WorkspaceChatToolset;
-}
-
-interface MeetingActionItem {
-  title: string;
-  dueDate: string | null;
-  priority: 'HIGH' | 'MEDIUM' | 'LOW';
-}
 
 class AiParsingException extends Error {
   constructor(message: string) {
@@ -61,10 +55,9 @@ class AiParsingException extends Error {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private readonly genAI: GoogleGenerativeAI;
   private readonly promptService: PromptService;
   private readonly briefingService: BriefingService;
-  private readonly aiChatService: AiChatService;
+  private readonly providers = new Map<AiProviderName, IAiProvider>();
 
   constructor(
     private configService: ConfigService,
@@ -73,19 +66,30 @@ export class AiService {
     @Optional() private readonly calendarService?: CalendarService,
     @Optional() private readonly tasksService?: TasksService,
     @Optional() private readonly microsoftService?: MicrosoftService,
+    @Optional() promptService?: PromptService,
+    @Optional() briefingService?: BriefingService,
+    @Optional() aiChatService?: AiChatService,
+    @Inject(AI_PROVIDERS) @Optional() aiProviders?: IAiProvider[],
   ) {
-    this.genAI = new GoogleGenerativeAI(
-      this.configService.getOrThrow<string>('GEMINI_API_KEY'),
-    );
-    this.promptService = new PromptService();
-    this.briefingService = new BriefingService(
-      this.prisma,
-      this.mailService,
-      this.calendarService,
-      this.tasksService,
-      this.microsoftService,
-    );
-    this.aiChatService = new AiChatService();
+    this.promptService = promptService ?? new PromptService();
+    this.briefingService =
+      briefingService ??
+      new BriefingService(
+        this.prisma,
+        this.mailService,
+        this.calendarService,
+        this.tasksService,
+        this.microsoftService,
+      );
+
+    const resolvedProviders =
+      aiProviders && aiProviders.length > 0
+        ? aiProviders
+        : this.buildDefaultProviders(aiChatService ?? new AiChatService());
+
+    resolvedProviders.forEach((provider) => {
+      this.providers.set(provider.name, provider);
+    });
   }
 
   async generateContent(prompt: string): Promise<string> {
@@ -94,33 +98,11 @@ export class AiService {
   }
 
   async generateContentLocal(prompt: string): Promise<string> {
-    try {
-      const response = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gemma4',
-          prompt: prompt,
-          stream: false,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error(
-          `Ollama API error: ${response.status} ${response.statusText}`,
-        );
-      }
-      const data = (await response.json()) as { response?: string };
-      if (typeof data.response !== 'string') {
-        throw new Error('Unexpected response structure from Ollama API');
-      }
-      return data.response;
-    } catch (error) {
-      this.logger.error(
-        'Local Ollama generation failed. Is the server running?',
-        error instanceof Error ? error.message : String(error),
-      );
-      throw error;
+    const localProvider = this.providers.get('local');
+    if (!localProvider) {
+      throw new Error('Local AI provider is not configured.');
     }
+    return localProvider.generate(prompt, {});
   }
 
   async analyzeProductivityData(
@@ -135,7 +117,9 @@ export class AiService {
     );
 
     try {
-      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const rawAiResponse = await this.resolveAIRequest(prompt, {
+        isJson: true,
+      });
       const parsedResult = this.parseJsonResponse<AiAnalysisResult>(
         rawAiResponse,
         'AI analysis',
@@ -256,27 +240,27 @@ export class AiService {
 
     const [linkedin, emailText, rawTasks] = await Promise.all([
       this.resolveAIRequest(linkedinPrompt).catch((error) => {
-        const message =
-          error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
         this.logger.error('LinkedIn post generation error', message);
         return '';
       }),
       this.resolveAIRequest(emailPrompt).catch((error) => {
-        const message =
-          error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
         this.logger.error('Follow-up email generation error', message);
         return '';
       }),
       this.resolveAIRequest(taskListPrompt, { isJson: true }).catch((error) => {
-        const message =
-          error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
         this.logger.error('Task list generation error', message);
         return '{"tasks":[]}';
       }),
     ]);
 
-    let tasks: Array<{ title: string; dueDate: string | null; status: string }> =
-      [];
+    let tasks: Array<{
+      title: string;
+      dueDate: string | null;
+      status: string;
+    }> = [];
     try {
       const parsed = this.parseJsonResponse<{
         tasks?: Array<{
@@ -289,7 +273,9 @@ export class AiService {
         tasks = parsed.tasks
           .filter(
             (t): t is { title: string; dueDate?: unknown; status?: unknown } =>
-              typeof t === 'object' && t !== null && typeof t.title === 'string',
+              typeof t === 'object' &&
+              t !== null &&
+              typeof t.title === 'string',
           )
           .map((t) => ({
             title: t.title,
@@ -313,7 +299,8 @@ export class AiService {
     actionItems: MeetingActionItem[];
     decisionSummary: string;
   }> {
-    const prompt = this.promptService.buildMeetingSummarizerPrompt(transcriptText);
+    const prompt =
+      this.promptService.buildMeetingSummarizerPrompt(transcriptText);
     const rawResponse = await this.resolveAIRequest(prompt, { isJson: true });
 
     try {
@@ -395,17 +382,18 @@ export class AiService {
       calendarEvents,
     );
     try {
-      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
-      const parsed = this.parseJsonResponse<unknown[] | Record<string, unknown>>(
-        rawAiResponse,
-        'AI time-blocking',
-      );
+      const rawAiResponse = await this.resolveAIRequest(prompt, {
+        isJson: true,
+      });
+      const parsed = this.parseJsonResponse<
+        unknown[] | Record<string, unknown>
+      >(rawAiResponse, 'AI time-blocking');
 
       if (!Array.isArray(parsed)) {
         return this.buildFallbackTimeBlocks(tasks);
       }
 
-      return (parsed as unknown[]).filter((item): item is TimeBlock => {
+      return parsed.filter((item): item is TimeBlock => {
         const o = item as Record<string, unknown>;
         return (
           typeof o === 'object' &&
@@ -441,7 +429,9 @@ export class AiService {
     const prompt = this.promptService.buildTimeAuditPrompt(statsData);
 
     try {
-      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const rawAiResponse = await this.resolveAIRequest(prompt, {
+        isJson: true,
+      });
       const parsed = this.parseJsonResponse<{
         analysis?: unknown;
         recommendations?: unknown;
@@ -502,17 +492,21 @@ export class AiService {
     prompt: string,
     options: ResolveAIRequestOptions = {},
   ): Promise<string> {
-    const preferredProvider: AiProvider =
+    const preferredProvider: AiProviderName =
       this.configService.get<string>('USE_LOCAL_AI') === 'true'
         ? 'local'
         : 'gemini';
-    const providers: AiProvider[] =
+    const providers: AiProviderName[] =
       preferredProvider === 'local' ? ['local', 'gemini'] : ['gemini', 'local'];
     let lastError: unknown;
 
     for (const provider of providers) {
       try {
-        return await this.generateByProvider(provider, prompt, options);
+        const aiProvider = this.providers.get(provider);
+        if (!aiProvider) {
+          throw new Error(`AI provider "${provider}" is not configured.`);
+        }
+        return await aiProvider.generate(prompt, options);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.error(`${provider} AI request failed`, message);
@@ -523,38 +517,6 @@ export class AiService {
     throw lastError instanceof Error
       ? lastError
       : new Error('No AI provider responded successfully.');
-  }
-
-  private async generateByProvider(
-    provider: AiProvider,
-    prompt: string,
-    options: ResolveAIRequestOptions,
-  ): Promise<string> {
-    if (provider === 'local') {
-      return this.generateContentLocal(this.buildLocalPrompt(prompt, options));
-    }
-
-    if (options.tools) {
-      return this.aiChatService.generateWorkspaceAnswer(
-        this.genAI,
-        prompt,
-        options.history || [],
-        options.tools,
-      );
-    }
-
-    const model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      ...(options.isJson
-        ? {
-            generationConfig: {
-              responseMimeType: 'application/json',
-            },
-          }
-        : {}),
-    });
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
   }
 
   private cleanJsonResponse(response: string): string {
@@ -585,17 +547,11 @@ export class AiService {
     }
   }
 
-  private buildLocalPrompt(
-    prompt: string,
-    options: ResolveAIRequestOptions,
-  ): string {
-    if (!options.isJson) {
-      return prompt;
-    }
-
-    return `${prompt}
-
-IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni libellé, ni explication, ni texte hors JSON.`;
+  private buildDefaultProviders(aiChatService: AiChatService): IAiProvider[] {
+    return [
+      new GeminiAiProvider(this.configService, aiChatService),
+      new LocalAiProvider(),
+    ];
   }
 
   private buildFallbackTimeBlocks(
@@ -695,7 +651,7 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
     const lowered = raw.toLowerCase();
     const now = new Date();
 
-    if (lowered === 'today' || lowered === 'aujourd\'hui') {
+    if (lowered === 'today' || lowered === "aujourd'hui") {
       return now.toISOString().slice(0, 10);
     }
     if (lowered === 'tomorrow' || lowered === 'demain') {
@@ -728,7 +684,7 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
     if (relativeDayMatch) {
       const dayValue = weekdayMap[relativeDayMatch[1]];
       const date = new Date(now);
-      const delta = ((dayValue - now.getDay() + 7) % 7) || 7;
+      const delta = (dayValue - now.getDay() + 7) % 7 || 7;
       date.setDate(now.getDate() + delta);
       return date.toISOString().slice(0, 10);
     }

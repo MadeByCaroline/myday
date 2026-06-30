@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import type { Job, Queue, Worker } from 'bullmq';
@@ -39,7 +44,9 @@ export class SocialSyncService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const connection = this.getBullConnection();
     if (!connection) {
-      this.logger.warn('BullMQ disabled: REDIS_URL is missing. Falling back to direct sync.');
+      this.logger.warn(
+        'BullMQ disabled: REDIS_URL is missing. Falling back to direct sync.',
+      );
       return;
     }
 
@@ -63,7 +70,9 @@ export class SocialSyncService implements OnModuleInit, OnModuleDestroy {
 
     this.worker.on('failed', (job, error) => {
       const id = job?.data?.socialAccountId || 'unknown';
-      this.logger.warn(`Social sync failed for account ${id}: ${error.message}`);
+      this.logger.warn(
+        `Social sync failed for account ${id}: ${error.message}`,
+      );
     });
 
     await this.ensureRecurringJobs();
@@ -167,9 +176,11 @@ export class SocialSyncService implements OnModuleInit, OnModuleDestroy {
         const changeVsLastWeek =
           previous && previous.totalViews > 0
             ? Number(
-                (((account.lastTotalViews - previous.totalViews) /
-                  previous.totalViews) *
-                  100).toFixed(2),
+                (
+                  ((account.lastTotalViews - previous.totalViews) /
+                    previous.totalViews) *
+                  100
+                ).toFixed(2),
               )
             : null;
 
@@ -220,10 +231,15 @@ export class SocialSyncService implements OnModuleInit, OnModuleDestroy {
       select: { id: true },
     });
 
-    await Promise.all(accounts.map((account) => this.enqueueSync(account.id, false)));
+    await Promise.all(
+      accounts.map((account) => this.enqueueSync(account.id, false)),
+    );
   }
 
-  private async syncWithFallbackRetries(socialAccountId: string, retryCount: number) {
+  private async syncWithFallbackRetries(
+    socialAccountId: string,
+    retryCount: number,
+  ) {
     try {
       await this.syncAccountById(socialAccountId);
     } catch (error) {

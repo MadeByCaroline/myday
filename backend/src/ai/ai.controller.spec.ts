@@ -59,9 +59,9 @@ describe('AiController', () => {
       };
       const controller = new AiController(aiService as any);
 
-      await expect(
-        controller.generateContent({}),
-      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(controller.generateContent({})).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException when notes exceeds 5000 characters', async () => {
@@ -80,7 +80,13 @@ describe('AiController', () => {
 
     describe('summarizeMeeting', () => {
       const summary = {
-        actionItems: [{ title: 'Envoyer le compte-rendu', dueDate: null, priority: 'MEDIUM' }],
+        actionItems: [
+          {
+            title: 'Envoyer le compte-rendu',
+            dueDate: null,
+            priority: 'MEDIUM',
+          },
+        ],
         decisionSummary: 'Lancement validé lundi prochain.',
       };
 
@@ -94,7 +100,8 @@ describe('AiController', () => {
 
         await expect(
           controller.summarizeMeeting({
-            transcriptText: '  Discussion projet avec décisions et actions à suivre.  ',
+            transcriptText:
+              '  Discussion projet avec décisions et actions à suivre.  ',
           }),
         ).resolves.toEqual(summary);
 
