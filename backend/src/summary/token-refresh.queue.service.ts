@@ -6,6 +6,7 @@ export class TokenRefreshQueueService {
   private readonly pendingKeys = new Set<string>();
   private readonly tasks: Array<{ key: string; task: () => Promise<void> }> = [];
   private processing = false;
+  private scheduled = false;
 
   enqueue(key: string, task: () => Promise<void>) {
     if (this.pendingKeys.has(key)) {
@@ -15,9 +16,13 @@ export class TokenRefreshQueueService {
     this.pendingKeys.add(key);
     this.tasks.push({ key, task });
 
-    setImmediate(() => {
-      void this.processQueue();
-    });
+    if (!this.scheduled) {
+      this.scheduled = true;
+      setImmediate(() => {
+        this.scheduled = false;
+        void this.processQueue();
+      });
+    }
   }
 
   private async processQueue() {

@@ -43,6 +43,8 @@ interface IntegrationStatus {
 @Injectable()
 export class SummaryService {
   private readonly logger = new Logger(SummaryService.name);
+  private static readonly TOKEN_REAUTH_THRESHOLD_MS = 10_000;
+  private static readonly TOKEN_REFRESH_LEEWAY_MS = 60_000;
   private static readonly MICROSOFT_SCOPES = [
     'openid',
     'profile',
@@ -270,7 +272,13 @@ export class SummaryService {
       };
     }
 
-    if (!oauthToken.refreshToken || this.isTokenExpired(oauthToken, 10_000)) {
+    if (
+      !oauthToken.refreshToken ||
+      this.isTokenExpired(
+        oauthToken,
+        SummaryService.TOKEN_REAUTH_THRESHOLD_MS,
+      )
+    ) {
       throw IntegrationProviderError.needsReauth('GOOGLE');
     }
 
@@ -294,7 +302,13 @@ export class SummaryService {
       };
     }
 
-    if (!oauthToken.refreshToken || this.isTokenExpired(oauthToken, 10_000)) {
+    if (
+      !oauthToken.refreshToken ||
+      this.isTokenExpired(
+        oauthToken,
+        SummaryService.TOKEN_REAUTH_THRESHOLD_MS,
+      )
+    ) {
       throw IntegrationProviderError.needsReauth('MICROSOFT');
     }
 
@@ -386,7 +400,10 @@ export class SummaryService {
       return false;
     }
 
-    return oauthToken.expiresAt.getTime() <= Date.now() + 60_000;
+    return (
+      oauthToken.expiresAt.getTime() <=
+      Date.now() + SummaryService.TOKEN_REFRESH_LEEWAY_MS
+    );
   }
 
   private buildIntegrationStatuses(
