@@ -204,8 +204,9 @@ export const useTasksStore = defineStore('tasks', () => {
         { headers: getAuthHeaders() },
       )
 
+      const taskIdSet = new Set(taskIds)
       savedTasks.value = savedTasks.value.map((task) =>
-        taskIds.includes(task.id) ? { ...task, status } : task,
+        taskIdSet.has(task.id) ? { ...task, status } : task,
       )
     } finally {
       loading.value = false
