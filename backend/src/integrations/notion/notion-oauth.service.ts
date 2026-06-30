@@ -33,6 +33,7 @@ export interface NotionPage {
 }
 
 const NOTION_API_BASE = 'https://api.notion.com/v1';
+// Notion API version — check https://developers.notion.com/reference/versioning when upgrading
 const NOTION_VERSION = '2022-06-28';
 
 @Injectable()

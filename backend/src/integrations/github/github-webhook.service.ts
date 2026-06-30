@@ -92,7 +92,7 @@ export class GithubWebhookService {
     this.verifySignature(rawBody, signature, config.webhookSecret || '');
 
     if (config.filterLabel) {
-      const issue = await this.fetchIssueLabels(payload);
+      const issue = this.extractIssueLabels(payload);
       const hasLabel = issue?.labels?.some(
         (l: { name: string }) =>
           l.name.toLowerCase() === config.filterLabel!.toLowerCase(),
@@ -139,7 +139,7 @@ export class GithubWebhookService {
     }
   }
 
-  private fetchIssueLabels(
+  private extractIssueLabels(
     payload: GithubIssuePayload,
   ): { labels?: Array<{ name: string }> } | null {
     const issue = payload.issue as GithubIssuePayload['issue'] & {

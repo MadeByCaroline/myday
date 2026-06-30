@@ -76,7 +76,7 @@ export class NotionSyncService implements OnModuleInit, OnModuleDestroy {
     ]);
   }
 
-  @Cron('0 */1 * * *')
+  @Cron('0 * * * *') // Runs at minute 0 of every hour
   async scheduleHourlySync() {
     const links = await this.prisma.integrationLink.findMany({
       where: { type: 'notion', active: true },
@@ -215,6 +215,7 @@ export class NotionSyncService implements OnModuleInit, OnModuleDestroy {
       if (status !== 429 || retryCount >= 2) {
         throw err;
       }
+      // Delay: ~1 min (retry 0), ~2 min (retry 1), ~4 min (retry 2)
       const delayMs = 2 ** retryCount * 60_000;
       await new Promise((resolve) => setTimeout(resolve, delayMs));
       await this.syncWithRetry(integrationLinkId, retryCount + 1);
