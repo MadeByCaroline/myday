@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
 import type { UnifiedEvent } from '../calendar/unified-event.interface';
+import { IntegrationProviderError } from './integration-provider.error';
 
 @Injectable()
 export class GoogleService {
@@ -70,7 +71,7 @@ export class GoogleService {
       const message =
         error instanceof Error ? error.message : 'Unknown Google Calendar error';
       this.logger.error('Failed to fetch Google calendar events', message);
-      return [];
+      throw IntegrationProviderError.unavailable('GOOGLE');
     }
   }
 

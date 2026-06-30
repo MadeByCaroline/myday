@@ -1,6 +1,8 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import axios from 'axios'
 import PrimeVue from 'primevue/config'
+import ToastEventBus from 'primevue/toasteventbus'
 import ToastService from 'primevue/toastservice'
 import Aura from '@primevue/themes/aura'
 import App from './App.vue'
@@ -23,6 +25,27 @@ app.use(PrimeVue, {
   },
 })
 app.use(ToastService)
+
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+      if (!error.response || (typeof status === 'number' && status >= 500)) {
+        ToastEventBus.emit('add', {
+          severity: 'error',
+          summary: 'Erreur réseau',
+          detail: !error.response
+            ? 'Le serveur est momentanément inaccessible. Réessayez dans un instant.'
+            : 'Une erreur serveur a interrompu cette action. Réessayez dans un instant.',
+          life: 4000,
+        })
+      }
+    }
+
+    return Promise.reject(error)
+  },
+)
 
 const themeStore = useThemeStore(pinia)
 themeStore.initializeTheme()

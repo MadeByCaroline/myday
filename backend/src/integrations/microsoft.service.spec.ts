@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { IntegrationProviderError } from './integration-provider.error';
 import { MicrosoftService } from './microsoft.service';
 
 describe('MicrosoftService', () => {
@@ -157,6 +158,15 @@ describe('MicrosoftService', () => {
           Authorization: 'Bearer ' + 'access-token',
         },
       },
+    );
+  });
+
+  it('throws an explicit provider error when Outlook mail cannot be loaded', async () => {
+    jest.spyOn(axios, 'get').mockRejectedValue(new Error('boom'));
+    const service = new MicrosoftService();
+
+    await expect(service.getUnreadEmails('access-token')).rejects.toEqual(
+      IntegrationProviderError.unavailable('MICROSOFT'),
     );
   });
 });

@@ -7,10 +7,11 @@ import { UsersModule } from '../users/users.module';
 import { SettingsModule } from '../settings/settings.module';
 import { SummaryController } from './summary.controller';
 import { SummaryService } from './summary.service';
+import { TokenRefreshQueueService } from './token-refresh.queue.service';
 
 @Module({
   imports: [MailModule, CalendarModule, AiModule, UsersModule, SettingsModule],
-  providers: [MicrosoftService, SummaryService],
+  providers: [MicrosoftService, SummaryService, TokenRefreshQueueService],
   controllers: [SummaryController],
 })
 export class SummaryModule {}

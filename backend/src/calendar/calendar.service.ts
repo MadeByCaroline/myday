@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
 import { GoogleService } from '../integrations/google.service';
+import { IntegrationProviderError } from '../integrations/integration-provider.error';
 import { MicrosoftService } from '../integrations/microsoft.service';
 import { UsersService } from '../users/users.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -144,7 +145,7 @@ export class CalendarService {
       const message =
         error instanceof Error ? error.message : 'Unknown Calendar API error';
       this.logger.error('Failed to fetch calendar events', message);
-      return [];
+      throw IntegrationProviderError.unavailable('GOOGLE');
     }
   }
 }

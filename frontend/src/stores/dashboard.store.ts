@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from './auth'
+import type { SuggestedTask } from './tasks'
 import { useTasksStore } from './tasks'
 
 export interface CalendarEvent {
@@ -26,6 +27,24 @@ export interface CategorizedEmailSummary {
   link: string
 }
 
+export type DashboardIntegrationState = 'loading' | 'ready' | 'error'
+
+export interface DashboardIntegrationStatus {
+  provider: string
+  status: DashboardIntegrationState
+  code?: 'needs_reauth' | 'provider_unavailable'
+  message?: string
+}
+
+interface DashboardResponse {
+  summary?: string
+  events?: CalendarEvent[]
+  suggested_tasks?: SuggestedTask[]
+  email_summaries?: Partial<CategorizedEmailSummary>[]
+  error?: string
+  integrations?: DashboardIntegrationStatus[]
+}
+
 export const useDashboardStore = defineStore('dashboard', () => {
   const summary = ref('')
   const emails = ref<CategorizedEmailSummary[]>([])
@@ -34,6 +53,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const draftingActionKey = ref<string | null>(null)
   const error = ref<string | null>(null)
   const generated = ref(false)
+  const integrations = ref<DashboardIntegrationStatus[]>([])
 
   function getAuthHeaders() {
     const authStore = useAuthStore()
@@ -54,8 +74,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function _loadData() {
     const tasksStore = useTasksStore()
+    const authStore = useAuthStore()
     isLoading.value = true
     error.value = null
+    integrations.value = getConnectedProviders(authStore).map((provider) => ({
+      provider,
+      status: 'loading',
+    }))
 
     try {
       const { data } = await axios.post(
@@ -65,10 +90,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
           headers: getAuthHeaders(),
         },
       )
+      const dashboardData = data as DashboardResponse
 
-      summary.value = data.summary || ''
-      events.value = data.events || []
-      emails.value = (data.email_summaries || []).map((email: Partial<CategorizedEmailSummary>) => ({
+      summary.value = dashboardData.summary || ''
+      events.value = dashboardData.events || []
+      emails.value = (dashboardData.email_summaries || []).map((email: Partial<CategorizedEmailSummary>) => ({
         emailId: email.emailId || '',
         summary: email.summary || '',
         category: (email.category as EmailCategory) || 'INFO',
@@ -78,7 +104,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
         subject: email.subject || '',
         link: email.link || '',
       }))
-      tasksStore.setSuggestedTasks(data.suggested_tasks || [])
+      tasksStore.setSuggestedTasks(dashboardData.suggested_tasks || [])
+      error.value = dashboardData.error || null
+      integrations.value = mergeIntegrationStatuses(
+        getConnectedProviders(authStore),
+        dashboardData.integrations || [],
+      )
       generated.value = true
     } catch (caughtError: unknown) {
       if (axios.isAxiosError(caughtError)) {
@@ -86,6 +117,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
       } else {
         error.value = 'Impossible de générer le résumé.'
       }
+      integrations.value = getConnectedProviders(authStore).map((provider) => ({
+        provider,
+        status: 'error',
+        code: 'provider_unavailable',
+        message: error.value || 'Impossible de contacter ce service pour le moment.',
+      }))
     } finally {
       isLoading.value = false
     }
@@ -124,6 +161,32 @@ export const useDashboardStore = defineStore('dashboard', () => {
     generated.value = false
     draftingActionKey.value = null
     error.value = null
+    integrations.value = []
+  }
+
+  function getConnectedProviders(authStore: ReturnType<typeof useAuthStore>) {
+    const providers: string[] = []
+    if ((authStore.user?.connectedGoogleAccounts || []).length > 0) {
+      providers.push('GOOGLE')
+    }
+    if ((authStore.user?.connectedOutlookAccounts || []).length > 0) {
+      providers.push('MICROSOFT')
+    }
+    return providers
+  }
+
+  function mergeIntegrationStatuses(
+    connectedProviders: string[],
+    receivedStatuses: DashboardIntegrationStatus[],
+  ) {
+    const statusMap = new Map(receivedStatuses.map((status) => [status.provider.toUpperCase(), status]))
+
+    return connectedProviders.map((provider) => statusMap.get(provider) || {
+      provider,
+      status: 'error' as const,
+      code: 'provider_unavailable' as const,
+      message: `Le statut ${provider === 'MICROSOFT' ? 'Microsoft' : 'Google'} est indisponible pour le moment.`,
+    })
   }
 
   return {
@@ -134,6 +197,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     draftingActionKey,
     error,
     generated,
+    integrations,
     fetchDashboardData,
     generateSummary,
     createDraft,

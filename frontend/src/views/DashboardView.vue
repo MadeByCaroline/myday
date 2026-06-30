@@ -45,6 +45,38 @@
           {{ dashboardStore.error }}
         </div>
 
+        <div v-if="dashboardStore.integrations.length > 0" class="space-y-3 mb-6">
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="integration in dashboardStore.integrations"
+              :key="integration.provider"
+              class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium"
+              :class="integrationStatusClass(integration.status)"
+            >
+              <i :class="integrationStatusIcon(integration.status)"></i>
+              {{ providerLabel(integration.provider) }} · {{ integrationStatusLabel(integration.status) }}
+            </span>
+          </div>
+
+          <div
+            v-for="integration in erroredIntegrations"
+            :key="`${integration.provider}-error`"
+            class="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900 md:flex-row md:items-center md:justify-between"
+          >
+            <div>
+              <p class="font-medium">{{ integration.message || defaultIntegrationError(integration.provider) }}</p>
+              <p class="text-sm text-amber-800">Vous pouvez continuer avec les données déjà disponibles, puis reconnecter ce service.</p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors"
+              @click="router.push({ name: 'integrations' })"
+            >
+              Se reconnecter
+            </button>
+          </div>
+        </div>
+
         <div v-if="dashboardStore.generated" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <!-- Summary Card -->
           <div class="xl:col-span-2">
@@ -187,6 +219,9 @@ const firstName = computed(() => {
   const name = authStore.user?.name || authStore.user?.email || 'vous'
   return name.split(' ')[0]
 })
+const erroredIntegrations = computed(() =>
+  dashboardStore.integrations.filter((integration) => integration.status === 'error'),
+)
 
 const currentDate = computed(() =>
   now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
@@ -236,6 +271,55 @@ function categoryLabel(category: string): string {
 
 async function generateSummary() {
   await dashboardStore.generateSummary()
+  if (dashboardStore.error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Connexion interrompue',
+      detail: dashboardStore.error,
+      life: 4000,
+    })
+  }
+}
+
+function providerLabel(provider: string) {
+  return provider === 'MICROSOFT' ? 'Microsoft' : 'Google'
+}
+
+function integrationStatusLabel(status: 'loading' | 'ready' | 'error') {
+  switch (status) {
+    case 'loading':
+      return 'Chargement'
+    case 'ready':
+      return 'Prêt'
+    case 'error':
+      return 'Erreur'
+  }
+}
+
+function integrationStatusClass(status: 'loading' | 'ready' | 'error') {
+  switch (status) {
+    case 'loading':
+      return 'border-slate-200 bg-slate-50 text-slate-700'
+    case 'ready':
+      return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    case 'error':
+      return 'border-amber-200 bg-amber-50 text-amber-800'
+  }
+}
+
+function integrationStatusIcon(status: 'loading' | 'ready' | 'error') {
+  switch (status) {
+    case 'loading':
+      return 'pi pi-spin pi-spinner'
+    case 'ready':
+      return 'pi pi-check-circle'
+    case 'error':
+      return 'pi pi-exclamation-triangle'
+  }
+}
+
+function defaultIntegrationError(provider: string) {
+  return `La connexion à ${providerLabel(provider)} a expiré. Cliquez ici pour vous reconnecter.`
 }
 
 async function createDraft(emailId: string, action: string) {
