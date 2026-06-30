@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
+import { GmailClient } from '../integrations/gmail.client';
 import { MailService } from './mail.service';
 
 @Module({
-  providers: [MailService],
-  exports: [MailService],
+  providers: [GmailClient, MailService],
+  exports: [GmailClient, MailService],
 })
 export class MailModule {}
