@@ -365,7 +365,7 @@ export class SummaryService {
           'MICROSOFT_CLIENT_SECRET',
         ),
         grant_type: 'refresh_token',
-        refresh_token: oauthToken.refreshToken,
+        refresh_token: oauthToken.refreshToken || '',
         scope: SummaryService.MICROSOFT_SCOPES,
       }).toString(),
       {
