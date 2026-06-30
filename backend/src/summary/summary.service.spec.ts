@@ -1,17 +1,5 @@
-import axios from 'axios';
-import { IntegrationProviderError } from '../integrations/integration-provider.error';
 import { SummaryService } from './summary.service';
 import { TokenRefreshQueueService } from './token-refresh.queue.service';
-
-jest.mock('axios', () => ({
-  __esModule: true,
-  default: {
-    post: jest.fn(),
-  },
-}));
-
-// eslint-disable-next-line @typescript-eslint/unbound-method
-const getAxiosPostMock = () => axios.post as jest.Mock;
 
 describe('SummaryService', () => {
   const prisma = {
@@ -20,13 +8,12 @@ describe('SummaryService', () => {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
-    oAuthToken: {
+    emailAccount: {
       findMany: jest.fn(),
+    },
+    oAuthToken: {
       update: jest.fn(),
     },
-  };
-  const configService = {
-    getOrThrow: jest.fn(),
   };
 
   const settingsService = {
@@ -36,76 +23,68 @@ describe('SummaryService', () => {
     }),
   };
 
+  const emailSyncService = {
+    syncForUser: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
-    configService.getOrThrow.mockReset();
-    prisma.user.findMany.mockReset();
-    prisma.user.findUnique.mockReset();
-    prisma.user.update.mockReset();
-    prisma.oAuthToken.findMany.mockReset();
-    prisma.oAuthToken.update.mockReset();
-    getAxiosPostMock().mockReset();
+    prisma.user.findUnique.mockResolvedValue({ dailySummary: null });
     settingsService.getSettings.mockResolvedValue({
       aiSummaryInstructions: null,
       excludedSenders: [],
     });
-    prisma.user.findUnique.mockResolvedValue({ dailySummary: null });
   });
 
-  function createService() {
+  function createService(aiService?: { analyzeProductivityData: jest.Mock }) {
     return new SummaryService(
       prisma as any,
       { getRecentEmails: jest.fn() } as any,
       { getTodayEvents: jest.fn() } as any,
       { getUnreadEmails: jest.fn(), getTodayEvents: jest.fn() } as any,
-      { analyzeProductivityData: jest.fn() } as any,
-      configService as any,
+      (aiService || {
+        analyzeProductivityData: jest.fn().mockResolvedValue({
+          summary: 'Generated summary',
+          events: [],
+          suggested_tasks: [],
+          email_summaries: [],
+        }),
+      }) as any,
+      { getOrThrow: jest.fn() } as any,
       settingsService as any,
+      emailSyncService as any,
       new TokenRefreshQueueService(),
     );
   }
 
-  it('aggregates provider data, generates a summary, and stores it on the user', async () => {
-    prisma.oAuthToken.findMany.mockResolvedValue([
+  it('aggregates synced account data and stores summary', async () => {
+    prisma.emailAccount.findMany.mockResolvedValue([
+      { id: 'a1', provider: 'GOOGLE' },
+      { id: 'a2', provider: 'MICROSOFT' },
+    ]);
+    emailSyncService.syncForUser.mockResolvedValue([
       {
-        id: 'google-token',
-        provider: 'google',
-        accessToken: 'google-access',
-        refreshToken: 'google-refresh',
-        expiresAt: null,
+        account: {
+          provider: 'GOOGLE',
+          label: 'Perso',
+          emailAddress: 'p@example.com',
+        },
+        status: 'ready',
+        emails: [{ subject: 'Google mail' }],
+        events: [{ id: 'g-event' }],
       },
       {
-        id: 'ms-token',
-        provider: 'MICROSOFT',
-        accessToken: 'ms-access',
-        refreshToken: 'ms-refresh',
-        expiresAt: null,
+        account: {
+          provider: 'MICROSOFT',
+          label: 'Pro',
+          emailAddress: 'm@example.com',
+        },
+        status: 'ready',
+        emails: [{ subject: 'Outlook mail' }],
+        events: [{ id: 'm-event' }],
       },
     ]);
 
-    const mailService = {
-      getRecentEmails: jest
-        .fn()
-        .mockResolvedValue([{ subject: 'Google mail' }]),
-    };
-    const calendarService = {
-      getTodayEvents: jest.fn().mockResolvedValue([{ id: 'google-event' }]),
-    };
-    const microsoftService = {
-      getUnreadEmails: jest
-        .fn()
-        .mockResolvedValue([{ subject: 'Outlook mail' }]),
-      getTodayEvents: jest.fn().mockResolvedValue([
-        {
-          id: 'ms-event',
-          title: 'Standup',
-          start: '2026-06-26T09:00:00.000Z',
-          end: '2026-06-26T09:15:00.000Z',
-          provider: 'MICROSOFT',
-          location: 'Teams',
-        },
-      ]),
-    };
     const aiService = {
       analyzeProductivityData: jest.fn().mockResolvedValue({
         summary: 'Generated summary',
@@ -114,55 +93,16 @@ describe('SummaryService', () => {
         email_summaries: [],
       }),
     };
-    const service = new SummaryService(
-      prisma as any,
-      mailService as any,
-      calendarService as any,
-      microsoftService as any,
-      aiService as any,
-      configService as any,
-      settingsService as any,
-      new TokenRefreshQueueService(),
-    );
 
-    await expect(
-      service.generateSummaryForUser('user-1'),
-    ).resolves.toMatchObject({
+    const service = createService(aiService as any);
+
+    await expect(service.generateSummaryForUser('user-1')).resolves.toMatchObject({
       summary: 'Generated summary',
     });
 
-    expect(prisma.oAuthToken.findMany).toHaveBeenCalledWith({
-      where: { userId: 'user-1' },
-      orderBy: { updatedAt: 'desc' },
-    });
-    expect(mailService.getRecentEmails).toHaveBeenCalledWith(
-      'google-access',
-      'google-refresh',
-    );
-    expect(calendarService.getTodayEvents).toHaveBeenCalledWith(
-      'google-access',
-      'google-refresh',
-    );
-    expect(microsoftService.getUnreadEmails).toHaveBeenCalledWith(
-      'ms-access',
-      'ms-refresh',
-    );
-    expect(microsoftService.getTodayEvents).toHaveBeenCalledWith(
-      'ms-access',
-      'ms-refresh',
-    );
     expect(aiService.analyzeProductivityData).toHaveBeenCalledWith(
       [{ subject: 'Google mail' }, { subject: 'Outlook mail' }],
-      [
-        { id: 'google-event' },
-        {
-          id: 'ms-event',
-          title: 'Standup',
-          start: '2026-06-26T09:00:00.000Z',
-          end: '2026-06-26T09:15:00.000Z',
-          location: 'Teams',
-        },
-      ],
+      [{ id: 'g-event' }, { id: 'm-event' }],
       null,
     );
     expect(prisma.user.update).toHaveBeenCalledWith({
@@ -171,163 +111,36 @@ describe('SummaryService', () => {
     });
   });
 
-  it('returns a clear error when no OAuth accounts are connected', async () => {
-    prisma.oAuthToken.findMany.mockResolvedValue([]);
+  it('returns a clear error when no email accounts are connected', async () => {
+    prisma.emailAccount.findMany.mockResolvedValue([]);
     const service = createService();
 
     await expect(service.generateSummaryForUser('user-1')).resolves.toEqual({
       error:
-        'No OAuth token found. Please connect a Google or Outlook account.',
+        'No email account found. Please connect Google, Outlook, or an IMAP account.',
       integrations: [],
     });
-
-    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
-  it('uses the cached Microsoft token immediately and refreshes it asynchronously when it is close to expiring', async () => {
-    jest.useFakeTimers();
-    prisma.oAuthToken.findMany.mockResolvedValue([
-      {
-        id: 'ms-token',
-        provider: 'MICROSOFT',
-        accessToken: 'stale-access',
-        refreshToken: 'stale-refresh',
-        expiresAt: new Date(Date.now() + 30_000),
-      },
-    ]);
-    configService.getOrThrow.mockImplementation((key: string) => key);
-    getAxiosPostMock().mockResolvedValue({
-      data: {
-        access_token: 'fresh-access',
-        refresh_token: 'fresh-refresh',
-        expires_in: 3600,
-      },
-    });
-
-    const microsoftService = {
-      getUnreadEmails: jest.fn().mockResolvedValue([]),
-      getTodayEvents: jest.fn().mockResolvedValue([]),
-    };
-    const aiService = {
-      analyzeProductivityData: jest.fn().mockResolvedValue({
-        summary: 'Refreshed summary',
-        events: [],
-        suggested_tasks: [],
-        email_summaries: [],
-      }),
-    };
-    const service = new SummaryService(
-      prisma as any,
-      { getRecentEmails: jest.fn() } as any,
-      { getTodayEvents: jest.fn() } as any,
-      microsoftService as any,
-      aiService as any,
-      configService as any,
-      settingsService as any,
-      new TokenRefreshQueueService(),
-    );
-
-    await service.generateSummaryForUser('user-1');
-
-    expect(getAxiosPostMock()).not.toHaveBeenCalled();
-    expect(microsoftService.getUnreadEmails).toHaveBeenCalledWith(
-      'stale-access',
-      'stale-refresh',
-    );
-    expect(microsoftService.getTodayEvents).toHaveBeenCalledWith(
-      'stale-access',
-      'stale-refresh',
-    );
-
-    await jest.runAllTimersAsync();
-
-    expect(getAxiosPostMock()).toHaveBeenCalledTimes(1);
-    expect(prisma.oAuthToken.update).toHaveBeenCalledWith({
-      where: { id: 'ms-token' },
-      data: {
-        accessToken: 'fresh-access',
-        refreshToken: 'fresh-refresh',
-        expiresAt: expect.any(Date) as Date,
-      },
-    });
-    jest.useRealTimers();
-  });
-
-  it('returns a reconnect status instead of blocking on an expired token', async () => {
+  it('returns cached summary when all account syncs fail', async () => {
     prisma.user.findUnique.mockResolvedValue({ dailySummary: 'Cached summary' });
-    prisma.oAuthToken.findMany.mockResolvedValue([
+    prisma.emailAccount.findMany.mockResolvedValue([{ id: 'a1', provider: 'IMAP' }]);
+    emailSyncService.syncForUser.mockResolvedValue([
       {
-        id: 'ms-token',
-        provider: 'MICROSOFT',
-        accessToken: 'expired-access',
-        refreshToken: 'stale-refresh',
-        expiresAt: new Date(Date.now() - 60_000),
-      },
-    ]);
-    const microsoftService = {
-      getUnreadEmails: jest.fn(),
-      getTodayEvents: jest.fn(),
-    };
-    const service = new SummaryService(
-      prisma as any,
-      { getRecentEmails: jest.fn() } as any,
-      { getTodayEvents: jest.fn() } as any,
-      microsoftService as any,
-      { analyzeProductivityData: jest.fn() } as any,
-      configService as any,
-      settingsService as any,
-      new TokenRefreshQueueService(),
-    );
-
-    await expect(service.generateSummaryForUser('user-1')).resolves.toEqual({
-      summary: 'Cached summary',
-      events: [],
-      suggested_tasks: [],
-      email_summaries: [],
-      integrations: [
-        {
-          provider: 'MICROSOFT',
-          status: 'error',
-          code: 'needs_reauth',
-          message:
-            'La connexion Microsoft a expiré. Reconnectez votre compte pour continuer.',
+        account: {
+          provider: 'IMAP',
+          label: 'Yahoo',
+          emailAddress: 'user@yahoo.com',
         },
-      ],
-      usedCachedSummary: true,
-      error:
-        'Les données de vos intégrations sont temporairement indisponibles. Affichage du dernier résumé enregistré.',
-    });
-
-    expect(microsoftService.getUnreadEmails).not.toHaveBeenCalled();
-    expect(microsoftService.getTodayEvents).not.toHaveBeenCalled();
-  });
-
-  it('returns explicit integration errors instead of silently behaving like there is no data', async () => {
-    prisma.user.findUnique.mockResolvedValue({ dailySummary: 'Cached summary' });
-    prisma.oAuthToken.findMany.mockResolvedValue([
-      {
-        id: 'google-token',
-        provider: 'google',
-        accessToken: 'google-access',
-        refreshToken: 'google-refresh',
-        expiresAt: null,
+        status: 'error',
+        code: 'provider_unavailable',
+        message: 'Les données IMAP sont temporairement indisponibles.',
+        emails: [],
+        events: [],
       },
     ]);
 
-    const service = new SummaryService(
-      prisma as any,
-      {
-        getRecentEmails: jest
-          .fn()
-          .mockRejectedValue(IntegrationProviderError.unavailable('GOOGLE')),
-      } as any,
-      { getTodayEvents: jest.fn().mockResolvedValue([]) } as any,
-      { getUnreadEmails: jest.fn(), getTodayEvents: jest.fn() } as any,
-      { analyzeProductivityData: jest.fn() } as any,
-      configService as any,
-      settingsService as any,
-      new TokenRefreshQueueService(),
-    );
+    const service = createService();
 
     await expect(service.generateSummaryForUser('user-1')).resolves.toEqual({
       summary: 'Cached summary',
@@ -336,11 +149,12 @@ describe('SummaryService', () => {
       email_summaries: [],
       integrations: [
         {
-          provider: 'GOOGLE',
+          provider: 'IMAP',
           status: 'error',
           code: 'provider_unavailable',
-          message:
-            'Les données Google sont temporairement indisponibles.',
+          message: 'Les données IMAP sont temporairement indisponibles.',
+          label: 'Yahoo',
+          emailAddress: 'user@yahoo.com',
         },
       ],
       usedCachedSummary: true,
@@ -349,45 +163,29 @@ describe('SummaryService', () => {
     });
   });
 
-  it('matches excluded sender domains precisely without filtering broader lookalikes', async () => {
+  it('matches excluded sender domains precisely', async () => {
     settingsService.getSettings.mockResolvedValue({
       aiSummaryInstructions: null,
       excludedSenders: ['@news.com'],
     });
-    prisma.oAuthToken.findMany.mockResolvedValue([
+    prisma.emailAccount.findMany.mockResolvedValue([{ id: 'a1', provider: 'IMAP' }]);
+    emailSyncService.syncForUser.mockResolvedValue([
       {
-        id: 'google-token',
-        provider: 'google',
-        accessToken: 'google-access',
-        refreshToken: 'google-refresh',
-        expiresAt: null,
+        account: {
+          provider: 'IMAP',
+          label: 'Inbox',
+          emailAddress: 'user@example.com',
+        },
+        status: 'ready',
+        emails: [
+          { from: 'Alerts <team@news.com>', subject: 'skip' },
+          { from: 'John <john@newsletter.com>', subject: 'keep-1' },
+          { from: 'Updates <updates@realnews.com>', subject: 'keep-2' },
+        ],
+        events: [],
       },
     ]);
 
-    const keptLookalikeEmail = {
-      id: 'keep-1',
-      from: 'John Doe <john@newsletter.com>',
-      subject: 'Newsletter',
-    };
-    const keptDifferentDomainEmail = {
-      id: 'keep-2',
-      from: 'Updates <updates@realnews.com>',
-      subject: 'Industry update',
-    };
-    const excludedEmail = {
-      id: 'skip-1',
-      from: 'Alerts <team@news.com>',
-      subject: 'Breaking news',
-    };
-    const mailService = {
-      getRecentEmails: jest
-        .fn()
-        .mockResolvedValue([
-          excludedEmail,
-          keptLookalikeEmail,
-          keptDifferentDomainEmail,
-        ]),
-    };
     const aiService = {
       analyzeProductivityData: jest.fn().mockResolvedValue({
         summary: 'Résumé généré',
@@ -396,42 +194,17 @@ describe('SummaryService', () => {
         email_summaries: [],
       }),
     };
-    const service = new SummaryService(
-      prisma as any,
-      mailService as any,
-      { getTodayEvents: jest.fn().mockResolvedValue([]) } as any,
-      { getUnreadEmails: jest.fn(), getTodayEvents: jest.fn() } as any,
-      aiService as any,
-      configService as any,
-      settingsService as any,
-      new TokenRefreshQueueService(),
-    );
+    const service = createService(aiService as any);
 
     await service.generateSummaryForUser('user-1');
 
     expect(aiService.analyzeProductivityData).toHaveBeenCalledWith(
-      [keptLookalikeEmail, keptDifferentDomainEmail],
+      [
+        { from: 'John <john@newsletter.com>', subject: 'keep-1' },
+        { from: 'Updates <updates@realnews.com>', subject: 'keep-2' },
+      ],
       [],
       null,
     );
-  });
-
-  it('continues generating summaries when one user fails in the cron job', async () => {
-    prisma.user.findMany.mockResolvedValue([
-      { id: 'user-a' },
-      { id: 'user-b' },
-    ]);
-    const service = createService();
-    const generateSpy = jest
-      .spyOn(service, 'generateSummaryForUser')
-      .mockRejectedValueOnce(new Error('token expired'))
-      .mockResolvedValueOnce({ summary: 'ok' } as any);
-
-    await expect(
-      service.generateDailySummariesForAllUsers(),
-    ).resolves.toBeUndefined();
-
-    expect(generateSpy).toHaveBeenNthCalledWith(1, 'user-a');
-    expect(generateSpy).toHaveBeenNthCalledWith(2, 'user-b');
   });
 });

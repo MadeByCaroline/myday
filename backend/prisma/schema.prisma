@@ -21,6 +21,7 @@ model User {
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
   oauthTokens           OAuthToken[]
+  emailAccounts         EmailAccount[]
   tasks                 Task[]
   timeEntries           TimeEntry[]
   workspaces            Workspace[]
@@ -29,6 +30,12 @@ model User {
 enum Role {
   USER
   ADMIN
+}
+
+enum EmailProvider {
+  GOOGLE
+  MICROSOFT
+  IMAP
 }
 
 model OAuthToken {
@@ -49,6 +56,24 @@ model OAuthToken {
   @@unique([userId, provider, email])
   @@unique([provider, email])
   @@index([userId, workspaceId])
+}
+
+model EmailAccount {
+  id           String        @id @default(cuid())
+  userId       String
+  provider     EmailProvider
+  emailAddress String
+  label        String
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  imapConfig   Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, provider])
+  @@unique([userId, provider, emailAddress, label])
 }
 
 model Task {

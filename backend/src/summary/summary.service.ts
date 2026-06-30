@@ -16,6 +16,7 @@ import type { EmailSummary } from '../mail/mail.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { EmailSyncService } from '../integrations/email-sync.service';
 import { TokenRefreshQueueService } from './token-refresh.queue.service';
 
 interface RefreshedOAuthToken {
@@ -64,6 +65,7 @@ export class SummaryService {
     private readonly aiService: AiService,
     private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
+    private readonly emailSyncService: EmailSyncService,
     private readonly tokenRefreshQueue: TokenRefreshQueueService,
   ) {}
 
@@ -88,10 +90,10 @@ export class SummaryService {
   }
 
   async generateSummaryForUser(userId: string) {
-    const [oauthTokens, userSettings, user] = await Promise.all([
-      this.prisma.oAuthToken.findMany({
+    const [emailAccounts, userSettings, user] = await Promise.all([
+      this.prisma.emailAccount.findMany({
         where: { userId },
-        orderBy: { updatedAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
       }),
       this.settingsService.getSettings(userId),
       this.prisma.user.findUnique({
@@ -100,47 +102,36 @@ export class SummaryService {
       }),
     ]);
 
-    if (oauthTokens.length === 0) {
+    if (emailAccounts.length === 0) {
       return {
         error:
-          'No OAuth token found. Please connect a Google or Outlook account.',
+          'No email account found. Please connect Google, Outlook, or an IMAP account.',
         integrations: [],
       };
     }
 
     this.logger.log(
       'Connected providers for user: ' +
-        oauthTokens.map((token) => token.provider).join(', '),
+        emailAccounts.map((account) => account.provider).join(', '),
     );
 
-    const accountData = await Promise.allSettled(
-      oauthTokens.map((oauthToken) => this.fetchAccountData(oauthToken)),
-    );
-    const integrations = this.buildIntegrationStatuses(oauthTokens, accountData);
+    const syncedAccounts = await this.emailSyncService.syncForUser(userId);
+    const integrations = syncedAccounts.map((synced) => ({
+      provider: synced.account.provider,
+      status: synced.status === 'ready' ? 'ready' : 'error',
+      code: synced.code,
+      message: synced.message,
+      label: synced.account.label,
+      emailAddress: synced.account.emailAddress,
+    }));
 
-    const successfulData = accountData
-      .filter(
-        (
-          result,
-        ): result is PromiseFulfilledResult<{
-          provider: string;
-          emails: EmailSummary[];
-          events: CalendarEvent[];
-        }> => result.status === 'fulfilled',
-      )
-      .map((result) => result.value);
-
-    accountData
-      .filter(
-        (result): result is PromiseRejectedResult =>
-          result.status === 'rejected',
-      )
-      .forEach((result) => {
-        const reason = this.normalizeIntegrationError('UNKNOWN', result.reason);
-        this.logger.warn(
-          `Skipping an OAuth account due to fetch failure: ${reason.provider} ${reason.code}`,
-        );
-      });
+    const successfulData = syncedAccounts
+      .filter((synced) => synced.status === 'ready')
+      .map((synced) => ({
+        provider: synced.account.provider,
+        emails: synced.emails,
+        events: synced.events,
+      }));
 
     if (successfulData.length === 0) {
       return {

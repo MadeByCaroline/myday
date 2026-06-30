@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import type { EmailProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -22,7 +23,7 @@ export class UsersService {
     });
 
     if (!user) {
-      return this.prisma.user.create({
+      const createdUser = await this.prisma.user.create({
         data: {
           email: data.email,
           name: data.name,
@@ -40,6 +41,16 @@ export class UsersService {
         },
         include: { oauthTokens: true },
       });
+
+      await this.upsertEmailAccountForOAuth(createdUser.id, {
+        provider: data.provider,
+        email: data.oauthEmail,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        expiresAt: data.expiresAt,
+      });
+
+      return createdUser;
     }
 
     await this.linkOAuthToken(user.id, {
@@ -89,7 +100,7 @@ export class UsersService {
       );
     }
 
-    return this.prisma.oAuthToken.upsert({
+    const token = await this.prisma.oAuthToken.upsert({
       where: {
         userId_provider_email: {
           userId,
@@ -113,12 +124,22 @@ export class UsersService {
         scope: data.scope,
       },
     });
+
+    await this.upsertEmailAccountForOAuth(userId, {
+      provider: data.provider,
+      email: data.email,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      expiresAt: data.expiresAt,
+    });
+
+    return token;
   }
 
   async findById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: { oauthTokens: true },
+      include: { oauthTokens: true, emailAccounts: true },
     });
   }
 
@@ -143,5 +164,125 @@ export class UsersService {
         provider: { in: providers },
       },
     });
+  }
+
+  async getEmailAccounts(userId: string) {
+    return this.prisma.emailAccount.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async createImapEmailAccount(
+    userId: string,
+    data: {
+      emailAddress: string;
+      label: string;
+      host: string;
+      port: number;
+      secure: boolean;
+      password: string;
+    },
+  ) {
+    return this.prisma.emailAccount.create({
+      data: {
+        userId,
+        provider: 'IMAP',
+        emailAddress: data.emailAddress,
+        label: data.label,
+        imapConfig: {
+          host: data.host,
+          port: data.port,
+          secure: data.secure,
+          password: data.password,
+          user: data.emailAddress,
+        },
+      },
+    });
+  }
+
+  async disconnectEmailAccount(userId: string, accountId: string) {
+    const account = await this.prisma.emailAccount.findFirstOrThrow({
+      where: { id: accountId, userId },
+    });
+
+    await this.prisma.emailAccount.delete({
+      where: { id: account.id },
+    });
+
+    if (account.provider !== 'IMAP') {
+      await this.prisma.oAuthToken.deleteMany({
+        where: {
+          userId,
+          email: account.emailAddress,
+          provider: { in: this.getOAuthProviderVariants(account.provider) },
+        },
+      });
+    }
+
+    return account;
+  }
+
+  private async upsertEmailAccountForOAuth(
+    userId: string,
+    data: {
+      provider: string;
+      email: string;
+      accessToken: string;
+      refreshToken?: string;
+      expiresAt?: Date;
+    },
+  ) {
+    const provider = this.toEmailProvider(data.provider);
+    if (!provider) {
+      return;
+    }
+
+    const existing = await this.prisma.emailAccount.findFirst({
+      where: {
+        userId,
+        provider,
+        emailAddress: data.email,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (existing) {
+      return this.prisma.emailAccount.update({
+        where: { id: existing.id },
+        data: {
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          expiresAt: data.expiresAt,
+        },
+      });
+    }
+
+    return this.prisma.emailAccount.create({
+      data: {
+        userId,
+        provider,
+        emailAddress: data.email,
+        label: data.email,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        expiresAt: data.expiresAt,
+      },
+    });
+  }
+
+  private toEmailProvider(provider: string): EmailProvider | null {
+    const normalizedProvider = provider.trim().toUpperCase();
+    if (normalizedProvider === 'GOOGLE') {
+      return 'GOOGLE';
+    }
+    if (normalizedProvider === 'MICROSOFT') {
+      return 'MICROSOFT';
+    }
+    return null;
+  }
+
+  private getOAuthProviderVariants(provider: EmailProvider) {
+    return provider === 'GOOGLE' ? ['google', 'GOOGLE'] : ['MICROSOFT', 'microsoft'];
   }
 }
