@@ -95,7 +95,7 @@ export class GmailClient {
         }),
       );
 
-      return results.filter((e): e is EmailSummary => e !== null);
+      return results.filter((e): e is NonNullable<typeof e> & EmailSummary => e !== null);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown Gmail API error';
