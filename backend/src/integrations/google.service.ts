@@ -108,7 +108,7 @@ export class GoogleService {
         }
 
         try {
-          const refreshClient = this.createOAuthClient(accessToken, refreshToken);
+          const refreshClient = this.createOAuthClient('', refreshToken);
           refreshClient.setCredentials({ refresh_token: refreshToken });
           const { credentials } = await refreshClient.refreshAccessToken();
           const refreshedAccessToken = credentials.access_token;
@@ -119,7 +119,14 @@ export class GoogleService {
 
           const retryRequest = await runRequest(refreshedAccessToken);
           return await retryRequest(startOfDay, endOfDay);
-        } catch {
+        } catch (refreshError) {
+          const message =
+            refreshError instanceof Error
+              ? refreshError.message
+              : 'Unknown Google refresh error';
+          this.logger.warn(
+            `Google token refresh failed, requiring reauth: ${message}`,
+          );
           throw IntegrationProviderError.needsReauth('GOOGLE');
         }
       }

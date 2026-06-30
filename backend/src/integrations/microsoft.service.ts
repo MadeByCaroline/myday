@@ -374,7 +374,11 @@ export class MicrosoftService {
       );
 
       return response.data.access_token;
-    } catch {
+    } catch (error) {
+      const detail = this.getErrorDetail(error);
+      this.logger.warn(
+        `Microsoft token refresh failed, requiring reauth: ${detail}`,
+      );
       throw IntegrationProviderError.needsReauth('MICROSOFT');
     }
   }

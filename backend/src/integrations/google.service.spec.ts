@@ -181,6 +181,7 @@ describe('GoogleService', () => {
     ).resolves.toEqual([]);
 
     expect(mockRefreshAccessToken).toHaveBeenCalledTimes(1);
+    expect(mockOAuth2).toHaveBeenCalledTimes(3);
     expect(mockSetCredentials).toHaveBeenCalledWith({
       access_token: 'fresh-access',
       refresh_token: 'refresh-token',
