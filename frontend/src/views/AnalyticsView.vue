@@ -138,6 +138,11 @@
             Coach IA
           </h3>
 
+          <div v-if="audit.isFallback" class="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <i class="pi pi-exclamation-triangle mt-0.5 flex-shrink-0"></i>
+            <span>Les serveurs IA sont très sollicités. Voici une vue simplifiée de vos données.</span>
+          </div>
+
           <div class="bg-white rounded-xl border border-indigo-100 p-4 mb-4">
             <p class="text-gray-700 leading-relaxed whitespace-pre-line">{{ audit.analysis }}</p>
           </div>
@@ -193,6 +198,8 @@ interface TaskStat {
 interface TimeAudit {
   analysis: string
   recommendations: string[]
+  isFallback?: boolean
+  fallbackReason?: string
 }
 
 const authStore = useAuthStore()

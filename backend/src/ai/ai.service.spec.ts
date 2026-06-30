@@ -249,6 +249,8 @@ describe('AiService', () => {
           link: 'https://mail.google.com/mail/u/0/#inbox/mail-1',
         },
       ],
+      isFallback: true,
+      fallbackReason: 'Local provider unavailable',
     });
   });
 
@@ -410,6 +412,8 @@ describe('AiService', () => {
           "Votre calendrier est dégagé aujourd'hui, vous pouvez donc créer des plages de concentration.",
         recommendedFocus:
           "Donnez la priorité à votre tâche TODO prioritaire d'abord, puis traitez vos suivis e-mail par lot.",
+        isFallback: true,
+        fallbackReason: 'Local provider unavailable',
       });
     });
   });

@@ -115,6 +115,7 @@
     <MorningBriefingModal
       :visible="isMorningBriefingVisible"
       :briefing="morningBriefing"
+      :is-fallback="isMorningBriefingFallback"
       @close="dismissMorningBriefing"
     />
   </div>
@@ -143,6 +144,7 @@ const uiStore = useUiStore()
 const timerErrorMessage = ref<string | null>(null)
 const LAST_BRIEFING_DATE_KEY = 'lastBriefingDate'
 const isMorningBriefingVisible = ref(false)
+const isMorningBriefingFallback = ref(false)
 const morningBriefing = ref({
   greeting: 'Bonjour ! Tout est prêt pour bien démarrer.',
   emailSummary: 'Aucune donnée de briefing disponible.',
@@ -234,6 +236,7 @@ async function maybeShowMorningBriefing() {
       scheduleOverview: data.scheduleOverview || morningBriefing.value.scheduleOverview,
       recommendedFocus: data.recommendedFocus || morningBriefing.value.recommendedFocus,
     }
+    isMorningBriefingFallback.value = data.isFallback === true
 
     isMorningBriefingVisible.value = true
   } catch (error) {

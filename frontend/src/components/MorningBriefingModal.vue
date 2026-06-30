@@ -14,6 +14,11 @@
         </div>
       </div>
 
+      <div v-if="isFallback" class="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <i class="pi pi-exclamation-triangle mt-0.5 flex-shrink-0"></i>
+        <span>Les serveurs IA sont très sollicités. Voici une vue simplifiée de vos données.</span>
+      </div>
+
       <div class="space-y-4 text-sm text-gray-700">
         <p class="rounded-2xl bg-indigo-50/80 px-4 py-3 font-medium text-indigo-900">{{ briefing.greeting }}</p>
         <section>
@@ -54,6 +59,7 @@ interface MorningBriefing {
 defineProps<{
   visible: boolean
   briefing: MorningBriefing
+  isFallback?: boolean
 }>()
 
 defineEmits<{
