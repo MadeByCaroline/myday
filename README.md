@@ -161,6 +161,10 @@ myday/
 
 ---
 
+## 🧭 Architecture Notes
+
+- Backend architectural audit and modular refactoring roadmap: `backend/ARCHITECTURE_AUDIT.md`
+
 ## 🔌 API Endpoints
 
 | Method | Path                       | Auth | Description                                  |

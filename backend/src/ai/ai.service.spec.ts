@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AiService } from './ai.service';
+import type { IAiProvider } from './core/ai-provider.interface';
 
 const mockGenerateContent = jest.fn();
 const mockGetGenerativeModel = jest.fn(() => ({
@@ -100,6 +101,36 @@ describe('AiService', () => {
         },
       ],
     });
+  });
+
+  it('can run with injected AI providers only', async () => {
+    const geminiProvider: IAiProvider = {
+      name: 'gemini',
+      generate: jest.fn().mockResolvedValue('Injected answer'),
+    };
+    const localProvider: IAiProvider = {
+      name: 'local',
+      generate: jest.fn().mockResolvedValue('Local answer'),
+    };
+
+    const service = new AiService(
+      configService,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [geminiProvider, localProvider],
+    );
+    const result = await service.generateContent('hello');
+
+    expect(result).toBe('Injected answer');
+    expect(geminiProvider.generate).toHaveBeenCalledWith('hello', {});
+    expect(localProvider.generate).not.toHaveBeenCalled();
+    expect(GoogleGenerativeAI).not.toHaveBeenCalled();
   });
 
   it('parses analysis JSON wrapped in markdown fences', async () => {
