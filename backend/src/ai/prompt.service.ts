@@ -217,6 +217,59 @@ Analyse ma répartition du temps et fournis ${MAX_RECOMMENDATIONS} recommandatio
     return `${systemPrompt}\n\n${userContent}`;
   }
 
+  buildLinkedInPostPrompt(notes: string): string {
+    return `Tu es un expert en communication professionnelle sur LinkedIn.
+À partir des notes de réunion suivantes, rédige un post LinkedIn percutant, professionnel et engageant.
+Le post doit :
+- Être rédigé en français
+- Faire entre 150 et 300 mots
+- Commencer par une accroche forte
+- Inclure 3 à 5 hashtags pertinents à la fin
+- Ne pas mentionner de détails confidentiels
+
+Notes de réunion :
+${notes}
+
+Rédige uniquement le post LinkedIn, sans explication ni commentaire autour.`;
+  }
+
+  buildFollowUpEmailPrompt(notes: string): string {
+    return `Tu es un assistant professionnel expert en communication par e-mail.
+À partir des notes de réunion suivantes, rédige un e-mail de suivi professionnel et courtois à envoyer aux participants.
+L'e-mail doit :
+- Être rédigé en français
+- Avoir un objet clair (commençant par "Objet : ")
+- Résumer les points clés discutés
+- Lister les actions décidées
+- Se terminer par une formule de politesse appropriée
+- Ne pas inventer de noms, utiliser des formules génériques si nécessaire
+
+Notes de réunion :
+${notes}
+
+Rédige uniquement l'e-mail de suivi, sans explication ni commentaire autour.`;
+  }
+
+  buildMeetingTaskListPrompt(notes: string): string {
+    return `Tu es un assistant de productivité expert en gestion de projet.
+À partir des notes de réunion suivantes, extrais toutes les actions et tâches à réaliser.
+Tu dois retourner UNIQUEMENT un objet JSON valide avec la structure suivante, rien d'autre :
+{
+  "tasks": [
+    {
+      "title": "Titre court et actionnable de la tâche (en français)",
+      "dueDate": "YYYY-MM-DD ou null si non précisé",
+      "status": "TODO"
+    }
+  ]
+}
+
+Notes de réunion :
+${notes}
+
+Génère maintenant la réponse JSON.`;
+  }
+
   buildWorkspaceChatPrompt(
     prompt: string,
     history: WorkspaceChatHistoryMessage[],

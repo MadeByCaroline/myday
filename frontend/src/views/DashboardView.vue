@@ -8,6 +8,13 @@
         </div>
         <div class="flex items-center gap-3">
           <button
+            @click="showMeetingGenerator = true"
+            class="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-emerald-700 transition-colors"
+          >
+            <i class="pi pi-file-edit"></i>
+            Générer depuis notes
+          </button>
+          <button
             @click="optimizeDay"
             :disabled="tasksStore.loading || dashboardStore.isLoading"
             class="flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
@@ -186,6 +193,12 @@
         </div>
       </div>
   </main>
+
+  <!-- Meeting Generator Modal -->
+  <MeetingGeneratorModal
+    :visible="showMeetingGenerator"
+    @close="showMeetingGenerator = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -201,6 +214,7 @@ import SummaryCard from '../components/SummaryCard.vue'
 import DailyAgenda from '../components/DailyAgenda.vue'
 import TaskListView from '../components/TaskListView.vue'
 import SocialStatsWidget, { type SocialWidgetItem } from '../components/SocialStatsWidget.vue'
+import MeetingGeneratorModal from '../components/MeetingGeneratorModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -214,6 +228,7 @@ const hour = now.getHours()
 const isOptimizing = ref(false)
 const banningEmailId = ref<string | null>(null)
 const socialStats = ref<SocialWidgetItem[]>([])
+const showMeetingGenerator = ref(false)
 
 const greeting = computed(() => {
   if (hour < 12) return 'Bonjour'

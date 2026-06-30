@@ -186,6 +186,37 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  async function bulkCreate(
+    tasks: Array<{ title: string; dueDate?: string | null; status?: string }>,
+    workspaceId?: string | null,
+  ) {
+    loading.value = true
+
+    try {
+      const creationWorkspaceId = workspaceId ?? getTaskCreationWorkspaceId()
+      const results = await Promise.all(
+        tasks.map((task) =>
+          axios.post(
+            `${import.meta.env.VITE_API_URL}/tasks`,
+            {
+              title: task.title,
+              description: task.dueDate ? `Échéance : ${task.dueDate}` : undefined,
+              source: 'AI_GENERATED',
+              workspaceId: creationWorkspaceId,
+            },
+            { headers: getAuthHeaders() },
+          ),
+        ),
+      )
+
+      const newTasks = results.map((r) => r.data as SavedTask)
+      savedTasks.value.unshift(...newTasks)
+      return newTasks
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function deleteTask(id: string) {
     await axios.delete(`${import.meta.env.VITE_API_URL}/tasks/${id}`, {
       headers: getAuthHeaders(),
@@ -226,5 +257,6 @@ export const useTasksStore = defineStore('tasks', () => {
     deleteTask,
     optimizeDay,
     bulkUpdateTasks,
+    bulkCreate,
   }
 })

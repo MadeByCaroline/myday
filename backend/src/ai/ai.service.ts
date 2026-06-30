@@ -239,6 +239,68 @@ export class AiService {
     return briefing;
   }
 
+  async processMeetingNotes(notes: string): Promise<{
+    linkedin: string;
+    email: string;
+    tasks: Array<{ title: string; dueDate: string | null; status: string }>;
+  }> {
+    const linkedinPrompt = this.promptService.buildLinkedInPostPrompt(notes);
+    const emailPrompt = this.promptService.buildFollowUpEmailPrompt(notes);
+    const taskListPrompt = this.promptService.buildMeetingTaskListPrompt(notes);
+
+    const [linkedin, emailText, rawTasks] = await Promise.all([
+      this.resolveAIRequest(linkedinPrompt).catch((error) => {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        this.logger.error('LinkedIn post generation error', message);
+        return '';
+      }),
+      this.resolveAIRequest(emailPrompt).catch((error) => {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        this.logger.error('Follow-up email generation error', message);
+        return '';
+      }),
+      this.resolveAIRequest(taskListPrompt, { isJson: true }).catch((error) => {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        this.logger.error('Task list generation error', message);
+        return '{"tasks":[]}';
+      }),
+    ]);
+
+    let tasks: Array<{ title: string; dueDate: string | null; status: string }> =
+      [];
+    try {
+      const parsed = this.parseJsonResponse<{
+        tasks?: Array<{
+          title?: unknown;
+          dueDate?: unknown;
+          status?: unknown;
+        }>;
+      }>(rawTasks, 'meeting task list');
+      if (Array.isArray(parsed.tasks)) {
+        tasks = parsed.tasks
+          .filter(
+            (t): t is { title: string; dueDate?: unknown; status?: unknown } =>
+              typeof t === 'object' && t !== null && typeof t.title === 'string',
+          )
+          .map((t) => ({
+            title: t.title,
+            dueDate:
+              typeof t.dueDate === 'string' && t.dueDate.trim() !== 'null'
+                ? t.dueDate.trim()
+                : null,
+            status: 'TODO',
+          }));
+      }
+    } catch {
+      tasks = [];
+    }
+
+    return { linkedin, email: emailText, tasks };
+  }
+
   async answerWorkspaceQuestion(params: {
     prompt: string;
     history?: WorkspaceChatHistoryMessage[];
