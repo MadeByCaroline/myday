@@ -195,7 +195,13 @@ export class AuthController {
     const host = body.host?.trim();
     const port = Number(body.port);
 
-    if (!emailAddress || !label || !host || !Number.isFinite(port) || !body.password) {
+    if (
+      !emailAddress ||
+      !label ||
+      !host ||
+      !Number.isFinite(port) ||
+      !body.password
+    ) {
       throw new BadRequestException('Missing IMAP configuration fields.');
     }
 

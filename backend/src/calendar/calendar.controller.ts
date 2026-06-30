@@ -15,7 +15,9 @@ export class CalendarController {
   constructor(private readonly calendarService: CalendarService) {}
 
   @Get('today')
-  async getTodayCalendar(@Req() req: CalendarRequest): Promise<CalendarEvent[]> {
+  async getTodayCalendar(
+    @Req() req: CalendarRequest,
+  ): Promise<CalendarEvent[]> {
     return this.calendarService.getTodayWorkspaceEvents(req.user.id);
   }
 }

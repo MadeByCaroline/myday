@@ -28,7 +28,9 @@ export class PaymentsController {
 
   @Get('subscription/status')
   @UseGuards(JwtAuthGuard)
-  getSubscriptionStatus(@Req() req: AuthenticatedRequest): { isPremium: boolean } {
+  getSubscriptionStatus(@Req() req: AuthenticatedRequest): {
+    isPremium: boolean;
+  } {
     return { isPremium: req.user.isPremium };
   }
 

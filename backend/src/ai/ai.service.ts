@@ -45,6 +45,13 @@ interface ResolveAIRequestOptions {
   tools?: WorkspaceChatToolset;
 }
 
+class AiParsingException extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AiParsingException';
+  }
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -122,8 +129,11 @@ export class AiService {
     );
 
     try {
-      const content = await this.resolveAIRequest(prompt, { isJson: true });
-      const parsedResult = JSON.parse(content) as AiAnalysisResult;
+      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const parsedResult = this.parseJsonResponse<AiAnalysisResult>(
+        rawAiResponse,
+        'AI analysis',
+      );
 
       if (!parsedResult.events || parsedResult.events.length === 0) {
         parsedResult.events = events;
@@ -149,7 +159,7 @@ export class AiService {
       this.logger.error('Gemini API error', message);
       return {
         summary:
-          "Impossible de générer le résumé IA pour le moment. Vérifiez la configuration de Gemini.",
+          'Impossible de générer le résumé IA pour le moment. Vérifiez la configuration de Gemini.',
         events,
         suggested_tasks: [],
         email_summaries: this.buildFallbackEmailSummaries(emails),
@@ -173,7 +183,11 @@ export class AiService {
     action: string;
     events: import('../calendar/calendar.service').CalendarEvent[];
   }): Promise<string> {
-    const prompt = this.promptService.buildDraftReplyPrompt(email, action, events);
+    const prompt = this.promptService.buildDraftReplyPrompt(
+      email,
+      action,
+      events,
+    );
     try {
       const content = await this.resolveAIRequest(prompt);
       return content || this.buildFallbackDraftReply(action);
@@ -185,7 +199,9 @@ export class AiService {
     }
   }
 
-  async generateMorningBriefing(userId: string): Promise<MorningBriefingResult> {
+  async generateMorningBriefing(
+    userId: string,
+  ): Promise<MorningBriefingResult> {
     const todayKey = new Date().toISOString().slice(0, 10);
     this.briefingService.pruneCache(todayKey);
     const cached = this.briefingService.getFromCache(userId);
@@ -193,8 +209,12 @@ export class AiService {
       return cached.briefing;
     }
 
-    const context = await this.briefingService.getMorningBriefingContext(userId);
-    const prompt = this.promptService.buildMorningBriefingPrompt(context, userId);
+    const context =
+      await this.briefingService.getMorningBriefingContext(userId);
+    const prompt = this.promptService.buildMorningBriefingPrompt(
+      context,
+      userId,
+    );
 
     let briefing: MorningBriefingResult;
     try {
@@ -233,10 +253,7 @@ export class AiService {
         history: params.history,
         tools: params.tools,
       });
-      return (
-        text ||
-        "Je n'ai pas pu formuler une réponse pour le moment."
-      );
+      return text || "Je n'ai pas pu formuler une réponse pour le moment.";
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown AI provider error';
@@ -249,10 +266,16 @@ export class AiService {
     tasks: TimeBlockingTaskInput[],
     calendarEvents: import('../calendar/calendar.service').CalendarEvent[],
   ): Promise<TimeBlock[]> {
-    const prompt = this.promptService.buildTimeBlockingPrompt(tasks, calendarEvents);
+    const prompt = this.promptService.buildTimeBlockingPrompt(
+      tasks,
+      calendarEvents,
+    );
     try {
-      const content = await this.resolveAIRequest(prompt, { isJson: true });
-      const parsed = JSON.parse(content) as unknown;
+      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const parsed = this.parseJsonResponse<unknown[] | Record<string, unknown>>(
+        rawAiResponse,
+        'AI time-blocking',
+      );
 
       if (!Array.isArray(parsed)) {
         return this.buildFallbackTimeBlocks(tasks);
@@ -284,16 +307,21 @@ export class AiService {
       taskStatus: string;
       totalDuration: number;
     }>;
-  }): Promise<{ analysis: string; recommendations: string[]; isFallback?: boolean; fallbackReason?: string }> {
+  }): Promise<{
+    analysis: string;
+    recommendations: string[];
+    isFallback?: boolean;
+    fallbackReason?: string;
+  }> {
     const MAX_RECOMMENDATIONS = 2;
     const prompt = this.promptService.buildTimeAuditPrompt(statsData);
 
     try {
-      const content = await this.resolveAIRequest(prompt, { isJson: true });
-      const parsed = JSON.parse(content) as {
+      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const parsed = this.parseJsonResponse<{
         analysis?: unknown;
         recommendations?: unknown;
-      };
+      }>(rawAiResponse, 'AI time audit');
 
       const analysis =
         typeof parsed.analysis === 'string' && parsed.analysis.trim().length > 0
@@ -405,6 +433,26 @@ export class AiService {
     return result.response.text().trim();
   }
 
+  private cleanJsonResponse(response: string): string {
+    return response
+      .replace(/^\s*```(?:json)?\s*/iu, '')
+      .replace(/\s*```\s*$/u, '')
+      .trim();
+  }
+
+  private parseJsonResponse<T>(rawAiResponse: string, context: string): T {
+    const cleanedResponse = this.cleanJsonResponse(rawAiResponse);
+
+    try {
+      return JSON.parse(cleanedResponse) as T;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`${context} JSON parsing failed`, message);
+      this.logger.debug(`Raw AI response: ${rawAiResponse}`);
+      throw new AiParsingException(`Invalid ${context} JSON response`);
+    }
+  }
+
   private buildLocalPrompt(
     prompt: string,
     options: ResolveAIRequestOptions,
@@ -498,7 +546,7 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
     }
     if (typeof value === 'string') {
       try {
-        const parsed = JSON.parse(value) as unknown;
+        const parsed = JSON.parse(this.cleanJsonResponse(value)) as unknown;
         if (!Array.isArray(parsed)) {
           return null;
         }

@@ -27,7 +27,8 @@ export class ScheduleController {
     const calendarEvents =
       await this.calendarService.getTodayWorkspaceEvents(userId);
 
-    const openTasks = await this.tasksService.getOpenTasksAcrossWorkspaces(userId);
+    const openTasks =
+      await this.tasksService.getOpenTasksAcrossWorkspaces(userId);
     const schedulingTasks = openTasks.map((task) => ({
       id: task.id,
       title: task.title,

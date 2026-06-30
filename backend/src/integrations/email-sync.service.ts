@@ -62,8 +62,12 @@ export class EmailSyncService {
     });
   }
 
-  private async syncAccount(account: EmailAccount): Promise<SyncedEmailAccount> {
-    const adapter = this.adapters.find((candidate) => candidate.supports(account));
+  private async syncAccount(
+    account: EmailAccount,
+  ): Promise<SyncedEmailAccount> {
+    const adapter = this.adapters.find((candidate) =>
+      candidate.supports(account),
+    );
     if (!adapter) {
       throw IntegrationProviderError.unavailable(account.provider);
     }

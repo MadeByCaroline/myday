@@ -4,7 +4,8 @@ import { Injectable, Logger } from '@nestjs/common';
 export class TokenRefreshQueueService {
   private readonly logger = new Logger(TokenRefreshQueueService.name);
   private readonly pendingKeys = new Set<string>();
-  private readonly tasks: Array<{ key: string; task: () => Promise<void> }> = [];
+  private readonly tasks: Array<{ key: string; task: () => Promise<void> }> =
+    [];
   private processing = false;
   private scheduled = false;
 
@@ -39,7 +40,9 @@ export class TokenRefreshQueueService {
         await nextTask.task();
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Unknown token refresh error';
+          error instanceof Error
+            ? error.message
+            : 'Unknown token refresh error';
         this.logger.warn(
           `Background token refresh failed for ${nextTask.key}: ${message}`,
         );

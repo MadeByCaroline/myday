@@ -60,7 +60,9 @@ describe('TasksService', () => {
 
     const result = await service.getUserTasks('user-1');
 
-    expect(workspacesService.ensureDefaultWorkspace).toHaveBeenCalledWith('user-1');
+    expect(workspacesService.ensureDefaultWorkspace).toHaveBeenCalledWith(
+      'user-1',
+    );
     expect(prisma.task.findMany).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
       include: { workspace: true },
@@ -71,7 +73,10 @@ describe('TasksService', () => {
 
   it('fetches all open tasks across workspaces for scheduling', async () => {
     const { prisma, service } = createService();
-    prisma.task.findMany.mockResolvedValue([{ id: 'task-1' }, { id: 'task-2' }]);
+    prisma.task.findMany.mockResolvedValue([
+      { id: 'task-1' },
+      { id: 'task-2' },
+    ]);
 
     await service.getOpenTasksAcrossWorkspaces('user-1');
 
@@ -90,7 +95,11 @@ describe('TasksService', () => {
       const { prisma, service } = createService();
       prisma.task.updateMany.mockResolvedValue({ count: 2 });
 
-      const result = await service.bulkUpdateTasks('user-1', ['t1', 't2'], 'DONE');
+      const result = await service.bulkUpdateTasks(
+        'user-1',
+        ['t1', 't2'],
+        'DONE',
+      );
 
       expect(prisma.task.updateMany).toHaveBeenCalledWith({
         where: { id: { in: ['t1', 't2'] }, userId: 'user-1' },

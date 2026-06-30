@@ -16,7 +16,8 @@ describe('PremiumGuard', () => {
   beforeEach(() => {
     guard = new PremiumGuard();
     // Bypass JwtAuthGuard base behaviour by resolving immediately
-    jest.spyOn(Object.getPrototypeOf(PremiumGuard.prototype), 'canActivate')
+    jest
+      .spyOn(Object.getPrototypeOf(PremiumGuard.prototype), 'canActivate')
       .mockResolvedValue(true);
   });
 

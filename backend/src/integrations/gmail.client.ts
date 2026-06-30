@@ -58,8 +58,9 @@ export class GmailClient {
         maxResults: limit,
       });
 
-      const messageIds = (listResponse.data.messages || [])
-        .filter((msg): msg is { id: string } => !!msg.id);
+      const messageIds = (listResponse.data.messages || []).filter(
+        (msg): msg is { id: string } => !!msg.id,
+      );
 
       const results = await Promise.all(
         messageIds.map(async (msg) => {
@@ -81,9 +82,8 @@ export class GmailClient {
                 headers.find((h) => h.name === 'Subject')?.value ||
                 '(no subject)',
               snippet: detail.data.snippet || '',
-              receivedAt:
-                headers.find((h) => h.name === 'Date')?.value || '',
-            } as EmailSummary;
+              receivedAt: headers.find((h) => h.name === 'Date')?.value || '',
+            };
           } catch (error) {
             const message =
               error instanceof Error

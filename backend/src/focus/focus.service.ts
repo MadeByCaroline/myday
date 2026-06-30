@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { GoogleService } from '../integrations/google.service';
 import { MicrosoftService } from '../integrations/microsoft.service';
 import { UsersService } from '../users/users.service';

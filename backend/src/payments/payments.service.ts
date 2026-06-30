@@ -57,10 +57,7 @@ export class PaymentsService {
     return session.url;
   }
 
-  async handleWebhookEvent(
-    rawBody: Buffer,
-    signature: string,
-  ): Promise<void> {
+  async handleWebhookEvent(rawBody: Buffer, signature: string): Promise<void> {
     let event: Stripe.Event;
 
     try {
@@ -78,7 +75,7 @@ export class PaymentsService {
     }
 
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
+      const session = event.data.object;
       const userId = session.client_reference_id;
 
       if (!userId) {

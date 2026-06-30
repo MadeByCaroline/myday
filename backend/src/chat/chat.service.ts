@@ -14,7 +14,10 @@ interface ConversationMessage {
 @Injectable()
 export class ChatService {
   // Conversation history is stored in-memory per user (last 20 messages) and resets on server restart.
-  private readonly conversationByUser = new Map<string, ConversationMessage[]>();
+  private readonly conversationByUser = new Map<
+    string,
+    ConversationMessage[]
+  >();
 
   constructor(
     private readonly aiService: AiService,
@@ -97,7 +100,9 @@ export class ChatService {
           result.status === 'fulfilled',
       )
       .flatMap((result) => result.value)
-      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      .sort(
+        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime(),
+      );
   }
 
   private async getTasks(userId: string, status?: string) {

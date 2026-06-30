@@ -25,7 +25,7 @@ describe('MicrosoftStrategy', () => {
       strategy.validate(
         {
           query: { state: 'link-state' },
-        } as Request,
+        },
         'access-token',
         'refresh-token',
         {
@@ -57,7 +57,7 @@ describe('MicrosoftStrategy', () => {
       strategy.validate(
         {
           query: {},
-        } as Request,
+        },
         'access-token',
         'refresh-token',
         {},
@@ -75,7 +75,7 @@ describe('MicrosoftStrategy', () => {
       strategy.validate(
         {
           query: {},
-        } as Request,
+        },
         'access-token',
         'refresh-token',
         {},
@@ -96,7 +96,7 @@ describe('MicrosoftStrategy', () => {
       strategy.validate(
         {
           query: {},
-        } as Request,
+        },
         'access-token',
         'refresh-token',
         {},

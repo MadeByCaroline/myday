@@ -27,6 +27,7 @@ export class PromptService {
 
     const systemPrompt = `Tu es un assistant de productivité personnel. Analyse les emails et les événements de l'agenda de l'utilisateur.
     Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.${customInstructionsLine}
+    You must return a JSON object.
     Retourne UNIQUEMENT un objet JSON avec EXACTEMENT cette structure, rien d'autre. N'ajoute aucune explication, aucun commentaire et aucun texte hors du JSON :
     {
       "summary": "Un résumé clair de 2 ou 3 paragraphes de la journée de l'utilisateur, incluant les réunions et emails clés (rédigé en français)",
@@ -99,6 +100,7 @@ Utilise un ton encourageant, bienveillant et concis.
 Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
 
 Retourne UNIQUEMENT un objet JSON valide avec EXACTEMENT cette structure, sans aucune autre explication ou texte en dehors du bloc JSON :
+You must return a JSON object.
 {
   "greeting": "Un court message d'accueil encourageant en français",
   "emailSummary": "Résumé synthétique des emails non lus des dernières 12 heures en français",
@@ -194,6 +196,7 @@ Schedule the tasks into the free time slots and return the JSON array.`;
     const systemPrompt = `Tu es un coach de productivité expert en gestion du temps.
 Analyse les données hebdomadaires de suivi du temps de l'utilisateur et fournis un bilan clair, actionnable et encourageant.
 Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
+You must return a JSON object.
 Retourne UNIQUEMENT un objet JSON valide avec EXACTEMENT cette structure, rien d'autre. N'ajoute aucune explication, aucun commentaire et aucun texte hors du JSON :
 {
   "analysis": "Une analyse en 2 ou 3 paragraphes de la manière dont l'utilisateur a réparti son temps cette semaine, mettant en avant les points positifs et les points d'attention",
@@ -230,9 +233,7 @@ Analyse ma répartition du temps et fournis ${MAX_RECOMMENDATIONS} recommandatio
     ].join('\n');
   }
 
-  sanitizeAiSummaryInstructions(
-    instructions?: string | null,
-  ): string | null {
+  sanitizeAiSummaryInstructions(instructions?: string | null): string | null {
     if (!instructions) {
       return null;
     }

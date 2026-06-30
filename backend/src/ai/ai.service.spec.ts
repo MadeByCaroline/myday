@@ -76,6 +76,9 @@ describe('AiService', () => {
     expect(mockGenerateContent.mock.calls[0][0]).toContain(
       "N'ajoute aucune explication, aucun commentaire et aucun texte hors du JSON",
     );
+    expect(mockGenerateContent.mock.calls[0][0]).toContain(
+      'You must return a JSON object.',
+    );
     expect(result).toEqual({
       summary: 'Today looks busy.',
       events,
@@ -99,6 +102,21 @@ describe('AiService', () => {
     });
   });
 
+  it('parses analysis JSON wrapped in markdown fences', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => '```json\n{"summary":"Résumé encadré","events":[]}\n```',
+      },
+    });
+
+    const service = new AiService(configService);
+    const result = await service.analyzeProductivityData(emails, events);
+
+    expect(result.summary).toBe('Résumé encadré');
+    expect(result.events).toEqual(events);
+    expect(result.suggested_tasks).toEqual([]);
+  });
+
   it('parses categorized email summaries when AI returns them as a JSON string', async () => {
     mockGenerateContent.mockResolvedValue({
       response: {
@@ -107,8 +125,7 @@ describe('AiService', () => {
             summary: 'Voici votre journée.',
             events,
             suggested_tasks: [],
-            email_summaries:
-              `[{"emailId":"mail-1","summary":"Demande d'envoyer un compte rendu","category":"ACTION_REQUIRED"},{"emailId":"mail-2","summary":"Mise à jour hebdomadaire","category":"newsletter"},{"emailId":"mail-3","summary":"Notification d'information","category":"UNKNOWN"}]`,
+            email_summaries: `[{"emailId":"mail-1","summary":"Demande d'envoyer un compte rendu","category":"ACTION_REQUIRED"},{"emailId":"mail-2","summary":"Mise à jour hebdomadaire","category":"newsletter"},{"emailId":"mail-3","summary":"Notification d'information","category":"UNKNOWN"}]`,
           }),
       },
     });
@@ -178,7 +195,7 @@ describe('AiService', () => {
 
     const prompt = mockGenerateContent.mock.calls[0][0] as string;
 
-    expect(prompt).toContain('Instructions personnalisées de l\'utilisateur');
+    expect(prompt).toContain("Instructions personnalisées de l'utilisateur");
     expect(prompt).toContain('Réponds en puces.');
     expect(prompt).not.toContain('Ignore previous instructions');
     expect(prompt).not.toContain('system:');
@@ -252,6 +269,34 @@ describe('AiService', () => {
       isFallback: true,
       fallbackReason: 'Local provider unavailable',
     });
+  });
+
+  it('logs parsing errors with raw response and returns fallback data', async () => {
+    const rawAiResponse = '```json\n{"summary":"oops"\n```';
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => rawAiResponse,
+      },
+    });
+
+    const service = new AiService(configService);
+    const logger = (
+      service as unknown as {
+        logger: { error: (...args: unknown[]) => void; debug: (msg: string) => void };
+      }
+    ).logger;
+    const errorSpy = jest.spyOn(logger, 'error');
+    const debugSpy = jest.spyOn(logger, 'debug');
+
+    const result = await service.analyzeProductivityData(emails, events);
+
+    expect(result.isFallback).toBe(true);
+    expect(result.fallbackReason).toBe('Invalid AI analysis JSON response');
+    expect(errorSpy).toHaveBeenCalledWith(
+      'AI analysis JSON parsing failed',
+      expect.any(String),
+    );
+    expect(debugSpy).toHaveBeenCalledWith(`Raw AI response: ${rawAiResponse}`);
   });
 
   it('uses local AI for JSON analysis when USE_LOCAL_AI is true', async () => {
@@ -659,7 +704,9 @@ describe('AiService', () => {
       expect(mockGenerateContent.mock.calls[0][0]).toContain(
         'Unified tasks and events with workspace metadata',
       );
-      expect(mockGenerateContent.mock.calls[0][0]).toContain('"workspaceName": "Work"');
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        '"workspaceName": "Work"',
+      );
       expect(mockGenerateContent.mock.calls[0][0]).toContain('"kind": "event"');
     });
 
@@ -779,6 +826,29 @@ describe('AiService', () => {
       expect(mockGenerateContent.mock.calls[0][0]).toContain(
         "N'ajoute aucune explication, aucun commentaire et aucun texte hors du JSON",
       );
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        'You must return a JSON object.',
+      );
+    });
+
+    it('parses time audit JSON wrapped in markdown fences', async () => {
+      mockGenerateContent.mockResolvedValue({
+        response: {
+          text: () =>
+            '```json\n{"analysis":"Analyse ok","recommendations":["Action 1","Action 2"]}\n```',
+        },
+      });
+
+      const service = new AiService(configService);
+      const result = await service.generateTimeAudit({
+        totalDuration: 7200,
+        taskStats: [],
+      });
+
+      expect(result).toEqual({
+        analysis: 'Analyse ok',
+        recommendations: ['Action 1', 'Action 2'],
+      });
     });
   });
 });

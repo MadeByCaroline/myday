@@ -42,8 +42,12 @@ describe('EmailSyncService', () => {
       { id: 'm1', provider: 'MICROSOFT' },
     ]);
 
-    gmailAdapter.supports.mockImplementation((account: { provider: string }) => account.provider === 'GOOGLE');
-    microsoftAdapter.supports.mockImplementation((account: { provider: string }) => account.provider === 'MICROSOFT');
+    gmailAdapter.supports.mockImplementation(
+      (account: { provider: string }) => account.provider === 'GOOGLE',
+    );
+    microsoftAdapter.supports.mockImplementation(
+      (account: { provider: string }) => account.provider === 'MICROSOFT',
+    );
     imapAdapter.supports.mockReturnValue(false);
 
     gmailAdapter.fetchEmails.mockResolvedValue([{ id: 'ge1' }]);
@@ -70,7 +74,9 @@ describe('EmailSyncService', () => {
   });
 
   it('returns provider errors per account without failing global sync', async () => {
-    prisma.emailAccount.findMany.mockResolvedValue([{ id: 'i1', provider: 'IMAP' }]);
+    prisma.emailAccount.findMany.mockResolvedValue([
+      { id: 'i1', provider: 'IMAP' },
+    ]);
 
     gmailAdapter.supports.mockReturnValue(false);
     microsoftAdapter.supports.mockReturnValue(false);

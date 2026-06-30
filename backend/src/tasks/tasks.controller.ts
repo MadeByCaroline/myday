@@ -48,7 +48,11 @@ export class TasksController {
     if (typeof body.status !== 'string' || !body.status) {
       throw new BadRequestException('status is required');
     }
-    return this.tasksService.bulkUpdateTasks(req.user.id, body.taskIds, body.status);
+    return this.tasksService.bulkUpdateTasks(
+      req.user.id,
+      body.taskIds,
+      body.status,
+    );
   }
 
   @Patch(':id')

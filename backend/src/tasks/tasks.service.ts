@@ -98,11 +98,7 @@ export class TasksService {
     });
   }
 
-  async bulkUpdateTasks(
-    userId: string,
-    taskIds: string[],
-    status: string,
-  ) {
+  async bulkUpdateTasks(userId: string, taskIds: string[], status: string) {
     if (!VALID_STATUSES.includes(status as TaskStatus)) {
       throw new BadRequestException(
         `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,

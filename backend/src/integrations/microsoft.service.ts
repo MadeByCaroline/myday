@@ -358,7 +358,9 @@ export class MicrosoftService {
       }>(
         'https://login.microsoftonline.com/common/oauth2/v2.0/token',
         new URLSearchParams({
-          client_id: this.configService.getOrThrow<string>('MICROSOFT_CLIENT_ID'),
+          client_id: this.configService.getOrThrow<string>(
+            'MICROSOFT_CLIENT_ID',
+          ),
           client_secret: this.configService.getOrThrow<string>(
             'MICROSOFT_CLIENT_SECRET',
           ),

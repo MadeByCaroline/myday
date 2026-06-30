@@ -16,7 +16,11 @@ export class SettingsService {
   async getSettings(userId: string): Promise<UserSettings> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { theme: true, aiSummaryInstructions: true, excludedSenders: true },
+      select: {
+        theme: true,
+        aiSummaryInstructions: true,
+        excludedSenders: true,
+      },
     });
 
     return {
@@ -43,7 +47,11 @@ export class SettingsService {
           excludedSenders: JSON.stringify(data.excludedSenders),
         }),
       },
-      select: { theme: true, aiSummaryInstructions: true, excludedSenders: true },
+      select: {
+        theme: true,
+        aiSummaryInstructions: true,
+        excludedSenders: true,
+      },
     });
 
     return {
