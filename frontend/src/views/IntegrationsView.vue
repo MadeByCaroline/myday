@@ -49,6 +49,27 @@
           >
             Configure IMAP
           </button>
+          <button
+            type="button"
+            class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50"
+            @click="connectSocialOAuth('INSTAGRAM')"
+          >
+            Connect Instagram
+          </button>
+          <button
+            type="button"
+            class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50"
+            @click="connectSocialOAuth('FACEBOOK')"
+          >
+            Connect Facebook
+          </button>
+          <button
+            type="button"
+            class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50"
+            @click="connectSocialOAuth('TIKTOK')"
+          >
+            Connect TikTok
+          </button>
         </div>
 
         <form v-if="showImapForm" class="grid grid-cols-1 md:grid-cols-2 gap-3" @submit.prevent="connectImap">
@@ -97,6 +118,33 @@
           </li>
         </ul>
       </section>
+
+      <section class="bg-white border border-gray-200 rounded-2xl p-5">
+        <h3 class="text-base font-semibold text-gray-900 mb-4">Connected social accounts</h3>
+        <div v-if="socialLoading" class="text-sm text-gray-500">Syncing social accounts...</div>
+        <div v-else-if="socialConnections.length === 0" class="text-sm text-gray-500">No connected social account yet.</div>
+        <ul v-else class="divide-y divide-gray-200">
+          <li v-for="account in socialConnections" :key="account.id" class="py-3 flex items-center justify-between gap-4">
+            <div>
+              <p class="text-sm font-medium text-gray-900">{{ providerLabel(account.provider) }} · {{ account.externalAccountId }}</p>
+              <p class="text-sm text-gray-500" v-if="account.expiresInDays !== null">Token expires in {{ account.expiresInDays }} day(s)</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="statusClass(account.status)">
+                {{ account.status }}
+              </span>
+              <button
+                v-if="account.status !== 'ACTIVE'"
+                type="button"
+                class="text-sm bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-amber-700 transition-colors"
+                @click="connectSocialOAuth(account.provider)"
+              >
+                Re-link
+              </button>
+            </div>
+          </li>
+        </ul>
+      </section>
     </div>
   </main>
 </template>
@@ -108,6 +156,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 type OAuthProvider = 'GOOGLE' | 'MICROSOFT'
+type SocialOAuthProvider = 'INSTAGRAM' | 'FACEBOOK' | 'TIKTOK'
 
 interface Connection {
   id: string
@@ -117,6 +166,14 @@ interface Connection {
   status: 'ACTIVE' | 'EXPIRED'
 }
 
+interface SocialConnection {
+  id: string
+  provider: SocialOAuthProvider
+  externalAccountId: string
+  status: 'ACTIVE' | 'EXPIRED' | 'EXPIRING_SOON'
+  expiresInDays: number | null
+}
+
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -124,6 +181,8 @@ const loading = ref(false)
 const showConnectPanel = ref(false)
 const showImapForm = ref(false)
 const connections = ref<Connection[]>([])
+const socialConnections = ref<SocialConnection[]>([])
+const socialLoading = ref(false)
 const errorMessage = ref<string | null>(null)
 const noticeMessage = ref<string | null>(null)
 const imapForm = ref({
@@ -139,6 +198,9 @@ function providerLabel(provider: string) {
   if (provider === 'GOOGLE') return 'Google'
   if (provider === 'MICROSOFT') return 'Outlook'
   if (provider === 'IMAP') return 'IMAP'
+  if (provider === 'INSTAGRAM') return 'Instagram'
+  if (provider === 'FACEBOOK') return 'Facebook'
+  if (provider === 'TIKTOK') return 'TikTok'
   return provider
 }
 
@@ -150,6 +212,7 @@ function displayStatus(account: Connection) {
 function statusClass(status: string) {
   if (status === 'ACTIVE') return 'bg-green-100 text-green-700'
   if (status === 'EXPIRED') return 'bg-red-100 text-red-700'
+  if (status === 'EXPIRING_SOON') return 'bg-amber-100 text-amber-700'
   return 'bg-blue-100 text-blue-700'
 }
 
@@ -169,6 +232,42 @@ async function fetchConnections() {
     errorMessage.value = 'Failed to load integrations.'
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchSocialConnections() {
+  if (!authStore.token) return
+  socialLoading.value = true
+  try {
+    const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/social/accounts`, {
+      headers: { Authorization: 'Bearer ' + authStore.token },
+    })
+    socialConnections.value = Array.isArray(data) ? data : []
+  } catch {
+    socialConnections.value = []
+  } finally {
+    socialLoading.value = false
+  }
+}
+
+async function connectSocialOAuth(provider: SocialOAuthProvider) {
+  if (!authStore.token) return
+
+  errorMessage.value = null
+  noticeMessage.value = null
+
+  try {
+    const { data } = await axios.get(
+      `${import.meta.env.VITE_API_URL}/social/oauth/${provider.toLowerCase()}/link`,
+      {
+        headers: {
+          Authorization: 'Bearer ' + authStore.token,
+        },
+      },
+    )
+    window.location.href = data.url
+  } catch {
+    errorMessage.value = `Could not start ${providerLabel(provider)} connection.`
   }
 }
 
@@ -211,6 +310,7 @@ async function connectImap() {
     noticeMessage.value = 'IMAP account connected successfully.'
     showImapForm.value = false
     await fetchConnections()
+    await fetchSocialConnections()
   } catch {
     errorMessage.value = 'Could not connect this IMAP account.'
   }
@@ -229,6 +329,7 @@ async function disconnect(accountId: string) {
       },
     })
     await fetchConnections()
+    await fetchSocialConnections()
   } catch {
     errorMessage.value = 'Could not disconnect this integration.'
   }
@@ -260,5 +361,6 @@ onMounted(async () => {
   }
 
   await fetchConnections()
+  await fetchSocialConnections()
 })
 </script>
