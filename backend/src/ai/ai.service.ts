@@ -288,7 +288,9 @@ export class AiService {
           .map((t) => ({
             title: t.title,
             dueDate:
-              typeof t.dueDate === 'string' && t.dueDate.trim() !== 'null'
+              typeof t.dueDate === 'string' &&
+              t.dueDate.trim().length > 0 &&
+              t.dueDate.trim().toLowerCase() !== 'null'
                 ? t.dueDate.trim()
                 : null,
             status: 'TODO',
