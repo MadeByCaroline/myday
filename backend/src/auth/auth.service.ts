@@ -132,24 +132,41 @@ export class AuthService {
   }
 
   async getConnections(userId: string) {
-    const oauthTokens = await this.usersService.getOAuthTokens(userId);
+    const emailAccounts = await this.usersService.getEmailAccounts(userId);
 
-    return oauthTokens.map((token) => ({
-      provider: token.provider.toUpperCase(),
-      email: token.email,
+    return emailAccounts.map((account) => ({
+      id: account.id,
+      provider: account.provider,
+      emailAddress: account.emailAddress,
+      label: account.label,
+      status: this.getAccountStatus(account.expiresAt),
     }));
   }
 
-  async disconnectConnection(userId: string, provider: string) {
-    const normalizedProvider = provider.trim().toUpperCase();
-
-    return this.usersService.deleteOAuthTokens(
-      userId,
-      this.getProviderVariants(normalizedProvider),
-    );
+  async createImapConnection(
+    userId: string,
+    data: {
+      emailAddress: string;
+      label: string;
+      host: string;
+      port: number;
+      secure: boolean;
+      password: string;
+    },
+  ) {
+    return this.usersService.createImapEmailAccount(userId, data);
   }
 
-  private getProviderVariants(provider: string) {
-    return [...new Set([provider.toLowerCase(), provider.toUpperCase()])];
+  async disconnectConnection(userId: string, accountId: string) {
+    await this.usersService.disconnectEmailAccount(userId, accountId);
+    return { count: 1 };
+  }
+
+  private getAccountStatus(expiresAt: Date | null): 'ACTIVE' | 'EXPIRED' {
+    if (!expiresAt) {
+      return 'ACTIVE';
+    }
+
+    return expiresAt.getTime() <= Date.now() ? 'EXPIRED' : 'ACTIVE';
   }
 }

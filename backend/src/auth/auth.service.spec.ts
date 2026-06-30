@@ -13,44 +13,79 @@ describe('AuthService', () => {
 
   it('returns OAuth connections with normalized provider names', async () => {
     const usersService = {
-      getOAuthTokens: jest.fn().mockResolvedValue([
-        { provider: 'google', email: 'user@gmail.com' },
-        { provider: 'MICROSOFT', email: 'user@outlook.com' },
+      getEmailAccounts: jest.fn().mockResolvedValue([
+        {
+          id: 'g-1',
+          provider: 'GOOGLE',
+          emailAddress: 'user@gmail.com',
+          label: 'Personal',
+          expiresAt: null,
+        },
+        {
+          id: 'm-1',
+          provider: 'MICROSOFT',
+          emailAddress: 'user@outlook.com',
+          label: 'Work',
+          expiresAt: new Date(Date.now() + 60_000),
+        },
       ]),
     };
     const service = createAuthService(usersService);
 
     await expect(service.getConnections('user-1')).resolves.toEqual([
-      { provider: 'GOOGLE', email: 'user@gmail.com' },
-      { provider: 'MICROSOFT', email: 'user@outlook.com' },
+      {
+        id: 'g-1',
+        provider: 'GOOGLE',
+        emailAddress: 'user@gmail.com',
+        label: 'Personal',
+        status: 'ACTIVE',
+      },
+      {
+        id: 'm-1',
+        provider: 'MICROSOFT',
+        emailAddress: 'user@outlook.com',
+        label: 'Work',
+        status: 'ACTIVE',
+      },
     ]);
   });
 
-  it('disconnects Google regardless of stored casing', async () => {
+  it('disconnects an account by id', async () => {
     const usersService = {
-      deleteOAuthTokens: jest.fn().mockResolvedValue({ count: 1 }),
+      disconnectEmailAccount: jest.fn().mockResolvedValue({ id: 'account-1' }),
     };
     const service = createAuthService(usersService);
 
-    await service.disconnectConnection('user-1', 'GOOGLE');
+    await service.disconnectConnection('user-1', 'account-1');
 
-    expect(usersService.deleteOAuthTokens).toHaveBeenCalledWith('user-1', [
-      'google',
-      'GOOGLE',
-    ]);
+    expect(usersService.disconnectEmailAccount).toHaveBeenCalledWith(
+      'user-1',
+      'account-1',
+    );
   });
 
-  it('disconnects Microsoft regardless of stored casing', async () => {
+  it('marks OAuth accounts as expired when token is expired', async () => {
     const usersService = {
-      deleteOAuthTokens: jest.fn().mockResolvedValue({ count: 1 }),
+      getEmailAccounts: jest.fn().mockResolvedValue([
+        {
+          id: 'm-1',
+          provider: 'MICROSOFT',
+          emailAddress: 'user@outlook.com',
+          label: 'Work',
+          expiresAt: new Date(Date.now() - 60_000),
+        },
+      ]),
     };
     const service = createAuthService(usersService);
 
-    await service.disconnectConnection('user-1', 'microsoft');
-
-    expect(usersService.deleteOAuthTokens).toHaveBeenCalledWith('user-1', [
-      'microsoft',
-      'MICROSOFT',
+    await expect(service.getConnections('user-1')).resolves.toEqual([
+      {
+        id: 'm-1',
+        provider: 'MICROSOFT',
+        emailAddress: 'user@outlook.com',
+        label: 'Work',
+        status: 'EXPIRED',
+      },
     ]);
   });
 });

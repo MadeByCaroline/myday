@@ -22,9 +22,10 @@ describe('AuthController', () => {
         role: 'ADMIN',
         isPremium: true,
         picture: 'https://example.com/pic.png',
-        oauthTokens: [
-          { provider: 'google', email: 'google@example.com' },
-          { provider: 'MICROSOFT', email: 'outlook@example.com' },
+        oauthTokens: [],
+        emailAccounts: [
+          { provider: 'google', emailAddress: 'google@example.com' },
+          { provider: 'MICROSOFT', emailAddress: 'outlook@example.com' },
         ],
       },
     });
@@ -52,6 +53,7 @@ describe('AuthController', () => {
         role: 'USER',
         isPremium: false,
         oauthTokens: [],
+        emailAccounts: [],
       },
     });
 

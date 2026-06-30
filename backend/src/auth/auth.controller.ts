@@ -1,8 +1,11 @@
 import {
+  Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
   Param,
+  Post,
   Req,
   Res,
   UseGuards,
@@ -26,6 +29,10 @@ interface AuthenticatedRequest {
     role: string;
     isPremium: boolean;
     oauthTokens: Array<{ provider: string; email: string }>;
+    emailAccounts?: Array<{
+      provider: string;
+      emailAddress: string;
+    }>;
   };
 }
 
@@ -143,12 +150,13 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   getProfile(@Req() req: AuthenticatedRequest) {
     const { id, email, name, picture, role, isPremium } = req.user;
-    const connectedGoogleAccounts = req.user.oauthTokens
+    const accounts = req.user.emailAccounts || [];
+    const connectedGoogleAccounts = accounts
       .filter((token) => token.provider.toUpperCase() === 'GOOGLE')
-      .map((token) => token.email);
-    const connectedOutlookAccounts = req.user.oauthTokens
+      .map((token) => token.emailAddress);
+    const connectedOutlookAccounts = accounts
       .filter((token) => token.provider.toUpperCase() === 'MICROSOFT')
-      .map((token) => token.email);
+      .map((token) => token.emailAddress);
 
     return {
       id,
@@ -168,15 +176,50 @@ export class AuthController {
     return this.authService.getConnections(req.user.id);
   }
 
-  @Delete('connections/:provider')
+  @Post('connections/imap')
+  @UseGuards(JwtAuthGuard)
+  async connectImap(
+    @Req() req: AuthenticatedRequest,
+    @Body()
+    body: {
+      emailAddress: string;
+      label: string;
+      host: string;
+      port: number;
+      secure: boolean;
+      password: string;
+    },
+  ) {
+    const emailAddress = body.emailAddress?.trim();
+    const label = body.label?.trim();
+    const host = body.host?.trim();
+    const port = Number(body.port);
+
+    if (!emailAddress || !label || !host || !Number.isFinite(port) || !body.password) {
+      throw new BadRequestException('Missing IMAP configuration fields.');
+    }
+
+    await this.authService.createImapConnection(req.user.id, {
+      emailAddress,
+      label,
+      host,
+      port,
+      secure: Boolean(body.secure),
+      password: body.password,
+    });
+
+    return { success: true };
+  }
+
+  @Delete('connections/:accountId')
   @UseGuards(JwtAuthGuard)
   async disconnectConnection(
     @Req() req: AuthenticatedRequest,
-    @Param('provider') provider: string,
+    @Param('accountId') accountId: string,
   ) {
     const result = await this.authService.disconnectConnection(
       req.user.id,
-      provider,
+      accountId,
     );
 
     return { deleted: result.count };
