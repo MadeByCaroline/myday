@@ -4,6 +4,11 @@ import axios, { isAxiosError } from 'axios';
 import type { UnifiedEvent } from '../calendar/unified-event.interface';
 import type { EmailDetail, EmailSummary } from '../mail/mail.service';
 import { IntegrationProviderError } from './integration-provider.error';
+import {
+  getProviderCircuitBreaker,
+  resolveIntegrationTimeoutMs,
+  withTimeout,
+} from './resilience';
 
 interface MicrosoftMessageResponse {
   value?: Array<{
@@ -50,16 +55,37 @@ export class MicrosoftService {
 
   constructor(private readonly configService: ConfigService) {}
 
+  private readonly circuitBreaker = getProviderCircuitBreaker('MICROSOFT');
+
+  /**
+   * Execute an outgoing Microsoft Graph read behind a strict timeout and the
+   * shared circuit breaker so latency or outages cannot block the event loop.
+   */
+  private async runResilient<T>(
+    label: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    return this.circuitBreaker.execute(
+      () => withTimeout(operation, resolveIntegrationTimeoutMs(), label),
+      {
+        onOpen: () => IntegrationProviderError.unavailable('MICROSOFT'),
+        isFailure: (error) =>
+          !(
+            error instanceof IntegrationProviderError &&
+            error.code === 'needs_reauth'
+          ),
+      },
+    );
+  }
+
   async getUnreadEmails(
     accessToken: string,
     refreshToken?: string,
   ): Promise<EmailSummary[]> {
     this.logger.log('Fetching Microsoft emails...');
     try {
-      const response = await this.withAuthRetry(
-        accessToken,
-        refreshToken,
-        (token) =>
+      const response = await this.runResilient('Microsoft inbox', () =>
+        this.withAuthRetry(accessToken, refreshToken, (token) =>
           axios.get<MicrosoftMessageResponse>(
             'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages',
             {
@@ -70,8 +96,10 @@ export class MicrosoftService {
                 $filter: 'isRead eq false',
                 $top: 15,
               },
+              timeout: resolveIntegrationTimeoutMs(),
             },
           ),
+        ),
       );
 
       this.logger.log(
@@ -116,10 +144,8 @@ export class MicrosoftService {
   ): Promise<UnifiedEvent[]> {
     this.logger.log("Fetching Microsoft today's calendar events...");
     try {
-      const response = await this.withAuthRetry(
-        accessToken,
-        refreshToken,
-        (token) =>
+      const response = await this.runResilient('Microsoft calendar', () =>
+        this.withAuthRetry(accessToken, refreshToken, (token) =>
           axios.get<MicrosoftCalendarViewResponse>(
             'https://graph.microsoft.com/v1.0/me/calendar/calendarView',
             {
@@ -132,8 +158,10 @@ export class MicrosoftService {
                 $top: 50,
                 $orderby: 'start/dateTime',
               },
+              timeout: resolveIntegrationTimeoutMs(),
             },
           ),
+        ),
       );
 
       this.logger.log(
@@ -176,6 +204,7 @@ export class MicrosoftService {
         headers: {
           Authorization: 'Bearer ' + accessToken,
         },
+        timeout: resolveIntegrationTimeoutMs(),
       });
 
       return {
@@ -225,6 +254,7 @@ export class MicrosoftService {
             Authorization: 'Bearer ' + accessToken,
             'Content-Type': 'application/json',
           },
+          timeout: resolveIntegrationTimeoutMs(),
         },
       );
 
@@ -267,6 +297,7 @@ export class MicrosoftService {
             Authorization: 'Bearer ' + accessToken,
             'Content-Type': 'application/json',
           },
+          timeout: resolveIntegrationTimeoutMs(),
         },
       );
 
@@ -287,6 +318,7 @@ export class MicrosoftService {
           headers: {
             Authorization: 'Bearer ' + accessToken,
           },
+          timeout: resolveIntegrationTimeoutMs(),
         },
       );
     } catch (error) {
@@ -372,6 +404,7 @@ export class MicrosoftService {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
+          timeout: resolveIntegrationTimeoutMs(),
         },
       );
 
