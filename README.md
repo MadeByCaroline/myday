@@ -213,6 +213,8 @@ cd backend && npm run test:e2e -- --runInBand
 
 ## 🧭 Codebase Analysis & Next Priorities (Issue #95)
 
+> Snapshot observed for issue #95 on 2026-06-30.
+
 ### Current baseline
 
 - ✅ `cd frontend && npm run build`
@@ -231,7 +233,7 @@ cd backend && npm run test:e2e -- --runInBand
 
 ### Performance watchpoints
 
-- `backend/src/mail/mail.service.ts` requests `maxResults: 20` and then keeps only `messages.slice(0, 10)`, which fetches more Gmail message IDs than the UI currently uses.
+- In the current implementation, `backend/src/mail/mail.service.ts` requests `maxResults: 20` and then keeps only `messages.slice(0, 10)`, which fetches more Gmail message IDs than the UI currently uses.
 - The same service fetches message details sequentially inside a `for ... of` loop, so summary generation latency grows with inbox volume.
 - `backend/src/summary/summary.service.ts` fans out to every connected OAuth account and refreshes expired tokens inline during summary generation, which couples user-facing latency to external provider response time.
 
