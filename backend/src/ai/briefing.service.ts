@@ -85,8 +85,14 @@ export class BriefingService {
 
           if (provider === 'MICROSOFT') {
             const [emails, events] = await Promise.all([
-              microsoftService.getUnreadEmails(oauthToken.accessToken),
-              microsoftService.getTodayEvents(oauthToken.accessToken),
+              microsoftService.getUnreadEmails(
+                oauthToken.accessToken,
+                oauthToken.refreshToken || undefined,
+              ),
+              microsoftService.getTodayEvents(
+                oauthToken.accessToken,
+                oauthToken.refreshToken || undefined,
+              ),
             ]);
 
             return {

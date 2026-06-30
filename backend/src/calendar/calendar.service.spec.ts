@@ -93,6 +93,7 @@ describe('CalendarService', () => {
     );
     expect(microsoftService.getTodayEvents).toHaveBeenCalledWith(
       'microsoft-token',
+      undefined,
     );
   });
 

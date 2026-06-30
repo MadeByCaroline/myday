@@ -244,8 +244,14 @@ export class SummaryService {
     if (provider === 'MICROSOFT') {
       const token = await this.getUsableMicrosoftToken(oauthToken);
       const [emails, events] = await Promise.all([
-        this.microsoftService.getUnreadEmails(token.accessToken),
-        this.microsoftService.getTodayEvents(token.accessToken),
+        this.microsoftService.getUnreadEmails(
+          token.accessToken,
+          token.refreshToken,
+        ),
+        this.microsoftService.getTodayEvents(
+          token.accessToken,
+          token.refreshToken,
+        ),
       ]);
       return {
         provider,

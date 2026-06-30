@@ -65,6 +65,7 @@ export class CalendarService {
         if (provider === 'MICROSOFT') {
           const events = await this.microsoftService.getTodayEvents(
             oauthToken.accessToken,
+            oauthToken.refreshToken || undefined,
           );
 
           return events.map((event) => ({

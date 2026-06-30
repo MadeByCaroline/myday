@@ -72,6 +72,7 @@ export class ChatService {
         if (provider === 'MICROSOFT') {
           const events = await this.microsoftService.getEventsForRange(
             oauthToken.accessToken,
+            oauthToken.refreshToken || undefined,
             range.start,
             range.end,
           );

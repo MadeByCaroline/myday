@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import axios, { isAxiosError } from 'axios';
 import type { UnifiedEvent } from '../calendar/unified-event.interface';
 import type { EmailDetail, EmailSummary } from '../mail/mail.service';
@@ -36,21 +37,41 @@ interface MicrosoftCalendarViewResponse {
 @Injectable()
 export class MicrosoftService {
   private readonly logger = new Logger(MicrosoftService.name);
+  private static readonly MICROSOFT_SCOPES = [
+    'openid',
+    'profile',
+    'email',
+    'user.read',
+    'mail.read',
+    'Mail.ReadWrite',
+    'Calendars.Read',
+    'offline_access',
+  ].join(' ');
 
-  async getUnreadEmails(accessToken: string): Promise<EmailSummary[]> {
+  constructor(private readonly configService: ConfigService) {}
+
+  async getUnreadEmails(
+    accessToken: string,
+    refreshToken?: string,
+  ): Promise<EmailSummary[]> {
     this.logger.log('Fetching Microsoft emails...');
     try {
-      const response = await axios.get<MicrosoftMessageResponse>(
-        'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages',
-        {
-          headers: {
-            Authorization: 'Bearer ' + accessToken,
-          },
-          params: {
-            $filter: 'isRead eq false',
-            $top: 15,
-          },
-        },
+      const response = await this.withAuthRetry(
+        accessToken,
+        refreshToken,
+        (token) =>
+          axios.get<MicrosoftMessageResponse>(
+            'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages',
+            {
+              headers: {
+                Authorization: 'Bearer ' + token,
+              },
+              params: {
+                $filter: 'isRead eq false',
+                $top: 15,
+              },
+            },
+          ),
       );
 
       this.logger.log(
@@ -65,16 +86,23 @@ export class MicrosoftService {
         receivedAt: message.receivedDateTime || '',
       }));
     } catch (error) {
+      if (error instanceof IntegrationProviderError) {
+        throw error;
+      }
       const detail = this.getErrorDetail(error);
       this.logger.error('Microsoft Graph Error:', detail);
       throw IntegrationProviderError.unavailable('MICROSOFT');
     }
   }
 
-  async getTodayEvents(accessToken: string): Promise<UnifiedEvent[]> {
+  async getTodayEvents(
+    accessToken: string,
+    refreshToken?: string,
+  ): Promise<UnifiedEvent[]> {
     const now = new Date();
     return this.getEventsForRange(
       accessToken,
+      refreshToken,
       new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
       new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59),
     );
@@ -82,24 +110,30 @@ export class MicrosoftService {
 
   async getEventsForRange(
     accessToken: string,
+    refreshToken: string | undefined,
     start: Date,
     end: Date,
   ): Promise<UnifiedEvent[]> {
     this.logger.log("Fetching Microsoft today's calendar events...");
     try {
-      const response = await axios.get<MicrosoftCalendarViewResponse>(
-        'https://graph.microsoft.com/v1.0/me/calendar/calendarView',
-        {
-          headers: {
-            Authorization: 'Bearer ' + accessToken,
-          },
-          params: {
-            startDateTime: start.toISOString(),
-            endDateTime: end.toISOString(),
-            $top: 50,
-            $orderby: 'start/dateTime',
-          },
-        },
+      const response = await this.withAuthRetry(
+        accessToken,
+        refreshToken,
+        (token) =>
+          axios.get<MicrosoftCalendarViewResponse>(
+            'https://graph.microsoft.com/v1.0/me/calendar/calendarView',
+            {
+              headers: {
+                Authorization: 'Bearer ' + token,
+              },
+              params: {
+                startDateTime: start.toISOString(),
+                endDateTime: end.toISOString(),
+                $top: 50,
+                $orderby: 'start/dateTime',
+              },
+            },
+          ),
       );
 
       this.logger.log(
@@ -116,6 +150,9 @@ export class MicrosoftService {
         link: event.onlineMeeting?.joinUrl || event.webLink || undefined,
       }));
     } catch (error) {
+      if (error instanceof IntegrationProviderError) {
+        throw error;
+      }
       const detail = this.getErrorDetail(error);
       this.logger.error('Microsoft Graph Calendar Error:', detail);
       throw IntegrationProviderError.unavailable('MICROSOFT');
@@ -278,5 +315,80 @@ export class MicrosoftService {
     return error instanceof Error
       ? error.message
       : 'Unknown Microsoft Graph API error';
+  }
+
+  private async withAuthRetry<T>(
+    accessToken: string,
+    refreshToken: string | undefined,
+    request: (token: string) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await request(accessToken);
+    } catch (error) {
+      if (!this.isUnauthorizedError(error)) {
+        throw error;
+      }
+
+      if (!refreshToken) {
+        throw IntegrationProviderError.needsReauth('MICROSOFT');
+      }
+
+      const refreshedToken = await this.refreshAccessToken(refreshToken);
+      if (!refreshedToken) {
+        throw IntegrationProviderError.needsReauth('MICROSOFT');
+      }
+
+      try {
+        return await request(refreshedToken);
+      } catch (retryError) {
+        if (this.isUnauthorizedError(retryError)) {
+          throw IntegrationProviderError.needsReauth('MICROSOFT');
+        }
+        throw retryError;
+      }
+    }
+  }
+
+  private async refreshAccessToken(
+    refreshToken: string,
+  ): Promise<string | undefined> {
+    try {
+      const response = await axios.post<{
+        access_token?: string;
+      }>(
+        'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+        new URLSearchParams({
+          client_id: this.configService.getOrThrow<string>('MICROSOFT_CLIENT_ID'),
+          client_secret: this.configService.getOrThrow<string>(
+            'MICROSOFT_CLIENT_SECRET',
+          ),
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          scope: MicrosoftService.MICROSOFT_SCOPES,
+        }).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      );
+
+      return response.data.access_token;
+    } catch {
+      throw IntegrationProviderError.needsReauth('MICROSOFT');
+    }
+  }
+
+  private isUnauthorizedError(error: unknown): boolean {
+    if (isAxiosError(error)) {
+      return error.response?.status === 401;
+    }
+
+    if (error && typeof error === 'object') {
+      const maybeError = error as { response?: { status?: number } };
+      return maybeError.response?.status === 401;
+    }
+
+    return false;
   }
 }

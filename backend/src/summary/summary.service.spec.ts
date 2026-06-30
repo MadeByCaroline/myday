@@ -143,8 +143,14 @@ describe('SummaryService', () => {
       'google-access',
       'google-refresh',
     );
-    expect(microsoftService.getUnreadEmails).toHaveBeenCalledWith('ms-access');
-    expect(microsoftService.getTodayEvents).toHaveBeenCalledWith('ms-access');
+    expect(microsoftService.getUnreadEmails).toHaveBeenCalledWith(
+      'ms-access',
+      'ms-refresh',
+    );
+    expect(microsoftService.getTodayEvents).toHaveBeenCalledWith(
+      'ms-access',
+      'ms-refresh',
+    );
     expect(aiService.analyzeProductivityData).toHaveBeenCalledWith(
       [{ subject: 'Google mail' }, { subject: 'Outlook mail' }],
       [
@@ -224,8 +230,14 @@ describe('SummaryService', () => {
     await service.generateSummaryForUser('user-1');
 
     expect(getAxiosPostMock()).not.toHaveBeenCalled();
-    expect(microsoftService.getUnreadEmails).toHaveBeenCalledWith('stale-access');
-    expect(microsoftService.getTodayEvents).toHaveBeenCalledWith('stale-access');
+    expect(microsoftService.getUnreadEmails).toHaveBeenCalledWith(
+      'stale-access',
+      'stale-refresh',
+    );
+    expect(microsoftService.getTodayEvents).toHaveBeenCalledWith(
+      'stale-access',
+      'stale-refresh',
+    );
 
     await jest.runAllTimersAsync();
 

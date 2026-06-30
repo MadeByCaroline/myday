@@ -26,11 +26,33 @@ app.use(PrimeVue, {
 })
 app.use(ToastService)
 
+let oauthReconnectPromptOpen = false
+
+function providerLabel(provider?: string) {
+  if (provider === 'MICROSOFT') return 'Microsoft'
+  if (provider === 'GOOGLE') return 'Google'
+  return 'Google/Microsoft'
+}
+
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status
+      const code = error.response?.data?.code
+      if (status === 401 && code === 'OAUTH_SESSION_EXPIRED') {
+        if (!oauthReconnectPromptOpen) {
+          oauthReconnectPromptOpen = true
+          const provider = providerLabel(error.response?.data?.provider)
+          const shouldOpenIntegrations = window.confirm(
+            `La connexion à votre compte ${provider} a expiré. Veuillez vous reconnecter.\n\nOuvrir la page des intégrations maintenant ?`,
+          )
+          oauthReconnectPromptOpen = false
+          if (shouldOpenIntegrations) {
+            void router.push({ name: 'integrations' })
+          }
+        }
+      }
       if (!error.response || (typeof status === 'number' && status >= 500)) {
         ToastEventBus.emit('add', {
           severity: 'error',

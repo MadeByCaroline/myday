@@ -15,9 +15,10 @@ export class GoogleService {
     refreshToken?: string,
   ): Promise<UnifiedEvent[]> {
     try {
-      const oauth2Client = this.createOAuthClient(accessToken, refreshToken);
-
-      const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+      const calendarData = await this.loadTodayCalendarData(
+        accessToken,
+        refreshToken,
+      );
       const now = new Date();
       const startOfDay = new Date(
         now.getFullYear(),
@@ -36,17 +37,10 @@ export class GoogleService {
         59,
       );
 
-      const [{ data: colorsData }, { data: eventsData }] = await Promise.all([
-        calendar.colors.get(),
-        calendar.events.list({
-          calendarId: 'primary',
-          timeMin: startOfDay.toISOString(),
-          timeMax: endOfDay.toISOString(),
-          singleEvents: true,
-          orderBy: 'startTime',
-          maxResults: 50,
-        }),
-      ]);
+      const [{ data: colorsData }, { data: eventsData }] = await calendarData(
+        startOfDay,
+        endOfDay,
+      );
       const colorCount = Object.keys(colorsData.event || {}).length;
       this.logger.debug(`Loaded ${colorCount} Google event colors`);
 
@@ -68,11 +62,68 @@ export class GoogleService {
         };
       });
     } catch (error) {
+      if (error instanceof IntegrationProviderError) {
+        throw error;
+      }
       const message =
         error instanceof Error ? error.message : 'Unknown Google Calendar error';
       this.logger.error('Failed to fetch Google calendar events', message);
       throw IntegrationProviderError.unavailable('GOOGLE');
     }
+  }
+
+  private async loadTodayCalendarData(
+    accessToken: string,
+    refreshToken?: string,
+  ): Promise<(startOfDay: Date, endOfDay: Date) => Promise<[any, any]>> {
+    const runRequest = async (currentAccessToken: string) => {
+      const oauth2Client = this.createOAuthClient(currentAccessToken, refreshToken);
+      const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+      return async (startOfDay: Date, endOfDay: Date) =>
+        Promise.all([
+          calendar.colors.get(),
+          calendar.events.list({
+            calendarId: 'primary',
+            timeMin: startOfDay.toISOString(),
+            timeMax: endOfDay.toISOString(),
+            singleEvents: true,
+            orderBy: 'startTime',
+            maxResults: 50,
+          }),
+        ]);
+    };
+
+    const primaryRequest = await runRequest(accessToken);
+    return async (startOfDay: Date, endOfDay: Date) => {
+      try {
+        return await primaryRequest(startOfDay, endOfDay);
+      } catch (error) {
+        if (!this.isUnauthorizedError(error)) {
+          throw error;
+        }
+
+        if (!refreshToken) {
+          throw IntegrationProviderError.needsReauth('GOOGLE');
+        }
+
+        try {
+          const refreshClient = this.createOAuthClient(accessToken, refreshToken);
+          refreshClient.setCredentials({ refresh_token: refreshToken });
+          const { credentials } = await refreshClient.refreshAccessToken();
+          const refreshedAccessToken = credentials.access_token;
+
+          if (!refreshedAccessToken) {
+            throw IntegrationProviderError.needsReauth('GOOGLE');
+          }
+
+          const retryRequest = await runRequest(refreshedAccessToken);
+          return await retryRequest(startOfDay, endOfDay);
+        } catch {
+          throw IntegrationProviderError.needsReauth('GOOGLE');
+        }
+      }
+    };
   }
 
   async createBusyEvent(
@@ -142,5 +193,23 @@ export class GoogleService {
     });
 
     return oauth2Client;
+  }
+
+  private isUnauthorizedError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const gaxiosLike = error as {
+      code?: number;
+      status?: number;
+      response?: { status?: number };
+    };
+
+    return (
+      gaxiosLike.code === 401 ||
+      gaxiosLike.status === 401 ||
+      gaxiosLike.response?.status === 401
+    );
   }
 }

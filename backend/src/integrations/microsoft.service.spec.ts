@@ -3,8 +3,13 @@ import { IntegrationProviderError } from './integration-provider.error';
 import { MicrosoftService } from './microsoft.service';
 
 describe('MicrosoftService', () => {
+  const configService = {
+    getOrThrow: jest.fn((key: string) => key),
+  };
+
   afterEach(() => {
     jest.restoreAllMocks();
+    configService.getOrThrow.mockClear();
   });
 
   it('maps unread Outlook emails to EmailSummary', async () => {
@@ -22,9 +27,11 @@ describe('MicrosoftService', () => {
       },
     });
 
-    const service = new MicrosoftService();
+    const service = new MicrosoftService(configService as any);
 
-    await expect(service.getUnreadEmails('access-token')).resolves.toEqual([
+    await expect(
+      service.getUnreadEmails('access-token', 'refresh-token'),
+    ).resolves.toEqual([
       {
         id: 'message-1',
         from: 'sender@example.com',
@@ -65,9 +72,11 @@ describe('MicrosoftService', () => {
       },
     });
 
-    const service = new MicrosoftService();
+    const service = new MicrosoftService(configService as any);
 
-    await expect(service.getTodayEvents('access-token')).resolves.toEqual([
+    await expect(
+      service.getTodayEvents('access-token', 'refresh-token'),
+    ).resolves.toEqual([
       {
         id: 'event-1',
         title: 'Planning sync',
@@ -104,7 +113,7 @@ describe('MicrosoftService', () => {
       },
     });
 
-    const service = new MicrosoftService();
+    const service = new MicrosoftService(configService as any);
 
     await expect(
       service.createBusyEvent(
@@ -147,7 +156,7 @@ describe('MicrosoftService', () => {
       data: {},
     });
 
-    const service = new MicrosoftService();
+    const service = new MicrosoftService(configService as any);
 
     await service.deleteBusyEvent('access-token', 'event-42');
 
@@ -163,10 +172,55 @@ describe('MicrosoftService', () => {
 
   it('throws an explicit provider error when Outlook mail cannot be loaded', async () => {
     jest.spyOn(axios, 'get').mockRejectedValue(new Error('boom'));
-    const service = new MicrosoftService();
+    const service = new MicrosoftService(configService as any);
 
     await expect(service.getUnreadEmails('access-token')).rejects.toEqual(
       IntegrationProviderError.unavailable('MICROSOFT'),
+    );
+  });
+
+  it('refreshes the Microsoft token and retries when Graph returns 401', async () => {
+    const getSpy = jest
+      .spyOn(axios, 'get')
+      .mockRejectedValueOnce({
+        response: { status: 401 },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          value: [],
+        },
+      });
+    const postSpy = jest.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        access_token: 'fresh-access',
+      },
+    });
+    const service = new MicrosoftService(configService as any);
+
+    await expect(
+      service.getUnreadEmails('stale-access', 'refresh-token'),
+    ).resolves.toEqual([]);
+
+    expect(postSpy).toHaveBeenCalledTimes(1);
+    expect(getSpy).toHaveBeenNthCalledWith(
+      2,
+      'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: expect.stringContaining('fresh-access'),
+        }),
+      }),
+    );
+  });
+
+  it('throws a reauth error when Graph returns 401 and refresh token is missing', async () => {
+    jest.spyOn(axios, 'get').mockRejectedValue({
+      response: { status: 401 },
+    } as any);
+    const service = new MicrosoftService(configService as any);
+
+    await expect(service.getUnreadEmails('stale-access')).rejects.toEqual(
+      IntegrationProviderError.needsReauth('MICROSOFT'),
     );
   });
 });
