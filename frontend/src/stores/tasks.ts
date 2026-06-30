@@ -194,6 +194,25 @@ export const useTasksStore = defineStore('tasks', () => {
     savedTasks.value = savedTasks.value.filter((task) => task.id !== id)
   }
 
+  async function bulkUpdateTasks(taskIds: string[], status: string) {
+    loading.value = true
+
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/tasks/bulk-update`,
+        { taskIds, status },
+        { headers: getAuthHeaders() },
+      )
+
+      const taskIdSet = new Set(taskIds)
+      savedTasks.value = savedTasks.value.map((task) =>
+        taskIdSet.has(task.id) ? { ...task, status } : task,
+      )
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     suggestedTasks,
     savedTasks,
@@ -206,5 +225,6 @@ export const useTasksStore = defineStore('tasks', () => {
     updateTaskStatus,
     deleteTask,
     optimizeDay,
+    bulkUpdateTasks,
   }
 })

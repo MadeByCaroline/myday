@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 
 describe('TasksService', () => {
@@ -81,6 +82,29 @@ describe('TasksService', () => {
       },
       include: { workspace: true },
       orderBy: { createdAt: 'asc' },
+    });
+  });
+
+  describe('bulkUpdateTasks', () => {
+    it('updates only the given task IDs owned by the user', async () => {
+      const { prisma, service } = createService();
+      prisma.task.updateMany.mockResolvedValue({ count: 2 });
+
+      const result = await service.bulkUpdateTasks('user-1', ['t1', 't2'], 'DONE');
+
+      expect(prisma.task.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['t1', 't2'] }, userId: 'user-1' },
+        data: { status: 'DONE' },
+      });
+      expect(result).toEqual({ count: 2 });
+    });
+
+    it('throws BadRequestException for an invalid status', async () => {
+      const { service } = createService();
+
+      await expect(
+        service.bulkUpdateTasks('user-1', ['t1'], 'INVALID'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

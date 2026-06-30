@@ -10,6 +10,48 @@
         {{ errorMessage }}
       </div>
 
+      <!-- Floating bulk action bar -->
+      <Transition name="bulk-bar">
+        <div
+          v-if="selectedTaskIds.size > 0"
+          class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl"
+        >
+          <span class="text-sm font-medium">{{ selectedTaskIds.size }} tâche{{ selectedTaskIds.size > 1 ? 's' : '' }} sélectionnée{{ selectedTaskIds.size > 1 ? 's' : '' }}</span>
+          <div class="h-4 w-px bg-gray-600"></div>
+          <button
+            @click="handleBulkUpdateStatus('DONE')"
+            :disabled="tasksStore.loading"
+            class="flex items-center gap-1.5 text-sm bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed px-3 py-1.5 rounded-xl transition-colors"
+          >
+            <i class="pi pi-check text-xs"></i>
+            Terminer
+          </button>
+          <button
+            @click="handleBulkUpdateStatus('TODO')"
+            :disabled="tasksStore.loading"
+            class="flex items-center gap-1.5 text-sm bg-gray-600 hover:bg-gray-500 disabled:opacity-60 disabled:cursor-not-allowed px-3 py-1.5 rounded-xl transition-colors"
+          >
+            <i class="pi pi-replay text-xs"></i>
+            Remettre à faire
+          </button>
+          <button
+            @click="handleBulkDelete"
+            :disabled="tasksStore.loading"
+            class="flex items-center gap-1.5 text-sm bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed px-3 py-1.5 rounded-xl transition-colors"
+          >
+            <i class="pi pi-trash text-xs"></i>
+            Supprimer
+          </button>
+          <button
+            @click="clearSelection"
+            class="text-gray-400 hover:text-white ml-1 transition-colors"
+            title="Annuler la sélection"
+          >
+            <i class="pi pi-times text-xs"></i>
+          </button>
+        </div>
+      </Transition>
+
       <div v-if="tasksStore.loading && tasksStore.savedTasks.length === 0" class="flex items-center justify-center py-12">
         <i class="pi pi-spin pi-spinner text-indigo-600 text-2xl"></i>
       </div>
@@ -49,9 +91,17 @@
             <template #item="{ element }">
               <div
                 class="bg-white rounded-xl p-3 shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing"
+                :class="{ 'ring-2 ring-indigo-400 ring-offset-1': selectedTaskIds.has(element.id) }"
                 :style="taskCardStyle(element)"
               >
                 <div class="flex items-start justify-between gap-2">
+                  <input
+                    type="checkbox"
+                    :checked="selectedTaskIds.has(element.id)"
+                    @change="toggleTaskSelection(element.id)"
+                    @click.stop
+                    class="mt-0.5 shrink-0 accent-indigo-600 cursor-pointer"
+                  />
                   <p class="text-sm font-medium text-gray-900 flex-1">{{ element.title }}</p>
                   <div class="flex items-center gap-1 flex-shrink-0">
                     <button
@@ -119,9 +169,17 @@
             <template #item="{ element }">
               <div
                 class="bg-white rounded-xl p-3 shadow-sm border border-blue-100 cursor-grab active:cursor-grabbing"
+                :class="{ 'ring-2 ring-indigo-400 ring-offset-1': selectedTaskIds.has(element.id) }"
                 :style="taskCardStyle(element)"
               >
                 <div class="flex items-start justify-between gap-2">
+                  <input
+                    type="checkbox"
+                    :checked="selectedTaskIds.has(element.id)"
+                    @change="toggleTaskSelection(element.id)"
+                    @click.stop
+                    class="mt-0.5 shrink-0 accent-indigo-600 cursor-pointer"
+                  />
                   <p class="text-sm font-medium text-gray-900 flex-1">{{ element.title }}</p>
                   <div class="flex items-center gap-1 flex-shrink-0">
                     <button
@@ -189,9 +247,17 @@
             <template #item="{ element }">
               <div
                 class="bg-white rounded-xl p-3 shadow-sm border border-violet-100 cursor-grab active:cursor-grabbing"
+                :class="{ 'ring-2 ring-indigo-400 ring-offset-1': selectedTaskIds.has(element.id) }"
                 :style="taskCardStyle(element)"
               >
                 <div class="flex items-start justify-between gap-2">
+                  <input
+                    type="checkbox"
+                    :checked="selectedTaskIds.has(element.id)"
+                    @change="toggleTaskSelection(element.id)"
+                    @click.stop
+                    class="mt-0.5 shrink-0 accent-indigo-600 cursor-pointer"
+                  />
                   <p class="text-sm font-medium text-gray-900 flex-1">{{ element.title }}</p>
                   <div class="flex items-center gap-1 flex-shrink-0">
                     <button
@@ -256,9 +322,17 @@
             <template #item="{ element }">
               <div
                 class="bg-white rounded-xl p-3 shadow-sm border border-green-100 cursor-grab active:cursor-grabbing"
+                :class="{ 'ring-2 ring-indigo-400 ring-offset-1': selectedTaskIds.has(element.id) }"
                 :style="taskCardStyle(element)"
               >
                 <div class="flex items-start justify-between gap-2">
+                  <input
+                    type="checkbox"
+                    :checked="selectedTaskIds.has(element.id)"
+                    @change="toggleTaskSelection(element.id)"
+                    @click.stop
+                    class="mt-0.5 shrink-0 accent-indigo-600 cursor-pointer"
+                  />
                   <p class="text-sm font-medium text-gray-500 line-through flex-1">{{ element.title }}</p>
                   <div class="flex items-center gap-1 flex-shrink-0">
                     <button
@@ -503,6 +577,49 @@ async function handleStartDeepWork(task: SavedTask) {
   }
 }
 
+// Bulk action selection
+const selectedTaskIds = ref(new Set<string>())
+
+function toggleTaskSelection(id: string) {
+  if (selectedTaskIds.value.has(id)) {
+    selectedTaskIds.value.delete(id)
+  } else {
+    selectedTaskIds.value.add(id)
+  }
+  // Trigger reactivity
+  selectedTaskIds.value = new Set(selectedTaskIds.value)
+}
+
+function clearSelection() {
+  selectedTaskIds.value = new Set()
+}
+
+async function handleBulkUpdateStatus(status: string) {
+  if (selectedTaskIds.value.size === 0) return
+  errorMessage.value = null
+
+  try {
+    await tasksStore.bulkUpdateTasks(Array.from(selectedTaskIds.value), status)
+    clearSelection()
+  } catch {
+    errorMessage.value = 'Impossible de mettre à jour les tâches. Veuillez réessayer.'
+  }
+}
+
+async function handleBulkDelete() {
+  if (selectedTaskIds.value.size === 0) return
+  errorMessage.value = null
+
+  const ids = Array.from(selectedTaskIds.value)
+  clearSelection()
+
+  try {
+    await Promise.all(ids.map((id) => tasksStore.deleteTask(id)))
+  } catch {
+    errorMessage.value = 'Impossible de supprimer certaines tâches. Veuillez réessayer.'
+  }
+}
+
 onMounted(async () => {
   try {
     await Promise.all([
@@ -514,3 +631,15 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.bulk-bar-enter-active,
+.bulk-bar-leave-active {
+  transition: all 0.25s ease;
+}
+.bulk-bar-enter-from,
+.bulk-bar-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(1rem);
+}
+</style>

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -34,6 +35,20 @@ export class TasksController {
     },
   ) {
     return this.tasksService.createTask(req.user.id, body);
+  }
+
+  @Post('bulk-update')
+  async bulkUpdateTasks(
+    @Req() req: any,
+    @Body() body: { taskIds: string[]; status: string },
+  ) {
+    if (!Array.isArray(body.taskIds) || body.taskIds.length === 0) {
+      throw new BadRequestException('taskIds must be a non-empty array');
+    }
+    if (typeof body.status !== 'string' || !body.status) {
+      throw new BadRequestException('status is required');
+    }
+    return this.tasksService.bulkUpdateTasks(req.user.id, body.taskIds, body.status);
   }
 
   @Patch(':id')
