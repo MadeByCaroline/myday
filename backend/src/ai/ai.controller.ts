@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AiService } from './ai.service';
 
 const MAX_NOTES_LENGTH = 5000;
+const MIN_TRANSCRIPT_LENGTH = 30;
 
 interface AiRequest {
   user: {
@@ -40,5 +41,38 @@ export class AiController {
       );
     }
     return this.aiService.processMeetingNotes(notes.trim());
+  }
+
+  @Post('summarize-meeting')
+  async summarizeMeeting(@Body() body: { transcriptText?: string }) {
+    const transcriptText = body?.transcriptText ?? '';
+    if (
+      typeof transcriptText !== 'string' ||
+      transcriptText.trim().length === 0
+    ) {
+      throw new BadRequestException('Le champ "transcriptText" est requis.');
+    }
+    if (transcriptText.length > MAX_NOTES_LENGTH) {
+      throw new BadRequestException(
+        `La transcription ne doit pas dépasser ${MAX_NOTES_LENGTH} caractères.`,
+      );
+    }
+
+    const normalizedTranscript = transcriptText.trim();
+    if (normalizedTranscript.length < MIN_TRANSCRIPT_LENGTH) {
+      throw new BadRequestException(
+        'La transcription est trop courte pour extraire des actions.',
+      );
+    }
+
+    const summary =
+      await this.aiService.summarizeMeetingTranscript(normalizedTranscript);
+    if (!summary.actionItems || summary.actionItems.length === 0) {
+      throw new BadRequestException(
+        'Aucune action exploitable détectée dans cette transcription.',
+      );
+    }
+
+    return summary;
   }
 }

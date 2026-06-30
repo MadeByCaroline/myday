@@ -7,6 +7,7 @@ describe('AiController', () => {
     const aiService = {
       generateMorningBriefing: jest.fn().mockResolvedValue(briefing),
       processMeetingNotes: jest.fn(),
+      summarizeMeetingTranscript: jest.fn(),
     };
     const controller = new AiController(aiService as any);
 
@@ -24,6 +25,7 @@ describe('AiController', () => {
       const aiService = {
         generateMorningBriefing: jest.fn(),
         processMeetingNotes: jest.fn().mockResolvedValue(result),
+        summarizeMeetingTranscript: jest.fn(),
       };
       const controller = new AiController(aiService as any);
 
@@ -40,6 +42,7 @@ describe('AiController', () => {
       const aiService = {
         generateMorningBriefing: jest.fn(),
         processMeetingNotes: jest.fn(),
+        summarizeMeetingTranscript: jest.fn(),
       };
       const controller = new AiController(aiService as any);
 
@@ -52,6 +55,7 @@ describe('AiController', () => {
       const aiService = {
         generateMorningBriefing: jest.fn(),
         processMeetingNotes: jest.fn(),
+        summarizeMeetingTranscript: jest.fn(),
       };
       const controller = new AiController(aiService as any);
 
@@ -64,6 +68,7 @@ describe('AiController', () => {
       const aiService = {
         generateMorningBriefing: jest.fn(),
         processMeetingNotes: jest.fn(),
+        summarizeMeetingTranscript: jest.fn(),
       };
       const controller = new AiController(aiService as any);
       const longNotes = 'a'.repeat(5001);
@@ -71,6 +76,63 @@ describe('AiController', () => {
       await expect(
         controller.generateContent({ notes: longNotes }),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    describe('summarizeMeeting', () => {
+      const summary = {
+        actionItems: [{ title: 'Envoyer le compte-rendu', dueDate: null, priority: 'MEDIUM' }],
+        decisionSummary: 'Lancement validé lundi prochain.',
+      };
+
+      it('delegates to summarizeMeetingTranscript with trimmed transcript', async () => {
+        const aiService = {
+          generateMorningBriefing: jest.fn(),
+          processMeetingNotes: jest.fn(),
+          summarizeMeetingTranscript: jest.fn().mockResolvedValue(summary),
+        };
+        const controller = new AiController(aiService as any);
+
+        await expect(
+          controller.summarizeMeeting({
+            transcriptText: '  Discussion projet avec décisions et actions à suivre.  ',
+          }),
+        ).resolves.toEqual(summary);
+
+        expect(aiService.summarizeMeetingTranscript).toHaveBeenCalledWith(
+          'Discussion projet avec décisions et actions à suivre.',
+        );
+      });
+
+      it('throws BadRequestException when transcript is too short', async () => {
+        const aiService = {
+          generateMorningBriefing: jest.fn(),
+          processMeetingNotes: jest.fn(),
+          summarizeMeetingTranscript: jest.fn(),
+        };
+        const controller = new AiController(aiService as any);
+
+        await expect(
+          controller.summarizeMeeting({ transcriptText: 'Trop court' }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
+
+      it('throws BadRequestException when no action item is found', async () => {
+        const aiService = {
+          generateMorningBriefing: jest.fn(),
+          processMeetingNotes: jest.fn(),
+          summarizeMeetingTranscript: jest
+            .fn()
+            .mockResolvedValue({ actionItems: [], decisionSummary: '' }),
+        };
+        const controller = new AiController(aiService as any);
+
+        await expect(
+          controller.summarizeMeeting({
+            transcriptText:
+              'Cette transcription contient des échanges mais aucune action exploitable apparente.',
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
     });
   });
 });
