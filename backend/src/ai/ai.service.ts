@@ -45,6 +45,13 @@ interface ResolveAIRequestOptions {
   tools?: WorkspaceChatToolset;
 }
 
+class AiParsingException extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AiParsingException';
+  }
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -122,8 +129,11 @@ export class AiService {
     );
 
     try {
-      const content = await this.resolveAIRequest(prompt, { isJson: true });
-      const parsedResult = JSON.parse(content) as AiAnalysisResult;
+      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const parsedResult = this.parseJsonResponse<AiAnalysisResult>(
+        rawAiResponse,
+        'AI analysis',
+      );
 
       if (!parsedResult.events || parsedResult.events.length === 0) {
         parsedResult.events = events;
@@ -261,8 +271,11 @@ export class AiService {
       calendarEvents,
     );
     try {
-      const content = await this.resolveAIRequest(prompt, { isJson: true });
-      const parsed = JSON.parse(content) as unknown;
+      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const parsed = this.parseJsonResponse<unknown[] | Record<string, unknown>>(
+        rawAiResponse,
+        'AI time-blocking',
+      );
 
       if (!Array.isArray(parsed)) {
         return this.buildFallbackTimeBlocks(tasks);
@@ -304,11 +317,11 @@ export class AiService {
     const prompt = this.promptService.buildTimeAuditPrompt(statsData);
 
     try {
-      const content = await this.resolveAIRequest(prompt, { isJson: true });
-      const parsed = JSON.parse(content) as {
+      const rawAiResponse = await this.resolveAIRequest(prompt, { isJson: true });
+      const parsed = this.parseJsonResponse<{
         analysis?: unknown;
         recommendations?: unknown;
-      };
+      }>(rawAiResponse, 'AI time audit');
 
       const analysis =
         typeof parsed.analysis === 'string' && parsed.analysis.trim().length > 0
@@ -420,6 +433,26 @@ export class AiService {
     return result.response.text().trim();
   }
 
+  private cleanJsonResponse(response: string): string {
+    return response
+      .replace(/^\s*```(?:json)?\s*/iu, '')
+      .replace(/\s*```\s*$/u, '')
+      .trim();
+  }
+
+  private parseJsonResponse<T>(rawAiResponse: string, context: string): T {
+    const cleanedResponse = this.cleanJsonResponse(rawAiResponse);
+
+    try {
+      return JSON.parse(cleanedResponse) as T;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`${context} JSON parsing failed`, message);
+      this.logger.debug(`Raw AI response: ${rawAiResponse}`);
+      throw new AiParsingException(`Invalid ${context} JSON response`);
+    }
+  }
+
   private buildLocalPrompt(
     prompt: string,
     options: ResolveAIRequestOptions,
@@ -513,7 +546,7 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
     }
     if (typeof value === 'string') {
       try {
-        const parsed = JSON.parse(value) as unknown;
+        const parsed = JSON.parse(this.cleanJsonResponse(value)) as unknown;
         if (!Array.isArray(parsed)) {
           return null;
         }
