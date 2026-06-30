@@ -33,10 +33,7 @@ export class TokenRefreshQueueService {
     this.processing = true;
 
     while (this.tasks.length > 0) {
-      const nextTask = this.tasks.shift();
-      if (!nextTask) {
-        continue;
-      }
+      const nextTask = this.tasks.shift()!;
 
       try {
         await nextTask.task();
