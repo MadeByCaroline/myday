@@ -42,6 +42,45 @@ export class TasksService {
     });
   }
 
+  async upsertTask(
+    userId: string,
+    data: {
+      externalId: string;
+      title: string;
+      description?: string;
+      source?: string;
+      workspaceId?: string | null;
+      status?: string;
+    },
+  ) {
+    const workspaceId = await this.workspacesService.resolveWorkspaceId(
+      userId,
+      data.workspaceId,
+    );
+
+    return this.prisma.task.upsert({
+      where: { externalId: data.externalId },
+      update: {
+        title: data.title,
+        description: data.description,
+        ...(data.status &&
+        VALID_STATUSES.includes(data.status as TaskStatus)
+          ? { status: data.status }
+          : {}),
+      },
+      create: {
+        userId,
+        workspaceId,
+        title: data.title,
+        description: data.description,
+        source: data.source || 'MANUAL',
+        status: VALID_STATUSES[0],
+        externalId: data.externalId,
+      },
+      include: TASK_INCLUDE,
+    });
+  }
+
   async getOpenTasks(userId: string, workspaceId?: string) {
     await this.workspacesService.ensureDefaultWorkspace(userId);
 

@@ -19,6 +19,9 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { SettingsModule } from './settings/settings.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { SocialModule } from './integrations/social/social.module';
+import { GithubModule } from './integrations/github/github.module';
+import { NotionModule } from './integrations/notion/notion.module';
+import { IntegrationLinksModule } from './integration-links/integration-links.module';
 
 @Module({
   imports: [
@@ -42,6 +45,9 @@ import { SocialModule } from './integrations/social/social.module';
     SettingsModule,
     WorkspacesModule,
     SocialModule,
+    GithubModule,
+    NotionModule,
+    IntegrationLinksModule,
   ],
 })
 export class AppModule {}

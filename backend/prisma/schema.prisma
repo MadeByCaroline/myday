@@ -8,24 +8,25 @@ datasource db {
 }
 
 model User {
-  id                    String       @id @default(cuid())
-  email                 String       @unique
+  id                    String            @id @default(cuid())
+  email                 String            @unique
   name                  String?
   picture               String?
-  role                  Role         @default(USER)
-  isPremium             Boolean      @default(false)
-  theme                 String       @default("light")
+  role                  Role              @default(USER)
+  isPremium             Boolean           @default(false)
+  theme                 String            @default("light")
   dailySummary          String?
   aiSummaryInstructions String?
-  excludedSenders       String       @default("[]")
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
+  excludedSenders       String            @default("[]")
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
   oauthTokens           OAuthToken[]
   emailAccounts         EmailAccount[]
   socialAccounts        SocialAccount[]
   tasks                 Task[]
   timeEntries           TimeEntry[]
   workspaces            Workspace[]
+  integrationLinks      IntegrationLink[]
 }
 
 enum Role {
@@ -125,6 +126,7 @@ model Task {
   description String?
   status      String      @default("TODO")
   source      String      @default("MANUAL")
+  externalId  String?     @unique
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -135,18 +137,37 @@ model Task {
 }
 
 model Workspace {
-  id         String       @id @default(cuid())
-  name       String
-  color      String
-  icon       String
-  userId     String
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tasks      Task[]
-  oauthTokens OAuthToken[]
+  id               String            @id @default(cuid())
+  name             String
+  color            String
+  icon             String
+  userId           String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks            Task[]
+  oauthTokens      OAuthToken[]
+  integrationLinks IntegrationLink[]
 
   @@index([userId])
+}
+
+model IntegrationLink {
+  id          String     @id @default(cuid())
+  userId      String
+  type        String
+  sourceId    String
+  sourceName  String
+  workspaceId String?
+  config      String     @default("{}")
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, type, sourceId])
+  @@index([userId, type])
 }
 
 model TimeEntry {
