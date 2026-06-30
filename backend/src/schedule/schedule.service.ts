@@ -72,7 +72,8 @@ export class ScheduleService {
             return [];
           }
 
-          const gapMinutes = comparisonBlock.startMinutes - currentBlock.endMinutes;
+          const gapMinutes =
+            comparisonBlock.startMinutes - currentBlock.endMinutes;
           if (gapMinutes >= 0 && gapMinutes < 15) {
             this.logger.warn(
               `Rejecting AI time blocks because ${currentBlock.block.taskId} and ${comparisonBlock.block.taskId} switch workspaces without a 15-minute buffer.`,

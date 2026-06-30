@@ -12,7 +12,13 @@ import { PromptService } from './prompt.service';
 @Module({
   imports: [MailModule, CalendarModule, TasksModule],
   controllers: [AiController],
-  providers: [AiService, MicrosoftService, PromptService, BriefingService, AiChatService],
+  providers: [
+    AiService,
+    MicrosoftService,
+    PromptService,
+    BriefingService,
+    AiChatService,
+  ],
   exports: [AiService, PromptService, BriefingService, AiChatService],
 })
 export class AiModule {}

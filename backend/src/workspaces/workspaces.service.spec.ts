@@ -17,7 +17,9 @@ describe('WorkspacesService', () => {
       oAuthToken: {
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
-      $transaction: jest.fn().mockImplementation(async (operations) => Promise.all(operations)),
+      $transaction: jest
+        .fn()
+        .mockImplementation(async (operations) => Promise.all(operations)),
     };
 
     return {
@@ -94,14 +96,18 @@ describe('WorkspacesService', () => {
     const { prisma, service } = createService();
     prisma.workspace.findFirst.mockResolvedValue({ id: 'ws-2' });
 
-    await expect(service.resolveWorkspaceId('user-1', 'ws-2')).resolves.toBe('ws-2');
+    await expect(service.resolveWorkspaceId('user-1', 'ws-2')).resolves.toBe(
+      'ws-2',
+    );
   });
 
   it('rejects unknown workspace ids', async () => {
     const { prisma, service } = createService();
     prisma.workspace.findFirst.mockResolvedValue(null);
 
-    await expect(service.resolveWorkspaceId('user-1', 'missing')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      service.resolveWorkspaceId('user-1', 'missing'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('reassigns tasks and integrations before deleting a workspace', async () => {
@@ -132,8 +138,12 @@ describe('WorkspacesService', () => {
 
   it('does not allow deleting the last workspace', async () => {
     const { prisma, service } = createService();
-    prisma.workspace.findMany.mockResolvedValue([{ id: 'ws-1', userId: 'user-1' }]);
+    prisma.workspace.findMany.mockResolvedValue([
+      { id: 'ws-1', userId: 'user-1' },
+    ]);
 
-    await expect(service.deleteWorkspace('ws-1', 'user-1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.deleteWorkspace('ws-1', 'user-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

@@ -38,7 +38,9 @@ export class ImapAdapter implements EmailProvider {
       const allUids = await client.search({ all: true });
       const normalizedUnread = Array.isArray(unreadUids) ? unreadUids : [];
       const normalizedAll = Array.isArray(allUids) ? allUids : [];
-      const selected = (normalizedUnread.length > 0 ? normalizedUnread : normalizedAll)
+      const selected = (
+        normalizedUnread.length > 0 ? normalizedUnread : normalizedAll
+      )
         .slice(-10)
         .reverse();
 

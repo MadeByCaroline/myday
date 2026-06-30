@@ -283,6 +283,8 @@ export class UsersService {
   }
 
   private getOAuthProviderVariants(provider: EmailProvider) {
-    return provider === 'GOOGLE' ? ['google', 'GOOGLE'] : ['MICROSOFT', 'microsoft'];
+    return provider === 'GOOGLE'
+      ? ['google', 'GOOGLE']
+      : ['MICROSOFT', 'microsoft'];
   }
 }

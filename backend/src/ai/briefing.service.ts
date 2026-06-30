@@ -141,12 +141,14 @@ export class BriefingService {
       ),
       recommendedFocus: this.safeString(
         data.recommendedFocus,
-        "Commencez par votre tâche TODO prioritaire pour prendre de l\u2019élan.",
+        'Commencez par votre tâche TODO prioritaire pour prendre de l\u2019élan.',
       ),
     };
   }
 
-  buildFallbackMorningBriefing(context: MorningBriefingContext): MorningBriefingResult {
+  buildFallbackMorningBriefing(
+    context: MorningBriefingContext,
+  ): MorningBriefingResult {
     const topTask =
       context.highPriorityTodoTasks[0]?.title || 'votre tâche TODO prioritaire';
 

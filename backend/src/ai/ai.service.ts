@@ -149,7 +149,7 @@ export class AiService {
       this.logger.error('Gemini API error', message);
       return {
         summary:
-          "Impossible de générer le résumé IA pour le moment. Vérifiez la configuration de Gemini.",
+          'Impossible de générer le résumé IA pour le moment. Vérifiez la configuration de Gemini.',
         events,
         suggested_tasks: [],
         email_summaries: this.buildFallbackEmailSummaries(emails),
@@ -173,7 +173,11 @@ export class AiService {
     action: string;
     events: import('../calendar/calendar.service').CalendarEvent[];
   }): Promise<string> {
-    const prompt = this.promptService.buildDraftReplyPrompt(email, action, events);
+    const prompt = this.promptService.buildDraftReplyPrompt(
+      email,
+      action,
+      events,
+    );
     try {
       const content = await this.resolveAIRequest(prompt);
       return content || this.buildFallbackDraftReply(action);
@@ -185,7 +189,9 @@ export class AiService {
     }
   }
 
-  async generateMorningBriefing(userId: string): Promise<MorningBriefingResult> {
+  async generateMorningBriefing(
+    userId: string,
+  ): Promise<MorningBriefingResult> {
     const todayKey = new Date().toISOString().slice(0, 10);
     this.briefingService.pruneCache(todayKey);
     const cached = this.briefingService.getFromCache(userId);
@@ -193,8 +199,12 @@ export class AiService {
       return cached.briefing;
     }
 
-    const context = await this.briefingService.getMorningBriefingContext(userId);
-    const prompt = this.promptService.buildMorningBriefingPrompt(context, userId);
+    const context =
+      await this.briefingService.getMorningBriefingContext(userId);
+    const prompt = this.promptService.buildMorningBriefingPrompt(
+      context,
+      userId,
+    );
 
     let briefing: MorningBriefingResult;
     try {
@@ -233,10 +243,7 @@ export class AiService {
         history: params.history,
         tools: params.tools,
       });
-      return (
-        text ||
-        "Je n'ai pas pu formuler une réponse pour le moment."
-      );
+      return text || "Je n'ai pas pu formuler une réponse pour le moment.";
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown AI provider error';
@@ -249,7 +256,10 @@ export class AiService {
     tasks: TimeBlockingTaskInput[],
     calendarEvents: import('../calendar/calendar.service').CalendarEvent[],
   ): Promise<TimeBlock[]> {
-    const prompt = this.promptService.buildTimeBlockingPrompt(tasks, calendarEvents);
+    const prompt = this.promptService.buildTimeBlockingPrompt(
+      tasks,
+      calendarEvents,
+    );
     try {
       const content = await this.resolveAIRequest(prompt, { isJson: true });
       const parsed = JSON.parse(content) as unknown;
@@ -284,7 +294,12 @@ export class AiService {
       taskStatus: string;
       totalDuration: number;
     }>;
-  }): Promise<{ analysis: string; recommendations: string[]; isFallback?: boolean; fallbackReason?: string }> {
+  }): Promise<{
+    analysis: string;
+    recommendations: string[];
+    isFallback?: boolean;
+    fallbackReason?: string;
+  }> {
     const MAX_RECOMMENDATIONS = 2;
     const prompt = this.promptService.buildTimeAuditPrompt(statsData);
 

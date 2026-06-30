@@ -9,7 +9,10 @@ describe('AuthController', () => {
     get: jest.fn(),
   };
 
-  const controller = new AuthController(authService as any, configService as any);
+  const controller = new AuthController(
+    authService as any,
+    configService as any,
+  );
 
   it('returns role, isPremium and connected accounts in profile response', () => {
     const result = controller.getProfile({

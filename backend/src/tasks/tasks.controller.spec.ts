@@ -27,16 +27,23 @@ describe('TasksController', () => {
       const service = { createTask: jest.fn().mockResolvedValue(created) };
       const controller = makeController(service);
 
-      const result = await controller.createTask({ user: mockUser }, { title: 'Walk dog' });
+      const result = await controller.createTask(
+        { user: mockUser },
+        { title: 'Walk dog' },
+      );
 
-      expect(service.createTask).toHaveBeenCalledWith('user-1', { title: 'Walk dog' });
+      expect(service.createTask).toHaveBeenCalledWith('user-1', {
+        title: 'Walk dog',
+      });
       expect(result).toEqual(created);
     });
   });
 
   describe('bulkUpdateTasks', () => {
     it('delegates bulk update to the service with userId, taskIds, and status', async () => {
-      const service = { bulkUpdateTasks: jest.fn().mockResolvedValue({ count: 2 }) };
+      const service = {
+        bulkUpdateTasks: jest.fn().mockResolvedValue({ count: 2 }),
+      };
       const controller = makeController(service);
 
       const result = await controller.bulkUpdateTasks(
@@ -44,7 +51,11 @@ describe('TasksController', () => {
         { taskIds: ['t1', 't2'], status: 'DONE' },
       );
 
-      expect(service.bulkUpdateTasks).toHaveBeenCalledWith('user-1', ['t1', 't2'], 'DONE');
+      expect(service.bulkUpdateTasks).toHaveBeenCalledWith(
+        'user-1',
+        ['t1', 't2'],
+        'DONE',
+      );
       expect(result).toEqual({ count: 2 });
     });
 
@@ -53,7 +64,10 @@ describe('TasksController', () => {
       const controller = makeController(service);
 
       await expect(
-        controller.bulkUpdateTasks({ user: mockUser }, { taskIds: [], status: 'DONE' }),
+        controller.bulkUpdateTasks(
+          { user: mockUser },
+          { taskIds: [], status: 'DONE' },
+        ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -62,7 +76,10 @@ describe('TasksController', () => {
       const controller = makeController(service);
 
       await expect(
-        controller.bulkUpdateTasks({ user: mockUser }, { taskIds: null as any, status: 'DONE' }),
+        controller.bulkUpdateTasks(
+          { user: mockUser },
+          { taskIds: null as any, status: 'DONE' },
+        ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -71,7 +88,10 @@ describe('TasksController', () => {
       const controller = makeController(service);
 
       await expect(
-        controller.bulkUpdateTasks({ user: mockUser }, { taskIds: ['t1'], status: '' }),
+        controller.bulkUpdateTasks(
+          { user: mockUser },
+          { taskIds: ['t1'], status: '' },
+        ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
@@ -81,9 +101,13 @@ describe('TasksController', () => {
       const service = { updateTask: jest.fn().mockResolvedValue({ count: 1 }) };
       const controller = makeController(service);
 
-      await controller.updateTask({ user: mockUser }, 't3', { status: 'IN_PROGRESS' });
+      await controller.updateTask({ user: mockUser }, 't3', {
+        status: 'IN_PROGRESS',
+      });
 
-      expect(service.updateTask).toHaveBeenCalledWith('t3', 'user-1', { status: 'IN_PROGRESS' });
+      expect(service.updateTask).toHaveBeenCalledWith('t3', 'user-1', {
+        status: 'IN_PROGRESS',
+      });
     });
   });
 

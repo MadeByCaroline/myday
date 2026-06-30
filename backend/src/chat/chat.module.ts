@@ -9,7 +9,13 @@ import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
 
 @Module({
-  imports: [AiModule, UsersModule, CalendarModule, TasksModule, TimeTrackingModule],
+  imports: [
+    AiModule,
+    UsersModule,
+    CalendarModule,
+    TasksModule,
+    TimeTrackingModule,
+  ],
   controllers: [ChatController],
   providers: [ChatService, MicrosoftService],
 })

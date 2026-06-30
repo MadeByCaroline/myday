@@ -94,9 +94,11 @@ describe('SummaryService', () => {
       }),
     };
 
-    const service = createService(aiService as any);
+    const service = createService(aiService);
 
-    await expect(service.generateSummaryForUser('user-1')).resolves.toMatchObject({
+    await expect(
+      service.generateSummaryForUser('user-1'),
+    ).resolves.toMatchObject({
       summary: 'Generated summary',
     });
 
@@ -123,8 +125,12 @@ describe('SummaryService', () => {
   });
 
   it('returns cached summary when all account syncs fail', async () => {
-    prisma.user.findUnique.mockResolvedValue({ dailySummary: 'Cached summary' });
-    prisma.emailAccount.findMany.mockResolvedValue([{ id: 'a1', provider: 'IMAP' }]);
+    prisma.user.findUnique.mockResolvedValue({
+      dailySummary: 'Cached summary',
+    });
+    prisma.emailAccount.findMany.mockResolvedValue([
+      { id: 'a1', provider: 'IMAP' },
+    ]);
     emailSyncService.syncForUser.mockResolvedValue([
       {
         account: {
@@ -168,7 +174,9 @@ describe('SummaryService', () => {
       aiSummaryInstructions: null,
       excludedSenders: ['@news.com'],
     });
-    prisma.emailAccount.findMany.mockResolvedValue([{ id: 'a1', provider: 'IMAP' }]);
+    prisma.emailAccount.findMany.mockResolvedValue([
+      { id: 'a1', provider: 'IMAP' },
+    ]);
     emailSyncService.syncForUser.mockResolvedValue([
       {
         account: {
@@ -194,7 +202,7 @@ describe('SummaryService', () => {
         email_summaries: [],
       }),
     };
-    const service = createService(aiService as any);
+    const service = createService(aiService);
 
     await service.generateSummaryForUser('user-1');
 

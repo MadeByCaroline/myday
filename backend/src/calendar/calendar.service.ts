@@ -46,7 +46,7 @@ export class CalendarService {
         const provider = oauthToken.provider.toUpperCase();
         const workspaceId = oauthToken.workspaceId ?? null;
         const workspaceName = workspaceId
-          ? workspaceNames.get(workspaceId) ?? null
+          ? (workspaceNames.get(workspaceId) ?? null)
           : null;
 
         if (provider === 'GOOGLE') {
@@ -85,7 +85,9 @@ export class CalendarService {
           result.status === 'fulfilled',
       )
       .flatMap((result) => result.value)
-      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      .sort(
+        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime(),
+      );
   }
 
   async getTodayEvents(

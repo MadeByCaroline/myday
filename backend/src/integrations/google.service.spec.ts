@@ -69,7 +69,9 @@ describe('GoogleService', () => {
     const configService = {
       getOrThrow: jest.fn((key: string) => key),
     };
-    const service = new GoogleService(configService as unknown as ConfigService);
+    const service = new GoogleService(
+      configService as unknown as ConfigService,
+    );
 
     await expect(
       service.getTodayEvents('access-token', 'refresh-token'),
@@ -109,7 +111,9 @@ describe('GoogleService', () => {
     const configService = {
       getOrThrow: jest.fn((key: string) => key),
     };
-    const service = new GoogleService(configService as unknown as ConfigService);
+    const service = new GoogleService(
+      configService as unknown as ConfigService,
+    );
 
     await expect(
       service.createBusyEvent(
@@ -141,7 +145,9 @@ describe('GoogleService', () => {
     const configService = {
       getOrThrow: jest.fn((key: string) => key),
     };
-    const service = new GoogleService(configService as unknown as ConfigService);
+    const service = new GoogleService(
+      configService as unknown as ConfigService,
+    );
 
     await service.deleteBusyEvent(
       'access-token',
@@ -174,7 +180,9 @@ describe('GoogleService', () => {
     const configService = {
       getOrThrow: jest.fn((key: string) => key),
     };
-    const service = new GoogleService(configService as unknown as ConfigService);
+    const service = new GoogleService(
+      configService as unknown as ConfigService,
+    );
 
     await expect(
       service.getTodayEvents('stale-access', 'refresh-token'),
@@ -198,7 +206,9 @@ describe('GoogleService', () => {
     const configService = {
       getOrThrow: jest.fn((key: string) => key),
     };
-    const service = new GoogleService(configService as unknown as ConfigService);
+    const service = new GoogleService(
+      configService as unknown as ConfigService,
+    );
 
     await expect(service.getTodayEvents('stale-access')).rejects.toEqual(
       expect.objectContaining({

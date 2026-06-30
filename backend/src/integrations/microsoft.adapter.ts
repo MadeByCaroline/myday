@@ -35,13 +35,19 @@ export class MicrosoftAdapter implements EmailProvider {
   }
 
   async getEmailById(account: EmailAccount, messageId: string) {
-    return this.microsoftService.getEmailById(account.accessToken || '', messageId);
+    return this.microsoftService.getEmailById(
+      account.accessToken || '',
+      messageId,
+    );
   }
 
   async sendEmail(
     account: EmailAccount,
     options: { to: string; subject: string; body: string },
   ) {
-    return this.microsoftService.createDraft(account.accessToken || '', options);
+    return this.microsoftService.createDraft(
+      account.accessToken || '',
+      options,
+    );
   }
 }

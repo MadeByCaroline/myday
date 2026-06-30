@@ -35,7 +35,11 @@ export class MailService {
     accessToken: string,
     refreshToken?: string,
   ): Promise<EmailDetail | null> {
-    return this.gmailClient.getMessageDetails(messageId, accessToken, refreshToken);
+    return this.gmailClient.getMessageDetails(
+      messageId,
+      accessToken,
+      refreshToken,
+    );
   }
 
   async createDraft(

@@ -299,7 +299,9 @@ export class EmailsService {
     }
 
     const fallback = value.trim();
-    this.logger.warn(`Unable to confidently parse email address from: ${fallback}`);
+    this.logger.warn(
+      `Unable to confidently parse email address from: ${fallback}`,
+    );
     return fallback;
   }
 

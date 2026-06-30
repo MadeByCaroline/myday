@@ -230,9 +230,7 @@ Analyse ma répartition du temps et fournis ${MAX_RECOMMENDATIONS} recommandatio
     ].join('\n');
   }
 
-  sanitizeAiSummaryInstructions(
-    instructions?: string | null,
-  ): string | null {
+  sanitizeAiSummaryInstructions(instructions?: string | null): string | null {
     if (!instructions) {
       return null;
     }

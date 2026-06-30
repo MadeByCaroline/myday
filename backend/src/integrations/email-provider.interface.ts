@@ -6,7 +6,10 @@ export interface EmailProvider {
   supports(account: EmailAccount): boolean;
   fetchEmails(account: EmailAccount): Promise<EmailSummary[]>;
   fetchEvents(account: EmailAccount): Promise<CalendarEvent[]>;
-  getEmailById(account: EmailAccount, messageId: string): Promise<EmailDetail | null>;
+  getEmailById(
+    account: EmailAccount,
+    messageId: string,
+  ): Promise<EmailDetail | null>;
   sendEmail(
     account: EmailAccount,
     options: { to: string; subject: string; body: string },

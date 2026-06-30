@@ -84,7 +84,9 @@ export class WorkspacesService {
       );
     }
 
-    const fallbackWorkspace = workspaces.find((entry) => entry.id !== workspaceId);
+    const fallbackWorkspace = workspaces.find(
+      (entry) => entry.id !== workspaceId,
+    );
     if (!fallbackWorkspace) {
       throw new Error(
         'Unable to find fallback workspace for deletion. This indicates a data inconsistency.',
@@ -209,7 +211,9 @@ export class WorkspacesService {
     fallback: string,
     partial: boolean,
   ): Partial<Pick<NormalizedWorkspaceData, 'color' | 'icon'>> {
-    const normalizedField: Partial<Pick<NormalizedWorkspaceData, 'color' | 'icon'>> = {};
+    const normalizedField: Partial<
+      Pick<NormalizedWorkspaceData, 'color' | 'icon'>
+    > = {};
     const resolvedValue = value || (!partial ? fallback : undefined);
 
     if (!resolvedValue) {

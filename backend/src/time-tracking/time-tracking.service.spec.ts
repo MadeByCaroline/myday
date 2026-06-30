@@ -156,9 +156,9 @@ describe('TimeTrackingService', () => {
   it('throws when trying to start a timer for another user’s task', async () => {
     prisma.task.findFirst.mockResolvedValue(null);
 
-    await expect(service.startTimer('user-1', 'task-404')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.startTimer('user-1', 'task-404'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('stops a running timer and stores the duration in seconds', async () => {

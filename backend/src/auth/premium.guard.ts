@@ -15,9 +15,7 @@ export class PremiumGuard extends JwtAuthGuard {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     await super.canActivate(context);
 
-    const request = context
-      .switchToHttp()
-      .getRequest<{ user: PremiumUser }>();
+    const request = context.switchToHttp().getRequest<{ user: PremiumUser }>();
     const user = request.user;
 
     if (user.role === 'ADMIN' || user.isPremium) {

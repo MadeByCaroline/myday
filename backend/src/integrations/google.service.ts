@@ -48,8 +48,9 @@ export class GoogleService {
         const defaultLink =
           event.hangoutLink ||
           event.htmlLink ||
-          event.conferenceData?.entryPoints?.find((entryPoint) => entryPoint.uri)
-            ?.uri;
+          event.conferenceData?.entryPoints?.find(
+            (entryPoint) => entryPoint.uri,
+          )?.uri;
 
         return {
           id: event.id || '',
@@ -66,7 +67,9 @@ export class GoogleService {
         throw error;
       }
       const message =
-        error instanceof Error ? error.message : 'Unknown Google Calendar error';
+        error instanceof Error
+          ? error.message
+          : 'Unknown Google Calendar error';
       this.logger.error('Failed to fetch Google calendar events', message);
       throw IntegrationProviderError.unavailable('GOOGLE');
     }
@@ -77,7 +80,10 @@ export class GoogleService {
     refreshToken?: string,
   ): Promise<(startOfDay: Date, endOfDay: Date) => Promise<[any, any]>> {
     const runRequest = async (currentAccessToken: string) => {
-      const oauth2Client = this.createOAuthClient(currentAccessToken, refreshToken);
+      const oauth2Client = this.createOAuthClient(
+        currentAccessToken,
+        refreshToken,
+      );
       const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
       return async (startOfDay: Date, endOfDay: Date) =>
@@ -162,7 +168,9 @@ export class GoogleService {
       return response.data.id || null;
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unknown Google Calendar error';
+        error instanceof Error
+          ? error.message
+          : 'Unknown Google Calendar error';
       this.logger.error('Failed to create Google deep work event', message);
       return null;
     }
@@ -182,7 +190,9 @@ export class GoogleService {
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unknown Google Calendar error';
+        error instanceof Error
+          ? error.message
+          : 'Unknown Google Calendar error';
       this.logger.error('Failed to delete Google deep work event', message);
     }
   }

@@ -18,7 +18,9 @@ describe('ChatService', () => {
     const tasksService = {
       getUserTasks: jest
         .fn()
-        .mockResolvedValue([{ id: 'task-1', title: 'Write docs', status: 'TODO' }]),
+        .mockResolvedValue([
+          { id: 'task-1', title: 'Write docs', status: 'TODO' },
+        ]),
     };
     const timeTrackingService = {
       getTimeEntries: jest.fn().mockResolvedValue([]),
@@ -49,20 +51,26 @@ describe('ChatService', () => {
   });
 
   it('lets AI call internal workspace tools and returns AI answer', async () => {
-    const { service, aiService, tasksService, timeTrackingService } = makeService();
-    aiService.answerWorkspaceQuestion.mockImplementation(async ({ tools }: any) => {
-      const tasks = await tools.getTasks('TODO');
-      const entries = await tools.getTimeEntries(
-        {
-          start: '2026-06-01T00:00:00.000Z',
-          end: '2026-06-30T23:59:59.000Z',
-        },
-        'task-1',
-      );
-      return `Tasks: ${tasks.length}, entries: ${entries.length}`;
-    });
+    const { service, aiService, tasksService, timeTrackingService } =
+      makeService();
+    aiService.answerWorkspaceQuestion.mockImplementation(
+      async ({ tools }: any) => {
+        const tasks = await tools.getTasks('TODO');
+        const entries = await tools.getTimeEntries(
+          {
+            start: '2026-06-01T00:00:00.000Z',
+            end: '2026-06-30T23:59:59.000Z',
+          },
+          'task-1',
+        );
+        return `Tasks: ${tasks.length}, entries: ${entries.length}`;
+      },
+    );
 
-    const result = await service.sendMessage('user-1', 'How much do I have left?');
+    const result = await service.sendMessage(
+      'user-1',
+      'How much do I have left?',
+    );
 
     expect(result).toEqual({ message: 'Tasks: 1, entries: 0' });
     expect(tasksService.getUserTasks).toHaveBeenCalledWith('user-1');

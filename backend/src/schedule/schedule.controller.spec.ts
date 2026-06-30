@@ -90,7 +90,9 @@ describe('ScheduleController', () => {
       getOpenTasksAcrossWorkspaces: jest.fn().mockResolvedValue(openTasks),
       updateTask: jest.fn().mockResolvedValue({ count: 1 }),
     };
-    const aiService = { generateTimeBlocking: jest.fn().mockResolvedValue(timeBlocks) };
+    const aiService = {
+      generateTimeBlocking: jest.fn().mockResolvedValue(timeBlocks),
+    };
     const scheduleService = {
       validateTimeBlocks: jest.fn().mockReturnValue(timeBlocks),
     };
@@ -103,7 +105,9 @@ describe('ScheduleController', () => {
     });
     const result = await controller.optimizeDay({ user: mockUser });
 
-    expect(calendarService.getTodayWorkspaceEvents).toHaveBeenCalledWith('user-1');
+    expect(calendarService.getTodayWorkspaceEvents).toHaveBeenCalledWith(
+      'user-1',
+    );
     expect(tasksService.getOpenTasksAcrossWorkspaces).toHaveBeenCalledWith(
       'user-1',
     );
@@ -169,12 +173,18 @@ describe('ScheduleController', () => {
       ]),
       updateTask: jest.fn(),
     };
-    const aiService = { generateTimeBlocking: jest.fn().mockResolvedValue(timeBlocks) };
+    const aiService = {
+      generateTimeBlocking: jest.fn().mockResolvedValue(timeBlocks),
+    };
     const scheduleService = {
       validateTimeBlocks: jest.fn().mockReturnValue([]),
     };
 
-    const controller = makeController({ tasksService, aiService, scheduleService });
+    const controller = makeController({
+      tasksService,
+      aiService,
+      scheduleService,
+    });
     const result = await controller.optimizeDay({ user: mockUser });
 
     expect(tasksService.updateTask).not.toHaveBeenCalled();

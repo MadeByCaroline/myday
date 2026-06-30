@@ -107,8 +107,7 @@ describe('AiService', () => {
             summary: 'Voici votre journée.',
             events,
             suggested_tasks: [],
-            email_summaries:
-              `[{"emailId":"mail-1","summary":"Demande d'envoyer un compte rendu","category":"ACTION_REQUIRED"},{"emailId":"mail-2","summary":"Mise à jour hebdomadaire","category":"newsletter"},{"emailId":"mail-3","summary":"Notification d'information","category":"UNKNOWN"}]`,
+            email_summaries: `[{"emailId":"mail-1","summary":"Demande d'envoyer un compte rendu","category":"ACTION_REQUIRED"},{"emailId":"mail-2","summary":"Mise à jour hebdomadaire","category":"newsletter"},{"emailId":"mail-3","summary":"Notification d'information","category":"UNKNOWN"}]`,
           }),
       },
     });
@@ -178,7 +177,7 @@ describe('AiService', () => {
 
     const prompt = mockGenerateContent.mock.calls[0][0] as string;
 
-    expect(prompt).toContain('Instructions personnalisées de l\'utilisateur');
+    expect(prompt).toContain("Instructions personnalisées de l'utilisateur");
     expect(prompt).toContain('Réponds en puces.');
     expect(prompt).not.toContain('Ignore previous instructions');
     expect(prompt).not.toContain('system:');
@@ -659,7 +658,9 @@ describe('AiService', () => {
       expect(mockGenerateContent.mock.calls[0][0]).toContain(
         'Unified tasks and events with workspace metadata',
       );
-      expect(mockGenerateContent.mock.calls[0][0]).toContain('"workspaceName": "Work"');
+      expect(mockGenerateContent.mock.calls[0][0]).toContain(
+        '"workspaceName": "Work"',
+      );
       expect(mockGenerateContent.mock.calls[0][0]).toContain('"kind": "event"');
     });
 

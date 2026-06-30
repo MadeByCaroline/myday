@@ -271,10 +271,7 @@ export class SummaryService {
 
     if (
       !oauthToken.refreshToken ||
-      this.isTokenExpired(
-        oauthToken,
-        SummaryService.TOKEN_REAUTH_THRESHOLD_MS,
-      )
+      this.isTokenExpired(oauthToken, SummaryService.TOKEN_REAUTH_THRESHOLD_MS)
     ) {
       throw IntegrationProviderError.needsReauth('GOOGLE');
     }
@@ -301,10 +298,7 @@ export class SummaryService {
 
     if (
       !oauthToken.refreshToken ||
-      this.isTokenExpired(
-        oauthToken,
-        SummaryService.TOKEN_REAUTH_THRESHOLD_MS,
-      )
+      this.isTokenExpired(oauthToken, SummaryService.TOKEN_REAUTH_THRESHOLD_MS)
     ) {
       throw IntegrationProviderError.needsReauth('MICROSOFT');
     }
@@ -381,7 +375,6 @@ export class SummaryService {
         expiresAt,
       },
     });
-
   }
 
   private isTokenExpired(oauthToken: OAuthTokenRecord, thresholdMs = 0) {
