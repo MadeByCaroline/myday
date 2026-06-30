@@ -695,7 +695,7 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
     const lowered = raw.toLowerCase();
     const now = new Date();
 
-    if (lowered === 'today' || lowered === "aujourd'hui") {
+    if (lowered === 'today' || lowered === 'aujourd\'hui') {
       return now.toISOString().slice(0, 10);
     }
     if (lowered === 'tomorrow' || lowered === 'demain') {

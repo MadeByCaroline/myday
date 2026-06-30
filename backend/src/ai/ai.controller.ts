@@ -67,7 +67,7 @@ export class AiController {
 
     const summary =
       await this.aiService.summarizeMeetingTranscript(normalizedTranscript);
-    if (!summary.actionItems || summary.actionItems.length === 0) {
+    if (summary.actionItems.length === 0) {
       throw new BadRequestException(
         'Aucune action exploitable détectée dans cette transcription.',
       );
