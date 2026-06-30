@@ -240,7 +240,7 @@ cd backend && npm run test:e2e -- --runInBand
 > No separate feedback repository artifacts were found, so these points are inferred from the current code paths and UX behavior.
 
 - **Clearer failure feedback:** several backend integrations log an error and return empty arrays (`mail.service.ts`, `calendar.service.ts`, `integrations/google.service.ts`, `integrations/microsoft.service.ts`), which can make the dashboard look “empty” without enough explanation.
-- **Faster multi-task workflows:** `frontend/src/stores/tasks.ts` accepts suggested tasks one at a time and updates task status one request at a time, which may feel slow when users process many tasks.
+- **Faster multi-task workflows:** `frontend/src/stores/tasks.ts` handles suggested tasks one at a time and updates task status one request at a time, which may feel slow when users process many tasks.
 - **Safer frontend iteration:** missing frontend tests make UI refactors riskier even when backend tests stay green.
 
 ### Prioritization matrix
