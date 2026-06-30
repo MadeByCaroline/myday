@@ -72,10 +72,15 @@
 
           <button
             type="button"
-            class="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            class="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="loadingPlan !== null"
             @click="startSubscription('monthly')"
           >
-            Démarrer mon essai gratuit (CB requise)
+            <span v-if="loadingPlan === 'monthly'" class="inline-flex items-center gap-2">
+              <i class="pi pi-spin pi-spinner" />
+              Redirection…
+            </span>
+            <span v-else>Démarrer mon essai gratuit (CB requise)</span>
           </button>
           <p class="mt-3 text-xs leading-relaxed text-gray-600">
             Aucun débit aujourd'hui. Vous serez prélevé de {{ MONTHLY_PRICE }}€/mois après 7 jours sauf annulation
@@ -105,10 +110,15 @@
 
           <button
             type="button"
-            class="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black"
+            class="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="loadingPlan !== null"
             @click="startSubscription('annual')"
           >
-            S'abonner à l'année
+            <span v-if="loadingPlan === 'annual'" class="inline-flex items-center gap-2">
+              <i class="pi pi-spin pi-spinner" />
+              Redirection…
+            </span>
+            <span v-else>S'abonner à l'année</span>
           </button>
           <p class="mt-3 text-xs leading-relaxed text-gray-600">
             Prélèvement unique de {{ ANNUAL_PRICE }}€ aujourd'hui. Renouvellement automatique chaque année. Annulation
@@ -130,10 +140,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const toast = useToast()
 const MONTHLY_PRICE = 29
 const ANNUAL_PRICE = 243
 const ANNUAL_REGULAR_PRICE = 348
@@ -142,6 +155,7 @@ const WHITELIST_STORAGE_KEY = 'myday_pricing_whitelist_email'
 const isAnnual = ref(false)
 const email = ref('')
 const giveawaySubmitted = ref(false)
+const loadingPlan = ref<'monthly' | 'annual' | null>(null)
 
 const annualDisplayedPrice = computed(() => (isAnnual.value ? '20,25€ / mois' : `${ANNUAL_PRICE}€ / an`))
 
@@ -160,7 +174,30 @@ function submitWhitelist() {
   email.value = ''
 }
 
-function startSubscription(plan: 'monthly' | 'annual') {
-  router.push({ name: 'login', query: { plan } })
+async function startSubscription(plan: 'monthly' | 'annual') {
+  if (!authStore.isAuthenticated) {
+    router.push({ name: 'login', query: { plan } })
+    return
+  }
+
+  loadingPlan.value = plan
+  try {
+    const { data } = await axios.post<{ url: string }>(
+      `${import.meta.env.VITE_API_URL}/payments/checkout`,
+      { planType: plan },
+      { headers: { Authorization: 'Bearer ' + authStore.token } },
+    )
+    if (!data.url) {
+      throw new Error('No checkout URL returned')
+    }
+    window.location.href = data.url
+  } catch (err: unknown) {
+    const detail =
+      axios.isAxiosError(err) && typeof err.response?.data?.message === 'string'
+        ? err.response.data.message
+        : 'Impossible d\'initier le paiement. Veuillez réessayer.'
+    toast.add({ severity: 'error', summary: 'Erreur', detail, life: 5000 })
+    loadingPlan.value = null
+  }
 }
 </script>
