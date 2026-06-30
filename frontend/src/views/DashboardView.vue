@@ -88,6 +88,10 @@
             <TaskListView />
           </div>
 
+          <div class="xl:col-span-3">
+            <SocialStatsWidget :stats="socialStats" />
+          </div>
+
           <!-- Agenda - full width -->
           <div class="xl:col-span-3">
             <DailyAgenda :events="dashboardStore.events" />
@@ -196,6 +200,7 @@ import { useTasksStore } from '../stores/tasks'
 import SummaryCard from '../components/SummaryCard.vue'
 import DailyAgenda from '../components/DailyAgenda.vue'
 import TaskListView from '../components/TaskListView.vue'
+import SocialStatsWidget, { type SocialWidgetItem } from '../components/SocialStatsWidget.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -208,6 +213,7 @@ const now = new Date()
 const hour = now.getHours()
 const isOptimizing = ref(false)
 const banningEmailId = ref<string | null>(null)
+const socialStats = ref<SocialWidgetItem[]>([])
 
 const greeting = computed(() => {
   if (hour < 12) return 'Bonjour'
@@ -422,6 +428,18 @@ async function optimizeDay() {
   }
 }
 
+async function fetchSocialStats() {
+  if (!authStore.token) return
+  try {
+    const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/social/stats`, {
+      headers: { Authorization: 'Bearer ' + authStore.token },
+    })
+    socialStats.value = Array.isArray(data) ? data : []
+  } catch {
+    socialStats.value = []
+  }
+}
+
 onMounted(async () => {
   if (authStore.isAuthenticated && !authStore.user) {
     try {
@@ -436,6 +454,7 @@ onMounted(async () => {
     }
   }
   await tasksStore.fetchSavedTasks()
+  await fetchSocialStats()
   await dashboardStore.fetchDashboardData()
 })
 </script>

@@ -22,6 +22,7 @@ model User {
   updatedAt             DateTime     @updatedAt
   oauthTokens           OAuthToken[]
   emailAccounts         EmailAccount[]
+  socialAccounts        SocialAccount[]
   tasks                 Task[]
   timeEntries           TimeEntry[]
   workspaces            Workspace[]
@@ -36,6 +37,12 @@ enum EmailProvider {
   GOOGLE
   MICROSOFT
   IMAP
+}
+
+enum SocialProvider {
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
 }
 
 model OAuthToken {
@@ -74,6 +81,40 @@ model EmailAccount {
 
   @@index([userId, provider])
   @@unique([userId, provider, emailAddress, label])
+}
+
+model SocialAccount {
+  id                    String                 @id @default(cuid())
+  userId                String
+  provider              SocialProvider
+  externalAccountId     String
+  accessToken           String
+  refreshToken          String?
+  tokenExpiry           DateTime?
+  tokenExpiringNotifiedAt DateTime?
+  lastTotalViews        Int                    @default(0)
+  lastFollowerCount     Int                    @default(0)
+  lastEngagementRate    Float                  @default(0)
+  lastSyncedAt          DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metricSnapshots       SocialMetricSnapshot[]
+
+  @@index([userId, provider])
+  @@unique([userId, provider, externalAccountId])
+}
+
+model SocialMetricSnapshot {
+  id             String        @id @default(cuid())
+  socialAccountId String
+  totalViews     Int
+  followerCount  Int
+  engagementRate Float
+  recordedAt     DateTime      @default(now())
+  socialAccount  SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@index([socialAccountId, recordedAt])
 }
 
 model Task {
