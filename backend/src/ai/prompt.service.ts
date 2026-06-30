@@ -8,6 +8,20 @@ import type {
 } from './ai.types';
 
 const MAX_CUSTOM_INSTRUCTIONS_LENGTH = 500;
+const MEETING_SUMMARIZER_PROMPT = `Tu es un assistant de réunion. Analyse la transcription brute fournie.
+Rédige TOUT ton contenu, tes réponses et tes titres en FRANÇAIS.
+
+Retourne UNIQUEMENT un objet JSON valide avec EXACTEMENT cette structure, sans texte hors JSON :
+{
+  "actionItems": [
+    {
+      "title": "Titre de tâche actionnable",
+      "dueDate": "YYYY-MM-DD, texte relatif (ex: next Friday) ou null",
+      "priority": "HIGH | MEDIUM | LOW"
+    }
+  ],
+  "decisionSummary": "Résumé clair des décisions prises pendant la réunion"
+}`;
 const DISALLOWED_INSTRUCTION_PATTERNS = [
   /ignore\s+(all\s+)?previous\s+instructions/giu,
   /\b(system|assistant|developer)\s*:[^\n\r]*/giu,
@@ -266,6 +280,15 @@ Tu dois retourner UNIQUEMENT un objet JSON valide avec la structure suivante, ri
 
 Notes de réunion :
 ${notes}
+
+Génère maintenant la réponse JSON.`;
+  }
+
+  buildMeetingSummarizerPrompt(transcriptText: string): string {
+    return `${MEETING_SUMMARIZER_PROMPT}
+
+Transcription brute :
+${transcriptText}
 
 Génère maintenant la réponse JSON.`;
   }

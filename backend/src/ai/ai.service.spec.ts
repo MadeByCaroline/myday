@@ -909,4 +909,85 @@ describe('AiService', () => {
       expect(result.tasks).toEqual([]);
     });
   });
+
+  describe('summarizeMeetingTranscript', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns normalized meeting summary and action items', async () => {
+      mockGenerateContent.mockResolvedValue({
+        response: {
+          text: () =>
+            JSON.stringify({
+              actionItems: [
+                {
+                  title: 'Préparer le rétroplanning',
+                  dueDate: '01/07/2026',
+                  priority: 'high',
+                },
+              ],
+              decisionSummary: 'Le périmètre MVP est validé.',
+            }),
+        },
+      });
+
+      const service = new AiService(configService);
+      const result = await service.summarizeMeetingTranscript(
+        'Décisions et actions de réunion produit.',
+      );
+
+      expect(result).toEqual({
+        actionItems: [
+          {
+            title: 'Préparer le rétroplanning',
+            dueDate: '2026-07-01',
+            priority: 'HIGH',
+          },
+        ],
+        decisionSummary: 'Le périmètre MVP est validé.',
+      });
+    });
+
+    it('extracts JSON object when AI response is chatty', async () => {
+      mockGenerateContent.mockResolvedValue({
+        response: {
+          text: () =>
+            `Voici le résultat demandé :\n\`\`\`json\n{"actionItems":[{"title":"Envoyer le recap","dueDate":"2026-07-02","priority":"MEDIUM"}],"decisionSummary":"Go-live confirmé."}\n\`\`\`\nMerci.`,
+        },
+      });
+
+      const service = new AiService(configService);
+      const result = await service.summarizeMeetingTranscript(
+        'Compte-rendu de réunion avec décisions.',
+      );
+
+      expect(result.actionItems).toEqual([
+        {
+          title: 'Envoyer le recap',
+          dueDate: '2026-07-02',
+          priority: 'MEDIUM',
+        },
+      ]);
+      expect(result.decisionSummary).toBe('Go-live confirmé.');
+    });
+
+    it('returns empty payload when JSON cannot be parsed', async () => {
+      mockGenerateContent.mockResolvedValue({
+        response: {
+          text: () => 'réponse invalide sans json',
+        },
+      });
+
+      const service = new AiService(configService);
+      const result = await service.summarizeMeetingTranscript(
+        'Transcript impossible à parser.',
+      );
+
+      expect(result).toEqual({
+        actionItems: [],
+        decisionSummary: '',
+      });
+    });
+  });
 });

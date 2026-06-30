@@ -45,6 +45,12 @@ interface ResolveAIRequestOptions {
   tools?: WorkspaceChatToolset;
 }
 
+interface MeetingActionItem {
+  title: string;
+  dueDate: string | null;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
 class AiParsingException extends Error {
   constructor(message: string) {
     super(message);
@@ -303,6 +309,60 @@ export class AiService {
     return { linkedin, email: emailText, tasks };
   }
 
+  async summarizeMeetingTranscript(transcriptText: string): Promise<{
+    actionItems: MeetingActionItem[];
+    decisionSummary: string;
+  }> {
+    const prompt = this.promptService.buildMeetingSummarizerPrompt(transcriptText);
+    const rawResponse = await this.resolveAIRequest(prompt, { isJson: true });
+
+    try {
+      const parsed = this.parseJsonResponse<{
+        actionItems?: Array<{
+          title?: unknown;
+          dueDate?: unknown;
+          priority?: unknown;
+        }>;
+        decisionSummary?: unknown;
+      }>(rawResponse, 'meeting summarizer');
+
+      const actionItems = Array.isArray(parsed.actionItems)
+        ? parsed.actionItems
+            .filter(
+              (
+                item,
+              ): item is {
+                title: string;
+                dueDate?: unknown;
+                priority?: unknown;
+              } =>
+                typeof item === 'object' &&
+                item !== null &&
+                typeof item.title === 'string' &&
+                item.title.trim().length > 0,
+            )
+            .map((item) => ({
+              title: item.title.trim(),
+              dueDate: this.normalizeDueDate(item.dueDate),
+              priority: this.normalizePriority(item.priority),
+            }))
+        : [];
+
+      return {
+        actionItems,
+        decisionSummary:
+          typeof parsed.decisionSummary === 'string'
+            ? parsed.decisionSummary.trim()
+            : '',
+      };
+    } catch {
+      return {
+        actionItems: [],
+        decisionSummary: '',
+      };
+    }
+  }
+
   async answerWorkspaceQuestion(params: {
     prompt: string;
     history?: WorkspaceChatHistoryMessage[];
@@ -510,6 +570,14 @@ export class AiService {
     try {
       return JSON.parse(cleanedResponse) as T;
     } catch (error) {
+      const extractedJson = this.extractFirstJsonObject(cleanedResponse);
+      if (extractedJson) {
+        try {
+          return JSON.parse(extractedJson) as T;
+        } catch {
+          // Continue to structured error handling below
+        }
+      }
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`${context} JSON parsing failed`, message);
       this.logger.debug(`Raw AI response: ${rawAiResponse}`);
@@ -546,6 +614,130 @@ IMPORTANT : retourne UNIQUEMENT du JSON brut. N'ajoute ni balises markdown, ni l
         title: task.title,
       };
     });
+  }
+
+  private extractFirstJsonObject(value: string): string | null {
+    const start = value.indexOf('{');
+    if (start < 0) {
+      return null;
+    }
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = start; index < value.length; index += 1) {
+      const char = value[index];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) {
+        continue;
+      }
+
+      if (char === '{') {
+        depth += 1;
+      } else if (char === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          return value.slice(start, index + 1).trim();
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private normalizePriority(value: unknown): 'HIGH' | 'MEDIUM' | 'LOW' {
+    const normalized =
+      typeof value === 'string' ? value.trim().toUpperCase() : 'MEDIUM';
+
+    if (normalized === 'HIGH' || normalized === 'LOW') {
+      return normalized;
+    }
+
+    return 'MEDIUM';
+  }
+
+  private normalizeDueDate(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const raw = value.trim();
+    if (!raw || raw.toLowerCase() === 'null') {
+      return null;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/u.test(raw)) {
+      return raw;
+    }
+
+    const slashDate = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/u);
+    if (slashDate) {
+      const [, day, month, year] = slashDate;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    const lowered = raw.toLowerCase();
+    const now = new Date();
+
+    if (lowered === 'today' || lowered === 'aujourd\'hui') {
+      return now.toISOString().slice(0, 10);
+    }
+    if (lowered === 'tomorrow' || lowered === 'demain') {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      return tomorrow.toISOString().slice(0, 10);
+    }
+
+    const weekdayMap: Record<string, number> = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+      dimanche: 0,
+      lundi: 1,
+      mardi: 2,
+      mercredi: 3,
+      jeudi: 4,
+      vendredi: 5,
+      samedi: 6,
+    };
+
+    const relativeDayMatch = lowered.match(
+      /(?:next|prochain)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)/u,
+    );
+
+    if (relativeDayMatch) {
+      const dayValue = weekdayMap[relativeDayMatch[1]];
+      const date = new Date(now);
+      const delta = ((dayValue - now.getDay() + 7) % 7) || 7;
+      date.setDate(now.getDate() + delta);
+      return date.toISOString().slice(0, 10);
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return parsed.toISOString().slice(0, 10);
   }
 
   private normalizeEmailSummaries(
