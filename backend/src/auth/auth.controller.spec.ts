@@ -11,7 +11,7 @@ describe('AuthController', () => {
 
   const controller = new AuthController(authService as any, configService as any);
 
-  it('returns role and connected accounts in profile response', () => {
+  it('returns role, isPremium and connected accounts in profile response', () => {
     const result = controller.getProfile({
       protocol: 'http',
       get: jest.fn(),
@@ -20,6 +20,7 @@ describe('AuthController', () => {
         email: 'admin@example.com',
         name: 'Admin',
         role: 'ADMIN',
+        isPremium: true,
         picture: 'https://example.com/pic.png',
         oauthTokens: [
           { provider: 'google', email: 'google@example.com' },
@@ -33,6 +34,7 @@ describe('AuthController', () => {
       email: 'admin@example.com',
       name: 'Admin',
       role: 'ADMIN',
+      isPremium: true,
       picture: 'https://example.com/pic.png',
       connectedGoogleAccounts: ['google@example.com'],
       connectedOutlookAccounts: ['outlook@example.com'],
@@ -48,6 +50,7 @@ describe('AuthController', () => {
         email: 'user@example.com',
         name: 'User',
         role: 'USER',
+        isPremium: false,
         oauthTokens: [],
       },
     });
@@ -57,6 +60,7 @@ describe('AuthController', () => {
       email: 'user@example.com',
       name: 'User',
       role: 'USER',
+      isPremium: false,
       connectedGoogleAccounts: [],
       connectedOutlookAccounts: [],
     });

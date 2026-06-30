@@ -90,7 +90,13 @@
             <i class="pi pi-user text-sm"></i>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="theme-title text-sm font-medium truncate">{{ authStore.user?.name || authStore.user?.email }}</p>
+            <div class="flex items-center gap-2">
+              <p class="theme-title text-sm font-medium truncate">{{ authStore.user?.name || authStore.user?.email }}</p>
+              <span
+                v-if="authStore.isPremium"
+                class="shrink-0 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+              >Pro</span>
+            </div>
             <p class="theme-text-secondary text-xs truncate">{{ authStore.user?.email }}</p>
           </div>
           <button @click="handleLogout" class="theme-icon-button">
