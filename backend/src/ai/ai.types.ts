@@ -31,6 +31,8 @@ export interface AiAnalysisResult {
     source: string;
   }>;
   email_summaries: CategorizedEmailSummary[];
+  isFallback?: boolean;
+  fallbackReason?: string;
 }
 
 export interface TimeBlock {
@@ -72,6 +74,8 @@ export interface MorningBriefingResult {
   emailSummary: string;
   scheduleOverview: string;
   recommendedFocus: string;
+  isFallback?: boolean;
+  fallbackReason?: string;
 }
 
 export interface MorningBriefingContext {

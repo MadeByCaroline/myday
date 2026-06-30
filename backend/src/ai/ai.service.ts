@@ -153,6 +153,8 @@ export class AiService {
         events,
         suggested_tasks: [],
         email_summaries: this.buildFallbackEmailSummaries(emails),
+        isFallback: true,
+        fallbackReason: message,
       };
     }
   }
@@ -206,7 +208,11 @@ export class AiService {
           ? error.message
           : 'Unknown morning briefing generation error';
       this.logger.error('AI morning briefing error', message);
-      briefing = this.briefingService.buildFallbackMorningBriefing(context);
+      briefing = {
+        ...this.briefingService.buildFallbackMorningBriefing(context),
+        isFallback: true,
+        fallbackReason: message,
+      };
     }
 
     this.briefingService.setInCache(userId, { dateKey: todayKey, briefing });
@@ -278,7 +284,7 @@ export class AiService {
       taskStatus: string;
       totalDuration: number;
     }>;
-  }): Promise<{ analysis: string; recommendations: string[] }> {
+  }): Promise<{ analysis: string; recommendations: string[]; isFallback?: boolean; fallbackReason?: string }> {
     const MAX_RECOMMENDATIONS = 2;
     const prompt = this.promptService.buildTimeAuditPrompt(statsData);
 
@@ -314,6 +320,8 @@ export class AiService {
       return {
         analysis: this.buildFallbackTimeAuditAnalysis(statsData),
         recommendations: this.buildFallbackRecommendations(),
+        isFallback: true,
+        fallbackReason: message,
       };
     }
   }
