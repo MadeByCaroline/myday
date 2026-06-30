@@ -72,6 +72,9 @@ export class GmailClient {
           ),
         {
           onOpen: () => IntegrationProviderError.unavailable('GOOGLE'),
+          // A single user's expired/invalid token (401) must not trip the
+          // shared provider circuit for everyone else.
+          isFailure: (error) => !this.isUnauthorizedError(error),
         },
       );
 
@@ -233,5 +236,23 @@ export class GmailClient {
       end -= 1;
     }
     return value.slice(0, end);
+  }
+
+  private isUnauthorizedError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const gaxiosLike = error as {
+      code?: number;
+      status?: number;
+      response?: { status?: number };
+    };
+
+    return (
+      gaxiosLike.code === 401 ||
+      gaxiosLike.status === 401 ||
+      gaxiosLike.response?.status === 401
+    );
   }
 }
