@@ -24,6 +24,7 @@ interface AuthenticatedRequest {
     name?: string;
     picture?: string;
     role: string;
+    isPremium: boolean;
     oauthTokens: Array<{ provider: string; email: string }>;
   };
 }
@@ -141,7 +142,7 @@ export class AuthController {
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
   getProfile(@Req() req: AuthenticatedRequest) {
-    const { id, email, name, picture, role } = req.user;
+    const { id, email, name, picture, role, isPremium } = req.user;
     const connectedGoogleAccounts = req.user.oauthTokens
       .filter((token) => token.provider.toUpperCase() === 'GOOGLE')
       .map((token) => token.email);
@@ -155,6 +156,7 @@ export class AuthController {
       name,
       picture,
       role,
+      isPremium,
       connectedGoogleAccounts,
       connectedOutlookAccounts,
     };

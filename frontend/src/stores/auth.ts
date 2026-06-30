@@ -6,6 +6,7 @@ interface User {
   email: string
   name: string
   role: string
+  isPremium?: boolean
   hasActiveSubscription?: boolean
   picture?: string
   connectedGoogleAccounts?: string[]
@@ -18,6 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'ADMIN')
+  const isPremium = computed(() => isAdmin.value || !!user.value?.isPremium)
 
   function setToken(newToken: string) {
     token.value = newToken
@@ -34,5 +36,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('jwt_token')
   }
 
-  return { token, user, isAuthenticated, isAdmin, setToken, setUser, logout }
+  return { token, user, isAuthenticated, isAdmin, isPremium, setToken, setUser, logout }
 })

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
   Post,
@@ -17,12 +18,19 @@ import { PaymentsService } from './payments.service';
 interface AuthenticatedRequest extends RawBodyRequest<Request> {
   user: {
     id: string;
+    isPremium: boolean;
   };
 }
 
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Get('subscription/status')
+  @UseGuards(JwtAuthGuard)
+  getSubscriptionStatus(@Req() req: AuthenticatedRequest): { isPremium: boolean } {
+    return { isPremium: req.user.isPremium };
+  }
 
   @Post('checkout')
   @UseGuards(JwtAuthGuard)
