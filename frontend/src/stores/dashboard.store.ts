@@ -183,7 +183,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
     return connectedProviders.map((provider) => statusMap.get(provider) || {
       provider,
-      status: 'ready' as const,
+      status: 'error' as const,
+      code: 'provider_unavailable' as const,
+      message: `Le statut ${provider === 'MICROSOFT' ? 'Microsoft' : 'Google'} est indisponible pour le moment.`,
     })
   }
 

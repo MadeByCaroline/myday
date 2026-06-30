@@ -270,7 +270,7 @@ export class SummaryService {
       };
     }
 
-    if (!oauthToken.refreshToken || this.isTokenTooOld(oauthToken)) {
+    if (!oauthToken.refreshToken || this.isTokenExpired(oauthToken, 10_000)) {
       throw IntegrationProviderError.needsReauth('GOOGLE');
     }
 
@@ -294,7 +294,7 @@ export class SummaryService {
       };
     }
 
-    if (!oauthToken.refreshToken || this.isTokenTooOld(oauthToken)) {
+    if (!oauthToken.refreshToken || this.isTokenExpired(oauthToken, 10_000)) {
       throw IntegrationProviderError.needsReauth('MICROSOFT');
     }
 
@@ -373,12 +373,12 @@ export class SummaryService {
 
   }
 
-  private isTokenTooOld(oauthToken: OAuthTokenRecord) {
+  private isTokenExpired(oauthToken: OAuthTokenRecord, thresholdMs = 0) {
     if (!oauthToken.expiresAt) {
       return false;
     }
 
-    return oauthToken.expiresAt.getTime() <= Date.now();
+    return oauthToken.expiresAt.getTime() <= Date.now() + thresholdMs;
   }
 
   private shouldRefreshToken(oauthToken: OAuthTokenRecord) {
